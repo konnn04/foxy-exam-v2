@@ -33,8 +33,46 @@ export const FAILURE_TEXT: Record<MediaFailure, string> = {
   unknown: "Không mở được thiết bị.",
 };
 
-export const openCamera = () =>
-  navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } }, audio: false });
+const CAMERA_KEY = "foxy:camera-id";
+
+export const getPreferredCamera = (): string | null => {
+  try {
+    return localStorage.getItem(CAMERA_KEY);
+  } catch {
+    return null;
+  }
+};
+export const setPreferredCamera = (id: string) => {
+  try {
+    localStorage.setItem(CAMERA_KEY, id);
+  } catch {
+    /* only a convenience */
+  }
+};
+
+export interface CameraInfo {
+  id: string;
+  label: string;
+}
+
+/** Cameras the OS exposes. Labels stay empty until the page has been granted camera access once. */
+export async function listCameras(): Promise<CameraInfo[]> {
+  const all = await navigator.mediaDevices.enumerateDevices();
+  return all.filter((d) => d.kind === "videoinput").map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+}
+
+/** Opens the chosen camera (the remembered one by default); falls back to any camera if that one is gone. */
+export async function openCamera(deviceId: string | null = getPreferredCamera()): Promise<MediaStream> {
+  const base = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } };
+  if (deviceId) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: { ...base, deviceId: { exact: deviceId } }, audio: false });
+    } catch (e) {
+      if ((e as { name?: string })?.name !== "OverconstrainedError" && (e as { name?: string })?.name !== "NotFoundError") throw e;
+    }
+  }
+  return navigator.mediaDevices.getUserMedia({ video: base, audio: false });
+}
 
 export const openMic = () => navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
 

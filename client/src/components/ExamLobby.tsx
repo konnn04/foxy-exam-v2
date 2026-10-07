@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, RefreshCw, ShieldAlert, Wifi, X } from "lucide-react";
+import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, RefreshCw, ScanFace, ShieldAlert, Wifi, X } from "lucide-react";
 import { Badge, Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { ApiError, getExam, getHealth, startExam, type ExamDetail } from "../lib/api";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
-import { explain, FAILURE_TEXT, micMeter, openCamera, openMic, openScreen, stopStream } from "../lib/media";
+import { explain, FAILURE_TEXT, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
+import { FaceMonitor } from "../lib/vision";
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
 import { formatDateTime } from "../lib/datetime";
@@ -17,7 +18,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
 interface Check {
-  id: "network" | "exam" | "display" | "apps" | "camera" | "mic" | "screen";
+  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "mic" | "screen";
   label: string;
   level: Level;
   detail: string;
@@ -25,7 +26,7 @@ interface Check {
   required: boolean;
 }
 
-const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "mic", "screen"];
+const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "mic", "screen"];
 
 const matchesBanned = (name: string) => {
   const n = name.toLowerCase().replace(/\.exe$/, "");
@@ -56,6 +57,9 @@ export default function ExamLobby({
   const stopMeter = useRef<(() => void) | null>(null);
   const micStream = useRef<MediaStream | null>(null);
   const startedRef = useRef(false);
+  const [cameras, setCameras] = useState<CameraInfo[]>([]);
+  const [cameraId, setCameraId] = useState<string>(() => getPreferredCamera() ?? "");
+  const face = useRef<FaceMonitor | null>(null);
 
   const set = useCallback((id: Check["id"], patch: Partial<Check>) => setChecks((c) => ({ ...c, [id]: { ...c[id], ...patch } })), []);
 
@@ -72,21 +76,83 @@ export default function ExamLobby({
     if (video.current) video.current.srcObject = s;
   }, []);
 
-  const runCamera = useCallback(
-    async (required: boolean) => {
-      if (bypass("camera")) return set("camera", { level: "warn", detail: "Dev: bỏ qua camera", required: false });
-      set("camera", { level: "checking", detail: "Đang mở camera…", required });
+  const stopFace = useCallback(() => {
+    face.current?.stop();
+    face.current = null;
+  }, []);
+
+  /** Watches the preview with MediaPipe: the exam can start only while exactly one face is in front of the camera. */
+  const watchFace = useCallback(
+    async (stream: MediaStream, required: boolean) => {
+      stopFace();
+      set("face", { level: "checking", detail: "Đang tìm khuôn mặt… hãy ngồi vào khung hình", required });
+      let seen = 0;
+      let missed = 0;
+      let ok = false;
+      const m = new FaceMonitor(
+        (s) => {
+          if (s.faces === 1) {
+            seen += 1;
+            missed = 0;
+          } else {
+            missed += 1;
+            seen = 0;
+          }
+          if (!ok && seen >= 2) {
+            ok = true;
+            set("face", { level: "ok", detail: "Đã nhận diện khuôn mặt", required });
+          } else if (ok && missed >= 6) {
+            ok = false;
+            set("face", { level: "fail", detail: s.faces === 0 ? "Không thấy khuôn mặt — hãy nhìn vào camera" : `${s.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`, required });
+          } else if (!ok && missed >= 2) {
+            set("face", { level: "fail", detail: s.faces === 0 ? "Không thấy khuôn mặt — hãy nhìn vào camera" : `${s.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`, required });
+          }
+        },
+        () => {},
+      );
       try {
-        stopStream(getLobbyMedia().camera);
-        const s = await openCamera();
-        setLobbyMedia({ camera: s });
-        attachPreview(s);
-        set("camera", { level: "ok", detail: s.getVideoTracks()[0]?.label || "Camera hoạt động", required });
+        await m.start(stream);
+        face.current = m;
       } catch (e) {
-        set("camera", { level: required ? "fail" : "warn", detail: FAILURE_TEXT[explain(e)], required });
+        // the analysis itself cannot run on this machine: do not lock the candidate out, the proctor still sees the camera
+        m.stop();
+        console.error("[lobby] MediaPipe không chạy:", e);
+        set("face", { level: "warn", detail: "Không phân tích được khuôn mặt trên máy này — bỏ qua bước này", required: false });
       }
     },
-    [attachPreview, set],
+    [set, stopFace],
+  );
+
+  const runCamera = useCallback(
+    async (required: boolean, deviceId?: string) => {
+      if (bypass("camera")) {
+        set("face", { level: "warn", detail: "Dev: bỏ qua nhận diện khuôn mặt", required: false });
+        return set("camera", { level: "warn", detail: "Dev: bỏ qua camera", required: false });
+      }
+      stopFace();
+      set("camera", { level: "checking", detail: "Đang mở camera…", required });
+      set("face", { level: "idle", detail: "Chờ camera", required });
+      try {
+        stopStream(getLobbyMedia().camera);
+        const s = await openCamera(deviceId ?? (cameraId || null));
+        setLobbyMedia({ camera: s });
+        attachPreview(s);
+        const track = s.getVideoTracks()[0];
+        const used = track?.getSettings().deviceId;
+        if (used) {
+          setCameraId(used);
+          setPreferredCamera(used);
+        }
+        // labels are readable only after permission: refresh the list now
+        void listCameras().then(setCameras).catch(() => {});
+        set("camera", { level: "ok", detail: track?.label || "Camera hoạt động", required });
+        void watchFace(s, required);
+      } catch (e) {
+        set("camera", { level: required ? "fail" : "warn", detail: FAILURE_TEXT[explain(e)], required });
+        set("face", { level: "idle", detail: "Chờ camera", required });
+      }
+    },
+    [attachPreview, cameraId, set, stopFace, watchFace],
   );
 
   const runMic = useCallback(
@@ -189,6 +255,7 @@ export default function ExamLobby({
     const reqCam = Boolean(d?.monitoring_config?.ai_face_check) && !bypass("camera");
     // the camera and microphone are opened only when the student asks, never silently on entering the lobby
     set("camera", { level: "idle", detail: reqCam ? "Bắt buộc — nhấn “Bật camera” để kiểm tra" : "Nhấn “Bật camera” để kiểm tra (không bắt buộc)", required: reqCam });
+    set("face", { level: "idle", detail: "Bật camera để nhận diện khuôn mặt", required: reqCam });
     set("mic", { level: "idle", detail: "Nhấn “Kiểm tra micro” để thử", required: Boolean(d?.monitoring_config?.require_mic) });
     if (bypass("screen")) set("screen", { level: "warn", detail: "Dev: bỏ qua chia sẻ màn hình", required: false });
     else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: "Bắt buộc chia sẻ TOÀN MÀN HÌNH — nhấn “Chia sẻ màn hình”", required: true });
@@ -197,6 +264,9 @@ export default function ExamLobby({
 
   useEffect(() => {
     diag("lobby mounted");
+    const refreshCameras = () => void listCameras().then(setCameras).catch(() => {});
+    refreshCameras();
+    navigator.mediaDevices.addEventListener?.("devicechange", refreshCameras);
     void runAll();
     // the lobby holds the camera: let go of it whenever the window is hidden or the lobby ends without an exam
     const onHide = () => document.visibilityState === "hidden" && !startedRef.current && releaseLobbyMedia();
@@ -207,6 +277,9 @@ export default function ExamLobby({
     });
     return () => {
       diag("lobby unmounted");
+      navigator.mediaDevices.removeEventListener?.("devicechange", refreshCameras);
+      face.current?.stop();
+      face.current = null;
       document.removeEventListener("visibilitychange", onHide);
       void closing.then((off) => off());
       stopMeter.current?.();
@@ -296,6 +369,27 @@ export default function ExamLobby({
             <Row c={checks.display} icon={<Monitor size={14} />} />
             <Row c={checks.apps} icon={<Cpu size={14} />} />
             {wantCamera && <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? "Bật camera" : "Thử lại"}</Button> : undefined} />}
+            {wantCamera && cameras.length > 1 && (
+              <li className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs">
+                <Camera size={14} className="text-muted" />
+                <span className="text-muted">Chọn camera</span>
+                <select
+                  value={cameraId}
+                  onChange={(e) => {
+                    setCameraId(e.target.value);
+                    void runCamera(needCamera, e.target.value);
+                  }}
+                  className="h-7 min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-2 text-xs text-fg outline-none"
+                >
+                  {cameras.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            )}
+            {wantCamera && <Row c={{ ...checks.face, required: needCamera }} icon={<ScanFace size={14} />} />}
             {wantMic && <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />}
             {wantScreen && <Row
               c={{ ...checks.screen, required: needScreen }}
@@ -360,6 +454,7 @@ function initial(): Record<Check["id"], Check> {
     display: mk("display", "Màn hình", true),
     apps: mk("apps", "Ứng dụng bị cấm", true),
     camera: mk("camera", "Camera", false),
+    face: mk("face", "Nhận diện khuôn mặt", false),
     mic: mk("mic", "Micro", false),
     screen: mk("screen", "Chia sẻ màn hình", false),
   };
