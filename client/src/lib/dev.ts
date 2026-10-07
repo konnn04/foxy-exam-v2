@@ -19,6 +19,7 @@ export type DevFlag =
   | "lockdown" // do not force fullscreen / always-on-top / shortcut blocking (lockdown is on in dev builds too)
   | "devices" // ignore extra monitors, banned apps and external keyboards (no lockdown block, no violations for them)
   | "realtime" // do not use the realtime plane, fall back to the plain REST endpoints
+  | "protect" // allow screenshots / screen capture of the exam windows (content protection off)
   | "network"; // continue even when the server health check fails
 
 export const DEV_FLAGS: { flag: DevFlag; label: string; hint: string }[] = [
@@ -28,6 +29,7 @@ export const DEV_FLAGS: { flag: DevFlag; label: string; hint: string }[] = [
   { flag: "lockdown", label: "Không khoá máy", hint: "Không ép toàn màn hình / luôn trên cùng / chặn phím tắt" },
   { flag: "devices", label: "Bỏ qua nhiều màn hình / app cấm", hint: "Không khoá bài khi có OBS, màn hình phụ…" },
   { flag: "realtime", label: "Tắt realtime (dùng REST)", hint: "Test đường dự phòng /student/violation, /op-log" },
+  { flag: "protect", label: "Cho phép chụp / quay màn hình", hint: "Tắt chống chụp màn hình của cửa sổ thi để debug" },
   { flag: "network", label: "Bỏ qua kiểm tra mạng", hint: "Cho vào thi dù health check lỗi" },
 ];
 

@@ -9,6 +9,7 @@ import { AppWindow } from "./lib/windowNav";
 import DialogHost from "./components/Dialogs";
 import { dialog, errorText } from "./lib/dialog";
 import { diag } from "./lib/diag";
+import { bypass, IS_DEV } from "./lib/dev";
 
 /**
  * Mỗi cửa sổ Tauri load chung một bundle React duy nhất, nên ở đây ta chỉ cần
@@ -21,6 +22,13 @@ function App() {
   useEffect(() => {
     setLabel(getCurrentWindow().label);
     diag("page loaded");
+    // dev only: content protection (black screenshots) of the exam windows can be switched off to debug them
+    const win = getCurrentWindow();
+    const applyProtect = () => {
+      if (IS_DEV && win.label.startsWith("exam-")) void win.setContentProtected(!bypass("protect")).catch(() => {});
+    };
+    applyProtect();
+    window.addEventListener("foxy:dev-bypass", applyProtect);
     const onHide = () => diag(`visibility ${document.visibilityState}`);
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", () => diag("pagehide"));
@@ -35,6 +43,7 @@ function App() {
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);
     return () => {
+      window.removeEventListener("foxy:dev-bypass", applyProtect);
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onRejection);
     };
