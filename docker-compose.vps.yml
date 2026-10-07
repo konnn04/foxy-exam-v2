@@ -1,0 +1,126 @@
+services:
+  # =========================================================================
+  # 1. API GATEWAY (Nginx Reverse Proxy with Auto-SSL & Load Balancer)
+  # =========================================================================
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: foxy-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_HTTP_PORT:-80}:80"
+      - "${GATEWAY_HTTPS_PORT:-443}:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-foxyexam.com}
+      SERVER_NAME: "${APP_DOMAIN:-foxyexam.com} *.${APP_DOMAIN:-foxyexam.com} localhost 127.0.0.1"
+      CORE_HOST: app:8000
+      REVERB_HOST: app:8080
+      AI_HOST: ${AI_HOST:-ai-worker:8000}
+      LIVEKIT_HOST: livekit:7880
+      CLIENT_MAX_BODY_SIZE: 100M
+    volumes:
+      - ./gateway/certs:/etc/nginx/certs:ro
+      - gateway_logs:/var/log/nginx
+    depends_on:
+      - app
+      - livekit
+    networks:
+      - foxy-net
+
+  # =========================================================================
+  # 2. FOXY CORE SERVER (Laravel 13 + FrankenPHP Octane)
+  # =========================================================================
+  app:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: foxy-app
+    restart: unless-stopped
+    environment:
+      APP_NAME: FoxyExam
+      APP_ENV: production
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: "https://${APP_DOMAIN:-foxyexam.com}"
+      APP_KEY: "${APP_KEY:-base64:H8pD7Xk+Uu8r7V9h8pD7Xk+Uu8r7V9h8pD7Xk+Uu8r4=}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-foxy_core}
+      DB_USERNAME: ${DB_USERNAME:-foxy_user}
+      DB_PASSWORD: ${DB_PASSWORD:-foxy_secret_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # AI Worker connection: laptop running AI via Cloudflare Tunnel / Ngrok
+      AI_WORKER_URL: ${AI_WORKER_URL:-}
+      AI_WORKER_TIMEOUT: ${AI_WORKER_TIMEOUT:-2}
+      # LiveKit WebRTC credentials
+      LIVEKIT_HOST: http://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecret}
+    volumes:
+      - app_storage:/app/storage
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - foxy-net
+
+  # =========================================================================
+  # 3. DATABASE (PostgreSQL 16)
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: foxy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-foxy_core}
+      POSTGRES_USER: ${DB_USERNAME:-foxy_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-foxy_secret_2026}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - foxy-net
+
+  # =========================================================================
+  # 4. IN-MEMORY CACHE & QUEUE (Redis 7)
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: foxy-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "350mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    networks:
+      - foxy-net
+
+  # =========================================================================
+  # 5. WEBRTC MEDIA SERVER (LiveKit)
+  # =========================================================================
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: foxy-livekit
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    ports:
+      - "7880:7880" # WebRTC HTTP & WebSocket signaling
+      - "7881:7881" # WebRTC TCP fallback
+      - "7882:7882/udp" # Primary WebRTC UDP media
+      - "50000-50100:50000-50100/udp" # WebRTC ICE UDP port range
+    volumes:
+      - ./deploy/vps/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    networks:
+      - foxy-net
+
+volumes:
+  gateway_logs:
+  pgdata:
+  redisdata:
+  app_storage:
+
+networks:
+  foxy-net:
+    driver: bridge
