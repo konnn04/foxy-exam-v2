@@ -79,16 +79,16 @@ class AttemptLifecycleTest extends TestCase
         $admin = User::where('username', 'admin_hcmus')->first();
         $set = \App\Models\QuestionSet::where('type', 'PROGRAMMING')->where('organization_id', $admin->organization_id)->first();
         $course = \App\Models\Course::where('organization_id', $admin->organization_id)->first();
-        $base = ['course_id' => $course->id, 'question_set_id' => $set->id, 'title' => 'Có app được phép', 'duration_minutes' => 60];
+        $base = ['course_id' => $course->id, 'question_set_id' => $set->id, 'title' => 'AppsOn', 'duration_minutes' => 60];
 
-        $this->actingAs($admin)->post('/admin/exams', $base + ['allowed_apps_enabled' => true, 'allowed_apps' => ['devenv', 'Code', 'CODE']])->assertRedirect('/admin/exams');
-        $cfg = Exam::where('title', 'Có app được phép')->first()->monitoring_config;
+        $this->actingAs($admin)->post('/admin/exams', array_merge($base, ['allowed_apps_enabled' => true, 'allowed_apps' => ['devenv', 'Code', 'CODE']]))->assertRedirect('/admin/exams');
+        $cfg = Exam::where('title', 'AppsOn')->first()->monitoring_config;
         $this->assertEquals(['devenv', 'code'], $cfg['allowed_apps']);
 
-        $this->actingAs($admin)->post('/admin/exams', $base + ['title' => 'Xấu', 'allowed_apps_enabled' => true, 'allowed_apps' => ['calc; rm -rf']])->assertSessionHasErrors('allowed_apps.0');
+        $this->actingAs($admin)->post('/admin/exams', array_merge($base, ['title' => 'AppsBad', 'allowed_apps_enabled' => true, 'allowed_apps' => ['calc; rm -rf']]))->assertSessionHasErrors('allowed_apps.0');
 
         // switched off => empty list, so the client enforces the usual lockdown
-        $this->actingAs($admin)->post('/admin/exams', $base + ['title' => 'Tắt', 'allowed_apps_enabled' => false, 'allowed_apps' => ['devenv']]);
-        $this->assertEquals([], Exam::where('title', 'Tắt')->first()->monitoring_config['allowed_apps']);
+        $this->actingAs($admin)->post('/admin/exams', array_merge($base, ['title' => 'AppsOff', 'allowed_apps_enabled' => false, 'allowed_apps' => ['devenv']]))->assertSessionHasNoErrors()->assertRedirect('/admin/exams');
+        $this->assertEquals([], Exam::where('title', 'AppsOff')->first()->monitoring_config['allowed_apps']);
     }
 }
