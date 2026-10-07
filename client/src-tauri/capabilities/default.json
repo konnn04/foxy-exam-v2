@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Quyền mặc định cho mọi cửa sổ của FoxyExam Client (update, auth, main, exam-classic, exam-code) — cho phép hiện/ẩn/focus/đóng cửa sổ để chuyển qua lại giữa các màn hình.",
+  "windows": [
+    "*"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-center",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-visible",
+    "opener:default",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

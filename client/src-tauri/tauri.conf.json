@@ -1,0 +1,108 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FoxyExam Client",
+  "version": "0.1.0",
+  "identifier": "com.foxyexam.client",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "update",
+        "title": "FoxyExam",
+        "url": "index.html",
+        "width": 380,
+        "height": 440,
+        "resizable": false,
+        "decorations": false,
+        "center": true,
+        "visible": true,
+        "contentProtected": false,
+        "alwaysOnTop": true
+      },
+      {
+        "label": "auth",
+        "title": "Foxy Exam — Đăng nhập",
+        "url": "index.html",
+        "width": 960,
+        "height": 640,
+        "resizable": false,
+        "decorations": false,
+        "center": true,
+        "visible": false,
+        "contentProtected": false
+      },
+      {
+        "label": "main",
+        "title": "Foxy Exam",
+        "url": "index.html",
+        "width": 1240,
+        "height": 800,
+        "minWidth": 1000,
+        "minHeight": 640,
+        "resizable": true,
+        "decorations": false,
+        "center": true,
+        "visible": false,
+        "contentProtected": false
+      },
+      {
+        "label": "exam-classic",
+        "title": "Foxy Exam — Phòng thi",
+        "url": "index.html",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "decorations": false,
+        "center": true,
+        "visible": false,
+        "contentProtected": true
+      },
+      {
+        "label": "exam-code",
+        "title": "Foxy Exam — Phòng thi lập trình",
+        "url": "index.html",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 1000,
+        "minHeight": 640,
+        "resizable": true,
+        "decorations": false,
+        "center": true,
+        "visible": false,
+        "contentProtected": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlGM0RGMEY2RTQwQzIzRUIKUldUckl3ems5dkE5bnpMamdIZE1kbS8rMFhJYVpxNzJUMmhsY0l5aTJIVWNrVk1iL0R3WGRnYW8K",
+      "endpoints": [
+        "https://github.com/TODO_OWNER/TODO_REPO/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
