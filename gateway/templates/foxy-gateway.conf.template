@@ -19,11 +19,6 @@ upstream ai_upstream {
     keepalive 16;
 }
 
-upstream livekit_upstream {
-    server ${LIVEKIT_HOST};
-    keepalive 32;
-}
-
 upstream ingest_upstream {
     server ${INGEST_HOST};
     keepalive 128;

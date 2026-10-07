@@ -11,7 +11,6 @@ export SERVER_NAME="${SERVER_NAME:-foxyexam.com *.foxyexam.com localhost 127.0.0
 export CORE_HOST="${CORE_HOST:-app:8000}"
 export REVERB_HOST="${REVERB_HOST:-app:8080}"
 export AI_HOST="${AI_HOST:-ai-worker:8000}"
-export LIVEKIT_HOST="${LIVEKIT_HOST:-livekit:7880}"
 export INGEST_HOST="${INGEST_HOST:-ingest:8081}"
 export HUB_HOST="${HUB_HOST:-hub:8082}"
 export RECORD_HOST="${RECORD_HOST:-record:8083}"
@@ -27,15 +26,14 @@ echo "   - SERVER_NAME:         ${SERVER_NAME}"
 echo "   - CORE_HOST (Laravel): ${CORE_HOST}"
 echo "   - REVERB_HOST (WS):    ${REVERB_HOST}"
 echo "   - AI_HOST:             ${AI_HOST}"
-echo "   - LIVEKIT_HOST:        ${LIVEKIT_HOST}"
 echo "   - INGEST/HUB/RECORD:   ${INGEST_HOST} ${HUB_HOST} ${RECORD_HOST}"
 echo "   - GATEWAY_TLS:         ${GATEWAY_TLS}"
 echo "   - SSL Cert:            ${SSL_CERT_PATH}"
 echo "   - SSL Key:             ${SSL_KEY_PATH}"
 
-VARS='${SERVER_NAME} ${CORE_HOST} ${REVERB_HOST} ${AI_HOST} ${LIVEKIT_HOST} ${INGEST_HOST} ${HUB_HOST} ${RECORD_HOST} ${SSL_CERT_PATH} ${SSL_KEY_PATH} ${CLIENT_MAX_BODY_SIZE}'
+VARS='${SERVER_NAME} ${CORE_HOST} ${REVERB_HOST} ${AI_HOST} ${INGEST_HOST} ${HUB_HOST} ${RECORD_HOST} ${SSL_CERT_PATH} ${SSL_KEY_PATH} ${CLIENT_MAX_BODY_SIZE}'
 
-# shared routes (core, realtime, livekit, ai) used by both server blocks
+# shared routes (core, realtime, ai) used by both server blocks
 envsubst "$VARS" < /etc/nginx/templates/foxy-locations.inc.template > /etc/nginx/foxy-locations.inc
 
 if [ "${GATEWAY_TLS}" = "off" ]; then

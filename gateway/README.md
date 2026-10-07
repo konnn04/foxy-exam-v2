@@ -34,7 +34,6 @@ app     reverb (WS)    ai-worker (GPU)    livekit (SFU)     gateway-health
 | `CORE_HOST` | `app:8000` | Host & port máy chủ backend Laravel (Web + REST API) |
 | `REVERB_HOST` | `app:8080` | Host & port máy chủ WebSocket Laravel Reverb |
 | `AI_HOST` | `ai-worker:8000` | Host & port máy chủ AI Proctoring (hoặc qua Cloudflare Tunnel) |
-| `LIVEKIT_HOST` | `livekit:7880` | Host & port máy chủ WebRTC LiveKit Signaling |
 | `CLIENT_MAX_BODY_SIZE` | `100M` | Dung lượng upload tối đa (video, ảnh snapshot, bài nộp) |
 | `SSL_CERT_PATH` | `/etc/nginx/certs/fullchain.pem` | Đường dẫn chứng chỉ SSL công khai |
 | `SSL_KEY_PATH` | `/etc/nginx/certs/privkey.pem` | Đường dẫn khóa riêng tư SSL |
@@ -94,7 +93,6 @@ docker run -d --name foxy-gateway \
 | `/api/v1/student/login` | `$CORE_HOST` | HTTP/1.1 | Đăng nhập phòng thi sinh viên (bảo vệ bởi `auth_limit`) |
 | `/api/*` | `$CORE_HOST` | HTTP/1.1 | Các REST API v1 khác (bảo vệ bởi `api_limit`: 30 req/s) |
 | `/app/*` | `$REVERB_HOST` | WSS (WebSocket) | Luồng đẩy dữ liệu realtime & telemetry sinh viên |
-| `/livekit/*` | `$LIVEKIT_HOST` | WSS (WebSocket) | Bắt tay WebRTC Signaling cho LiveKit |
 | `/ai/*`, `/face/*`, `/object/*`, `/media/*` | `$AI_HOST` | HTTP/1.1 | Xử lý AI nhận diện khuôn mặt, phát hiện vật cấm & ghép clip |
 | `/gateway-health` | Nginx Internal | JSON | Kiểm tra trạng thái sống của Gateway |
 

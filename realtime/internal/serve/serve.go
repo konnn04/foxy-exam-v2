@@ -106,3 +106,19 @@ func Origins(env string) []string {
 	}
 	return out
 }
+
+// Until retries fn with backoff (1s..15s) until it succeeds or ctx ends; used for dependencies that may boot later.
+func Until(ctx context.Context, log *slog.Logger, what string, fn func(context.Context) error) {
+	for wait := time.Second; ; wait = min(wait*2, 15*time.Second) {
+		err := fn(ctx)
+		if err == nil {
+			return
+		}
+		log.Warn("not ready, retrying", "what", what, "err", err, "in", wait.String())
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+	}
+}

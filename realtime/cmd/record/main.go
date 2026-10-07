@@ -35,9 +35,7 @@ func main() {
 		log.Error("s3", "err", err)
 		os.Exit(1)
 	}
-	if err := store.EnsureBucket(ctx); err != nil {
-		log.Warn("s3 bucket check failed", "err", err)
-	}
+	go serve.Until(ctx, log, "s3 bucket", store.EnsureBucket)
 
 	lkKey, lkSecret := config.Must("LIVEKIT_API_KEY"), config.Must("LIVEKIT_API_SECRET")
 	eg := record.NewHTTPEgress(config.Str("LIVEKIT_URL", "http://livekit:7880"), lkKey, lkSecret, record.S3Output{

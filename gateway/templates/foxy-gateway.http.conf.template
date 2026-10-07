@@ -29,11 +29,6 @@ upstream ai_upstream {
     keepalive 16;
 }
 
-upstream livekit_upstream {
-    server ${LIVEKIT_HOST};
-    keepalive 32;
-}
-
 # Plain HTTP: TLS is terminated by the platform proxy (Coolify / Traefik) in front of this container.
 server {
     listen 80 default_server;

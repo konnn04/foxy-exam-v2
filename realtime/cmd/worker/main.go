@@ -32,9 +32,7 @@ func main() {
 			log.Error("s3", "err", err)
 			os.Exit(1)
 		}
-		if err := a.EnsureBucket(ctx); err != nil {
-			log.Warn("s3 bucket check failed (will retry on use)", "err", err)
-		}
+		go serve.Until(ctx, log, "s3 bucket", a.EnsureBucket)
 		arch = a
 	} else {
 		log.Warn("S3_ENDPOINT not set: raw keystroke streams are NOT archived")

@@ -16,7 +16,6 @@ services:
       - CORE_HOST=app:8000
       - REVERB_HOST=app:8000
       - AI_HOST=app:8000
-      - LIVEKIT_HOST=livekit:7880
       - INGEST_HOST=ingest:8081
       - HUB_HOST=hub:8082
       - RECORD_HOST=record:8083
@@ -150,16 +149,14 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     restart: unless-stopped
-    command: ["--config", "/etc/livekit.yaml"]
     environment:
       - SERVICE_FQDN_LIVEKIT_7880
-      - LIVEKIT_KEYS=foxy: ${SERVICE_PASSWORD_64_LIVEKIT}
+      - 'LIVEKIT_CONFIG={port: 7880, rtc: {tcp_port: 7881, udp_port: 7882, use_external_ip: true}, redis: {address: "redis:6379"}, webhook: {api_key: foxy, urls: ["http://record:8083/v1/webhooks/livekit"]}}'
+      - "LIVEKIT_KEYS=foxy: ${SERVICE_PASSWORD_64_LIVEKIT}"
     expose:
       - "7880"
       - "7881"
       - "7882/udp"
-    volumes:
-      - ./deploy/server/livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
       redis:
         condition: service_healthy

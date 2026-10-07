@@ -110,4 +110,4 @@ php artisan test
 
 ### Triển khai lên VPS Linux (Production, Coolify):
 Toàn bộ server (không gồm client) nằm trong **`docker.compose.server.yml`** ở gốc repo; biến môi trường mẫu: `.env.server.example`.
-Cấu hình đi kèm: `deploy/server/` (LiveKit, khởi tạo DB `foxy_record`). Chi tiết kiến trúc realtime, API và cách deploy: **[docs/REALTIME.md](REALTIME.md)**.
+Cấu hình LiveKit nằm trong biến môi trường của compose; DB `foxy_record` do service `record` tự tạo. Chi tiết kiến trúc realtime, API và cách deploy: **[docs/REALTIME.md](REALTIME.md)**.

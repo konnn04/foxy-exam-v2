@@ -16,7 +16,6 @@ ENV APP_DOMAIN=foxyexam.com \
     CORE_HOST=app:8000 \
     REVERB_HOST=app:8080 \
     AI_HOST=ai-worker:8000 \
-    LIVEKIT_HOST=livekit:7880 \
     INGEST_HOST=ingest:8081 \
     HUB_HOST=hub:8082 \
     RECORD_HOST=record:8083 \
