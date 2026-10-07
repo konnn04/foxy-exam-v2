@@ -115,6 +115,101 @@ services:
       app:
         condition: service_started
       s3:
+        condition: service_started
+
+  record:
+    build: { context: ./realtime, target: record }
+    restart: unless-stopped
+    environment:
+      <<: *realtime-env
+      RECORD_DB_DRIVER: pgx
+      RECORD_DB_DSN: postgres://${DB_USERNAME:-foxy}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/foxy_record?sslmode=disable
+      RECORD_RETENTION_DAYS: ${RECORD_RETENTION_DAYS:-0}
+      S3_ENDPOINT: s3:9000
+      S3_PUBLIC_ENDPOINT: ${SERVICE_FQDN_S3}
+      S3_PUBLIC_SSL: "true"
+      S3_ACCESS_KEY: ${SERVICE_USER_S3}
+      S3_SECRET_KEY: ${SERVICE_PASSWORD_64_S3}
+      S3_BUCKET: ${S3_BUCKET:-foxy-records}
+      S3_SSL: "false"
+      EGRESS_S3_ENDPOINT: http://s3:9000
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_API_KEY: foxy
+      LIVEKIT_API_SECRET: ${SERVICE_PASSWORD_64_LIVEKIT}
+    expose:
+      - "8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3:
+        condition: service_started
+      livekit:
+        condition: service_started
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      - SERVICE_FQDN_LIVEKIT_7880
+      - LIVEKIT_KEYS=foxy: ${SERVICE_PASSWORD_64_LIVEKIT}
+    expose:
+      - "7880"
+      - "7881"
+      - "7882/udp"
+    volumes:
+      - ./deploy/server/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_BODY: |
+        api_key: foxy
+        api_secret: ${SERVICE_PASSWORD_64_LIVEKIT}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:6379
+        health_port: 8080
+        log_level: info
+    depends_on:
+      - livekit
+      - s3
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-foxy_core}
+      POSTGRES_USER: ${DB_USERNAME:-foxy}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/server/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  s3:
     image: chrislusf/seaweedfs:latest
     restart: unless-stopped
     entrypoint: ["/bin/sh", "-c"]
