@@ -1,0 +1,201 @@
+name: Dev desktop build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-desktop-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Dev build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Linux native build deps (uiohook-napi)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxt-dev libxtst-dev libxi-dev libxrandr-dev libxinerama-dev
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env from ENV_FILE_DEV
+        shell: bash
+        env:
+          ENV_FILE_DEV_CONTENT: ${{ secrets.ENV_FILE_DEV }}
+        run: |
+          if [ -z "$ENV_FILE_DEV_CONTENT" ]; then
+            echo "Missing secret ENV_FILE_DEV."
+            exit 1
+          fi
+          printf "%s" "$ENV_FILE_DEV_CONTENT" > .env
+
+      - name: Build (Vite development mode)
+        run: pnpm run build:dev
+        env:
+          INTEGRITY_SECRET: ${{ secrets.INTEGRITY_SECRET }}
+
+      - name: Verify MediaPipe in dist
+        shell: bash
+        run: |
+          test -f dist/mediapipe/face_landmarker.task || (echo "missing dist/mediapipe/face_landmarker.task" && exit 1)
+          test -f dist/mediapipe/wasm/vision_wasm_internal.wasm || (echo "missing vision wasm" && exit 1)
+
+      - name: Decode CODE_SIGNING_CERT (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $cert = "${{ secrets.CODE_SIGNING_CERT }}"
+          if ([string]::IsNullOrEmpty($cert)) { Write-Error "Missing CODE_SIGNING_CERT secret"; exit 1 }
+          [System.IO.File]::WriteAllBytes("signing.pfx", [Convert]::FromBase64String($cert))
+          Add-Content -Path $env:GITHUB_ENV -Value "WIN_CSC_LINK=$PWD\\signing.pfx"
+
+      - name: Decode CODE_SIGNING_CERT (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.CODE_SIGNING_CERT }}" ]; then
+            echo "Missing CODE_SIGNING_CERT secret"
+            exit 1
+          fi
+          printf "%s" "${{ secrets.CODE_SIGNING_CERT }}" | base64 --decode > signing.pfx
+          echo "CSC_LINK=$PWD/signing.pfx" >> $GITHUB_ENV
+
+      - name: Validate signing certificate (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CODE_SIGNING_PASSWORD }}
+        run: |
+          if ! command -v openssl >/dev/null 2>&1; then
+            echo "openssl not found; cannot validate signing certificate." >&2
+            exit 1
+          fi
+          set -e
+          openssl pkcs12 -in signing.pfx -nokeys -passin pass:"$CSC_KEY_PASSWORD" -noout >/dev/null
+          echo "Signing certificate validated."
+
+      - name: Validate signing certificate (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CODE_SIGNING_PASSWORD }}
+        run: |
+          try {
+            certutil -p $env:CSC_KEY_PASSWORD -dump signing.pfx | Out-Null
+            Write-Output "Signing certificate validated."
+          } catch {
+            Write-Error "Failed to validate signing.pfx on Windows. Ensure CODE_SIGNING_CERT and CODE_SIGNING_PASSWORD are correct."
+            exit 1
+          }
+
+      - name: Package Electron (current OS)
+        if: runner.os != 'macOS'
+        shell: bash
+        run: pnpm exec electron-builder --publish never '-c.productName=Foxy Exam (Dev)'
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CODE_SIGNING_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package Electron (macOS, unsigned)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cat > electron-builder.mac-ci.json <<'EOF'
+          {
+            "mac": { "identity": null },
+            "productName": "Foxy Exam (Dev)"
+          }
+          EOF
+          pnpm exec electron-builder --publish never --config electron-builder.mac-ci.json
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxy-exam-dev-${{ matrix.os }}
+          path: release/
+          if-no-files-found: error
+
+  dev-release:
+    name: Draft Release (dev-desktop)
+    needs: build
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (for gh CLI)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download all OS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: foxy-exam-dev-*
+          merge-multiple: false
+
+      - name: Recreate draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p upload
+          mapfile -t RAW < <(find artifacts -type f \( \
+            -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" \
+            \) | sort)
+          if [[ ${#RAW[@]} -eq 0 ]]; then
+            echo "No installer files under artifacts/"
+            find artifacts -type f | head -80 || true
+            exit 1
+          fi
+          for f in "${RAW[@]}"; do
+            base=$(basename "$f")
+            dest="upload/${base}"
+            if [[ -f "$dest" ]]; then
+              dest="upload/$(echo "$f" | tr '/' '_')"
+            fi
+            cp -f "$f" "$dest"
+          done
+          mapfile -t ASSETS < <(find upload -type f | sort)
+          if gh release view dev-desktop >/dev/null 2>&1; then
+            gh release delete dev-desktop --yes --cleanup-tag
+          fi
+          gh api --silent -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/dev-desktop" 2>/dev/null || true
+          gh release create dev-desktop \
+            --draft \
+            --title "Foxy Exam — Dev desktop (Linux / Windows / macOS)" \
+            --notes "Dev builds (Vite \`development\` + \`ENV_FILE_DEV\`). Branch \`dev\` or manual run." \
+            "${ASSETS[@]}"
