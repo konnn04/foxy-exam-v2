@@ -22,6 +22,7 @@ import {
   Segmented,
   StepFooter,
   StepTabs,
+  Switch,
   ToggleList,
   type Tone,
 } from './ui';
@@ -161,6 +162,9 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     is_allow_review: pick('is_allow_review', true),
     number_questions_per_page: pick('number_questions_per_page', 1),
     require_mic: pick('require_mic', false),
+    require_screen: pick('require_screen', false),
+    allowed_apps_enabled: pick('allowed_apps_enabled', false),
+    allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     proctor_ids: (exam?.proctor_ids ?? (user?.id ? [user.id] : [])) as number[],
   }));
   const [step, setStep] = useState(0);
@@ -535,6 +539,7 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                     { key: 'ks', label: 'Ghi Op-Log từng phím', desc: 'Phát lại quá trình gõ', checked: form.track_keystroke, onChange: (v: boolean) => flipMon('track_keystroke', v) },
                   ]
                 : [{ key: 'mic', label: 'Bật micro', desc: 'Phát hiện tiếng nói · bắt buộc cho phần Nói', checked: form.require_mic, onChange: (v: boolean) => flipMon('require_mic', v) }]),
+              { key: 'screen', label: 'Bắt buộc chia sẻ màn hình', desc: 'Dừng chia sẻ giữa giờ thi thì bài bị che cho tới khi bật lại', checked: form.require_screen, onChange: (v: boolean) => state.set('require_screen', v) },
             ]}
           />
         </Panel>
@@ -546,11 +551,56 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
           </div>
         </Panel>
       </div>
+      {isCode && <AllowedAppsPanel state={state} />}
     </div>
   );
 }
 
-/** Bước Thí sinh & giám thị. */
+/** Phần mềm được phép dùng khi thi lập trình: mở chúng không bị tính là rời cửa sổ và bài không cần luôn-trên-cùng. */
+function AllowedAppsPanel({ state }: { state: ExamFormState }) {
+  const { form, set } = state;
+  const [draft, setDraft] = useState('');
+  const add = () => {
+    const v = draft.trim().replace(/\.exe$/i, '').toLowerCase();
+    if (v && !form.allowed_apps.includes(v)) set('allowed_apps', [...form.allowed_apps, v]);
+    setDraft('');
+  };
+  return (
+    <Panel className="flex flex-col gap-3">
+      <PanelTitle title="Phần mềm được phép" desc="Thí sinh có thể mở các phần mềm này khi thi (tên tiến trình, không cần .exe). Phần mềm khác vẫn bị ghi nhận." />
+      <div className="flex items-center gap-3 rounded-[10px] bg-surface p-3">
+        <div className="min-w-0 flex-1 text-[13px]">
+          <div className="font-medium">Cho phép phần mềm</div>
+          <div className="text-xs text-muted-foreground">Bật thì cửa sổ thi không ép luôn-trên-cùng khi đang dùng phần mềm trong danh sách.</div>
+        </div>
+        <Switch checked={form.allowed_apps_enabled} onChange={(v) => set('allowed_apps_enabled', v)} label="Cho phép phần mềm" />
+      </div>
+      {form.allowed_apps_enabled && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {form.allowed_apps.map((a) => (
+              <span key={a} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 font-mono text-xs">
+                {a}
+                <button type="button" className="cursor-pointer text-muted-foreground hover:text-danger-fg" onClick={() => set('allowed_apps', form.allowed_apps.filter((x) => x !== a))}>
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <FxInput value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} placeholder="vd: devenv, code, clion64, pycharm64" />
+            <FxButton onClick={add}>Thêm</FxButton>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Mặc định: <span className="font-mono">devenv</span> (Visual Studio) và <span className="font-mono">code</span> (VS Code).
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/**Bước Thí sinh & giám thị. */
 export function ExamCandidatesStep({ page, state }: { page: ExamFormPageProps; state: ExamFormState }) {
   const { course } = state;
   const q = page.quota;

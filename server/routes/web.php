@@ -1049,6 +1049,10 @@ Route::middleware(['auth'])->group(function () {
             'is_allow_review' => ['nullable', 'boolean'],
             'number_questions_per_page' => ['nullable', 'integer'],
             'require_mic' => ['nullable', 'boolean'],
+            'require_screen' => ['nullable', 'boolean'],
+            'allowed_apps_enabled' => ['nullable', 'boolean'],
+            'allowed_apps' => ['nullable', 'array', 'max:30'],
+            'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
             'proctor_ids' => ['nullable', 'array', 'max:50'],
             'proctor_ids.*' => ['integer'],
         ]);
@@ -1076,6 +1080,10 @@ Route::middleware(['auth'])->group(function () {
             $monitoringConfig['max_paste_chars'] = $validated['max_paste_chars'] ?? 80;
             $monitoringConfig['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
+        $monitoringConfig['require_screen'] = (bool) ($validated['require_screen'] ?? false);
+        $monitoringConfig['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $questionSet->type === 'PROGRAMMING'
+            ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
+        $monitoringConfig['allowed_apps_enabled'] = $monitoringConfig['allowed_apps'] !== [];
 
         $exam = Exam::create([
             'organization_id' => $org->id,
@@ -1252,6 +1260,10 @@ Route::middleware(['auth'])->group(function () {
             'is_allow_review' => ['nullable', 'boolean'],
             'number_questions_per_page' => ['nullable', 'integer'],
             'require_mic' => ['nullable', 'boolean'],
+            'require_screen' => ['nullable', 'boolean'],
+            'allowed_apps_enabled' => ['nullable', 'boolean'],
+            'allowed_apps' => ['nullable', 'array', 'max:30'],
+            'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
             'proctor_ids' => ['nullable', 'array', 'max:50'],
             'proctor_ids.*' => ['integer'],
         ]);
@@ -1280,6 +1292,10 @@ Route::middleware(['auth'])->group(function () {
             $config['max_paste_chars'] = $validated['max_paste_chars'] ?? 80;
             $config['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
+        $config['require_screen'] = (bool) ($validated['require_screen'] ?? false);
+        $config['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $qs && $qs->type === 'PROGRAMMING'
+            ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
+        $config['allowed_apps_enabled'] = $config['allowed_apps'] !== [];
 
         $exam->update([
             'course_id' => $validated['course_id'],

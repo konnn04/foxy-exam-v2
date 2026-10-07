@@ -73,4 +73,22 @@ class AttemptLifecycleTest extends TestCase
         $this->assertEquals('IN_PROGRESS', $recent->fresh()->status, 'seen 2 minutes ago is still present');
         $this->assertEquals('IN_PROGRESS', $fresh->fresh()->status, 'a just started attempt is not absent');
     }
+
+    public function test_a_programming_exam_stores_its_allowed_apps_and_rejects_odd_names(): void
+    {
+        $admin = User::where('username', 'admin_hcmus')->first();
+        $set = \App\Models\QuestionSet::where('type', 'PROGRAMMING')->where('organization_id', $admin->organization_id)->first();
+        $course = \App\Models\Course::where('organization_id', $admin->organization_id)->first();
+        $base = ['course_id' => $course->id, 'question_set_id' => $set->id, 'title' => 'Có app được phép', 'duration_minutes' => 60];
+
+        $this->actingAs($admin)->post('/admin/exams', $base + ['allowed_apps_enabled' => true, 'allowed_apps' => ['devenv', 'Code', 'CODE']])->assertRedirect('/admin/exams');
+        $cfg = Exam::where('title', 'Có app được phép')->first()->monitoring_config;
+        $this->assertEquals(['devenv', 'code'], $cfg['allowed_apps']);
+
+        $this->actingAs($admin)->post('/admin/exams', $base + ['title' => 'Xấu', 'allowed_apps_enabled' => true, 'allowed_apps' => ['calc; rm -rf']])->assertSessionHasErrors('allowed_apps.0');
+
+        // switched off => empty list, so the client enforces the usual lockdown
+        $this->actingAs($admin)->post('/admin/exams', $base + ['title' => 'Tắt', 'allowed_apps_enabled' => false, 'allowed_apps' => ['devenv']]);
+        $this->assertEquals([], Exam::where('title', 'Tắt')->first()->monitoring_config['allowed_apps']);
+    }
 }
