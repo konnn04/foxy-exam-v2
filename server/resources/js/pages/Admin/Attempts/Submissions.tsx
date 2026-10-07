@@ -6,6 +6,7 @@ import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, Panel, PageHeader, Pill, Switch } from '@/components/foxy/ui';
 import { clockOffset, hhmm, hhmmss, VERDICT, violationDetail } from '@/components/foxy/domain';
 import type { AttemptPayload } from './Show';
+import { highlight } from '@/lib/highlight';
 import { cn } from '@/lib/utils';
 
 interface Problem {
@@ -191,14 +192,12 @@ export default function AttemptSubmissions({ user, teams, attempt, problems, sub
               </div>
               {sub ? (
                 <div className="flex max-h-[520px] overflow-auto bg-code py-2.5 font-mono text-[13px] leading-[1.7]">
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    {lines.map((t, i) => (
-                      <div key={i} className="flex items-stretch">
-                        <span className="w-11 shrink-0 select-none pr-3 text-right text-muted-foreground/60">{i + 1}</span>
-                        <span className="whitespace-pre pl-2.5 text-foreground/90">{t || ' '}</span>
-                      </div>
+                  <div className="select-none pr-3 text-right text-muted-foreground/60" style={{ minWidth: '2.75rem' }}>
+                    {lines.map((_, i) => (
+                      <div key={i}>{i + 1}</div>
                     ))}
                   </div>
+                  <pre className="m-0 min-w-0 flex-1 whitespace-pre pl-2.5 text-foreground/90" dangerouslySetInnerHTML={{ __html: highlight(sub.source_code, sub.language) }} />
                 </div>
               ) : (
                 <EmptyState icon={FileCode} title="Chưa có mã nguồn" desc="Thí sinh chưa nộp bài này." />

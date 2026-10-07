@@ -115,7 +115,51 @@ export function FxList<T extends { id: number }>({
   const visible = server ? rows : filtered.slice((cur - 1) * size, cur * size);
   const fvalue = (key: string) => (server ? server.values[key] || 'ALL' : fv[key] ?? 'ALL');
   const gotoPage = (n: number) => (server ? server.onQuery({ page: n }) : setPage(n));
-  const grid = ['40px', ...columns.map((c) => c.width), ...(actions ? [actionsWidth] : [])].join(' ');
+  // column widths the user dragged (px); untouched columns keep their CSS track. Remembered per column set.
+  const storeKey = `foxy:cols:${columns.map((c) => c.key).join(',')}`;
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(storeKey) ?? '{}');
+    } catch {
+      return {};
+    }
+  });
+  const widthsRef = useRef(widths);
+  widthsRef.current = widths;
+  const startResize = (key: string, e: React.PointerEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cell = e.currentTarget.parentElement as HTMLElement;
+    const from = cell.getBoundingClientRect().width;
+    const x0 = e.clientX;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    const move = (m: PointerEvent) => setWidths((w) => ({ ...w, [key]: Math.max(60, Math.round(from + m.clientX - x0)) }));
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(widthsRef.current));
+      } catch {
+        /* only a convenience */
+      }
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  };
+  const resetWidth = (key: string) =>
+    setWidths((w) => {
+      const { [key]: _drop, ...rest } = w;
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(rest));
+      } catch {
+        /* only a convenience */
+      }
+      return rest;
+    });
+  const grid = ['40px', ...columns.map((c) => (widths[c.key] ? `${widths[c.key]}px` : c.width)), ...(actions ? [actionsWidth] : [])].join(' ');
   const allOn = visible.length > 0 && visible.every((r) => selected.includes(r.id));
 
   return (
@@ -162,8 +206,15 @@ export function FxList<T extends { id: number }>({
           <div className="grid h-10 items-center gap-3 border-b border-border px-2 text-[13px] font-medium text-muted-foreground" style={{ gridTemplateColumns: grid }}>
             <Check on={allOn} onClick={() => setSelected((s) => (allOn ? s.filter((id) => !visible.some((r) => r.id === id)) : [...new Set([...s, ...visible.map((r) => r.id)])]))} />
             {columns.map((c) => (
-              <span key={c.key} className={cn(c.align === 'right' && 'text-right')}>
+              <span key={c.key} className={cn('relative min-w-0 select-none truncate', c.align === 'right' && 'text-right')}>
                 {c.label}
+                <span
+                  role="separator"
+                  title="Kéo để đổi độ rộng cột (nhấp đúp để đặt lại)"
+                  onPointerDown={(e) => startResize(c.key, e)}
+                  onDoubleClick={() => resetWidth(c.key)}
+                  className="absolute -right-2 top-1/2 h-5 w-2 -translate-y-1/2 cursor-col-resize rounded-sm hover:bg-primary/40"
+                />
               </span>
             ))}
             {actions && <span />}

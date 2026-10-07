@@ -49,3 +49,11 @@ Config: `client/.env.example`. Verification of the batching client against a rea
 - MediaPipe FaceLandmarker: `pnpm sync:mediapipe` chép wasm + model vào `public/mediapipe`; delegate chọn ở Cài đặt (tự động GPU → CPU).
 - Chạy thử code dùng trình biên dịch có sẵn trên máy (g++, clang++, MSVC, Python, Java) qua `runner_toolchains` / `runner_run`.
 - Màn giám sát: `GET /admin/exams/{id}/live-video` cấp token LiveKit ẩn, chỉ subscribe; tile hiển thị camera hoặc màn hình của thí sinh.
+
+## Soạn code, terminal và hiển thị (cập nhật)
+
+- Mọi sao chép / dán / cắt / kéo thả văn bản bị chặn trong cửa sổ thi trừ khi kỳ thi tắt `prevent_paste` (mặc định bật, áp dụng cả trắc nghiệm lẫn lập trình, kể cả 1 ký tự). Mỗi lần cố dán ghi một vi phạm `BULK_PASTE`.
+- Các sự kiện trùng (cùng loại, cùng tiến trình hoặc nội dung trong 2 giây) chỉ ghi một lần.
+- "Chạy" mở terminal tích hợp (`Terminal.tsx`): chương trình chạy bằng trình biên dịch của máy với stdin/stdout nối ống, kết quả đẩy về cửa sổ qua sự kiện `runner://data`, `runner://exit`; thí sinh gõ dữ liệu ngay trong terminal. Không mở console của hệ điều hành. Lệnh Rust: `runner_session_start/write/close_stdin/kill`. Lưu ý C/C++ dùng `printf`/`scanf` bị đệm khi chạy qua ống; `cout`/`cin` tự xả trước khi đọc.
+- Đề bài, câu hỏi, đáp án hiển thị Markdown có GFM và công thức LaTeX (`$x^2$`, `$$...$$`); code có tô màu cú pháp (Prism). Server dùng cùng bộ ở trình soạn bài toán, xem trước câu hỏi và xem bài làm.
+- Có thể kéo thả đổi độ rộng: khung đề bài / code, chiều cao terminal (client) và cột của mọi bảng `FxList` (server), nhớ theo máy.

@@ -1,3 +1,4 @@
+import { MarkdownPreview } from './markdown';
 import React from 'react';
 import { Hand, Mic, Paperclip } from 'lucide-react';
 import { FxInput, FxTextarea } from './ui';
@@ -22,7 +23,7 @@ export function QuestionPreview({ draft }: { draft: Draft }) {
             </span>
           ),
         )
-      : <span className="whitespace-pre-wrap">{draft.content}</span>;
+      : <MarkdownPreview source={draft.content} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -49,7 +50,7 @@ export function QuestionPreview({ draft }: { draft: Draft }) {
         draft.answers.map((a, i) => (
           <div key={i} className="flex items-center gap-3 rounded-[10px] border border-border px-3.5 py-3">
             <span className={cn('flex size-6 items-center justify-center border-2 border-foreground/30 text-xs font-semibold', multi ? 'rounded-md' : 'rounded-full')}>{String.fromCharCode(65 + i)}</span>
-            <span>{a.content}</span>
+            <MarkdownPreview source={a.content} className="[&_p]:my-0" />
           </div>
         ))}
       {k === 'TRUE_FALSE' && (
