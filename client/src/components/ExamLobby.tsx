@@ -182,8 +182,9 @@ export default function ExamLobby({
 
     // 5 + 6 + 7. media (needs the exam config for "required")
     const reqCam = Boolean(d?.monitoring_config?.ai_face_check) && !bypass("camera");
-    await runCamera(reqCam);
-    await runMic(Boolean(d?.monitoring_config?.require_mic));
+    // the camera and microphone are opened only when the student asks, never silently on entering the lobby
+    set("camera", { level: "idle", detail: reqCam ? "Bắt buộc — nhấn “Bật camera” để kiểm tra" : "Nhấn “Bật camera” để kiểm tra (không bắt buộc)", required: reqCam });
+    set("mic", { level: "idle", detail: "Nhấn “Kiểm tra micro” để thử", required: Boolean(d?.monitoring_config?.require_mic) });
     if (bypass("screen")) set("screen", { level: "warn", detail: "Dev: bỏ qua chia sẻ màn hình", required: false });
     else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: "Bắt buộc chia sẻ TOÀN MÀN HÌNH — nhấn “Chia sẻ màn hình”", required: true });
     else set("screen", { level: "idle", detail: "Nhấn “Chia sẻ màn hình” để giám thị theo dõi bài làm (khuyến nghị)", required: false });
@@ -286,8 +287,8 @@ export default function ExamLobby({
             <Row c={checks.exam} icon={<ShieldAlert size={14} />} />
             <Row c={checks.display} icon={<Monitor size={14} />} />
             <Row c={checks.apps} icon={<Cpu size={14} />} />
-            <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level === "fail" || checks.camera.level === "warn" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>Thử lại</Button> : undefined} />
-            <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" ? <Button size="sm" onClick={() => void runMic(needMic)}>Thử lại</Button> : undefined} />
+            <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? "Bật camera" : "Thử lại"}</Button> : undefined} />
+            <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />
             <Row
               c={{ ...checks.screen, required: needScreen }}
               icon={<MonitorUp size={14} />}
