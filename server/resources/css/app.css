@@ -1,0 +1,201 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../views/**/*.blade.php';
+@source '../js/**/*.{ts,tsx}';
+
+@theme {
+    /* FoxyExam Screens v2 — Instrument Sans + JetBrains Mono */
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-display: 'Archivo', 'Instrument Sans', sans-serif;
+
+    /* Status tones: `bg-success/15 text-success-fg`, `bg-danger` for solid marks */
+    --color-brand-fg: var(--brand-fg);
+    --color-success: var(--success);
+    --color-success-fg: var(--success-fg);
+    --color-warning: var(--warning);
+    --color-warning-fg: var(--warning-fg);
+    --color-info: var(--info);
+    --color-info-fg: var(--info-fg);
+    --color-danger: var(--danger);
+    --color-danger-fg: var(--danger-fg);
+    --color-violet: var(--violet);
+    --color-violet-fg: var(--violet-fg);
+    --color-code: var(--code);
+    --color-surface: var(--surface);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Light variant of the FoxyExam Screens v2 palette */
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.66 0.19 46); /* Foxy Orange */
+    --primary-foreground: oklch(0.99 0.01 60);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.955 0 0);
+    --muted-foreground: oklch(0.52 0 0);
+    --accent: oklch(0.955 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.22 27);
+    --destructive-foreground: oklch(0.99 0 0);
+    --border: oklch(0.91 0 0);
+    --input: oklch(0.91 0 0);
+    --ring: oklch(0.66 0.19 46);
+
+    --brand-fg: oklch(0.55 0.17 45);
+    --success: oklch(0.62 0.17 150);
+    --success-fg: oklch(0.48 0.14 150);
+    --warning: oklch(0.72 0.16 75);
+    --warning-fg: oklch(0.52 0.13 70);
+    --info: oklch(0.6 0.15 255);
+    --info-fg: oklch(0.48 0.15 255);
+    --danger: oklch(0.6 0.22 27);
+    --danger-fg: oklch(0.52 0.2 27);
+    --violet: oklch(0.6 0.16 300);
+    --violet-fg: oklch(0.48 0.15 300);
+    --code: oklch(0.975 0 0);
+    --surface: oklch(0.97 0 0);
+
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.66 0.19 46);
+    --sidebar-primary-foreground: oklch(0.99 0 0);
+    --sidebar-accent: oklch(0.94 0 0);
+    --sidebar-accent-foreground: oklch(0.145 0 0);
+    --sidebar-border: oklch(0.91 0 0);
+    --sidebar-ring: oklch(0.66 0.19 46);
+}
+
+/* FoxyExam Screens v2 — neutral oklch dark with Foxy Orange accent */
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.72 0.17 48); /* Foxy Orange */
+    --primary-foreground: oklch(0.2 0.03 45);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.577 0.22 27);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.72 0.17 48);
+
+    --brand-fg: oklch(0.82 0.13 55);
+    --success: oklch(0.72 0.17 150);
+    --success-fg: oklch(0.8 0.15 150);
+    --warning: oklch(0.78 0.16 75);
+    --warning-fg: oklch(0.85 0.13 80);
+    --info: oklch(0.65 0.15 255);
+    --info-fg: oklch(0.78 0.12 255);
+    --danger: oklch(0.65 0.22 27);
+    --danger-fg: oklch(0.78 0.15 25);
+    --violet: oklch(0.7 0.14 300);
+    --violet-fg: oklch(0.82 0.1 300);
+    --code: oklch(0.17 0 0);
+    --surface: oklch(0.205 0 0);
+
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.72 0.17 48);
+    --sidebar-primary-foreground: oklch(0.2 0.03 45);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.72 0.17 48);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+    border: 2px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+}
+
+@keyframes fxpulse {
+    0% { transform: scale(1); opacity: .75; }
+    100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes mpcMarquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@keyframes mpcRise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes fxTicker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@keyframes fxBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+@theme inline {
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
