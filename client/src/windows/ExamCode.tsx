@@ -1,3 +1,4 @@
+import { diag } from "../lib/diag";
 import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState } from "react";
 import { listen, TauriEvent } from "@tauri-apps/api/event";
@@ -90,6 +91,7 @@ export default function ExamCode() {
 
   /** Leave the room (submitted or not): stop everything, show the dashboard, then reload this window so no state survives. */
   async function leave() {
+    diag("leave()");
     await runtime.end();
     await switchWindow(AppWindow.Main);
     window.location.reload();

@@ -11,6 +11,7 @@ import { getAuth } from "../lib/authStore";
 import { formatDateTime } from "../lib/datetime";
 import { saveSession } from "../lib/session";
 import { dialog, errorText } from "../lib/dialog";
+import { diag } from "../lib/diag";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
@@ -191,6 +192,7 @@ export default function ExamLobby({
   }, [pending.id, runCamera, runMic, set]);
 
   useEffect(() => {
+    diag("lobby mounted");
     void runAll();
     // the lobby holds the camera: let go of it whenever the window is hidden or the lobby ends without an exam
     const onHide = () => document.visibilityState === "hidden" && !startedRef.current && releaseLobbyMedia();
@@ -200,6 +202,7 @@ export default function ExamLobby({
       if (leave) cancelRef.current();
     });
     return () => {
+      diag("lobby unmounted");
       document.removeEventListener("visibilitychange", onHide);
       void closing.then((off) => off());
       stopMeter.current?.();
@@ -258,6 +261,7 @@ export default function ExamLobby({
   }, [checks.exam.level, start]);
 
   const cancel = () => {
+    diag("lobby cancel");
     releaseLobbyMedia();
     clearPendingExam();
     onCancel();

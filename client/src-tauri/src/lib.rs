@@ -18,6 +18,12 @@ use tauri::{
 #[derive(Default)]
 struct AuthState(Mutex<bool>);
 
+/// Window-lifecycle trace from the pages: shows up in the `tauri dev` terminal next to the native window events.
+#[tauri::command]
+fn diag_log(window: tauri::Window, msg: String) {
+    eprintln!("[diag:{}] {}", window.label(), msg);
+}
+
 #[tauri::command]
 fn set_authenticated(state: State<AuthState>, value: bool) {
     *state.0.lock().unwrap() = value;
@@ -47,6 +53,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             set_authenticated,
+            diag_log,
             monitor::monitor_snapshot,
             monitor::monitor_displays,
             monitor::monitor_devices,
@@ -117,6 +124,12 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            match event {
+                WindowEvent::Focused(f) => eprintln!("[win:{}] focused={}", window.label(), f),
+                WindowEvent::CloseRequested { .. } => eprintln!("[win:{}] close requested", window.label()),
+                WindowEvent::Destroyed => eprintln!("[win:{}] destroyed", window.label()),
+                _ => {}
+            }
             // Bấm nút đóng (X) trên bất kỳ cửa sổ nào chỉ ẩn cửa sổ đó — app vẫn
             // chạy ngầm ở khay hệ thống. Thoát hẳn chỉ qua menu tray "Thoát".
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -130,6 +143,11 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| match event {
+            tauri::RunEvent::ExitRequested { code, .. } => eprintln!("[app] exit requested code={:?}", code),
+            tauri::RunEvent::Exit => eprintln!("[app] exit"),
+            _ => {}
+        });
 }

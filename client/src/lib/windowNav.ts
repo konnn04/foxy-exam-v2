@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { emitTo } from "@tauri-apps/api/event";
+import { diag } from "./diag";
 
 /**
  * Nhãn (label) các cửa sổ khai báo sẵn trong `tauri.conf.json`. Thứ tự khởi động:
@@ -43,7 +44,7 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
     return;
   }
 
-  console.info(`[windowNav] ${current.label} -> ${toLabel}`);
+  diag(`switch ${current.label} -> ${toLabel}`);
   await target.show();
   await target.setFocus();
   await emitTo(toLabel, SHOWN_EVENT, toLabel);
@@ -55,6 +56,7 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
     others.map(async (label) => {
       const w = label === current.label ? current : await WebviewWindow.getByLabel(label);
       await w?.setAlwaysOnTop(false).catch(() => {});
+      diag(`hide ${label}`);
       await w?.hide().catch(() => {});
     }),
   );

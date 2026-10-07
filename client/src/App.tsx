@@ -8,6 +8,7 @@ import ExamCode from "./windows/ExamCode";
 import { AppWindow } from "./lib/windowNav";
 import DialogHost from "./components/Dialogs";
 import { dialog, errorText } from "./lib/dialog";
+import { diag } from "./lib/diag";
 
 /**
  * Mỗi cửa sổ Tauri load chung một bundle React duy nhất, nên ở đây ta chỉ cần
@@ -19,6 +20,11 @@ function App() {
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
+    diag("page loaded");
+    const onHide = () => diag(`visibility ${document.visibilityState}`);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", () => diag("pagehide"));
+    window.addEventListener("beforeunload", () => diag("beforeunload"));
     // an error nobody caught must still reach the student instead of the window silently doing nothing
     const show = (title: string, err: unknown) => {
       console.error(`[app] ${title}`, err);
