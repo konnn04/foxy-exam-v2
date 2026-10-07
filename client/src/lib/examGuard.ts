@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
+import { bypass } from "./dev";
+import { toServerViolation, type RealtimeClient } from "./realtime";
 import {
   DEFAULT_BANNED_APPS,
   drainKeylog,
@@ -60,7 +62,7 @@ const externalKeyboards = (devices: Device[]) =>
  * `stop()` (nộp bài / rời phòng). Mọi vi phạm vừa hiện trong panel giám sát vừa
  * gửi lên server (`/student/violation`).
  */
-export function useExamGuard(config: Partial<MonitoringConfig> | null | undefined) {
+export function useExamGuard(config: Partial<MonitoringConfig> | null | undefined, rt?: RealtimeClient | null) {
   const [state, setState] = useState<ExamGuardState>(INITIAL);
   const activeRef = useRef(false);
   const seq = useRef(0);
@@ -72,11 +74,20 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     (type: ViolationType, severity: ViolationSeverity, message: string, details?: Record<string, unknown>) => {
       const v: GuardViolation = { id: ++seq.current, type, severity, message, t: Date.now() };
       setState((s) => ({ ...s, violations: [v, ...s.violations].slice(0, 100) }));
-      void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
-        console.error("[guard] Báo vi phạm lỗi:", err),
-      );
+      if (rt?.enabled) {
+        // batched with everything else (about once a second); the original type is kept in details
+        rt.emit("violation", {
+          violation_type: toServerViolation(type),
+          severity,
+          details: { message, client_type: type, ...details },
+        });
+      } else {
+        void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
+          console.error("[guard] Báo vi phạm lỗi:", err),
+        );
+      }
     },
-    [],
+    [rt],
   );
 
   const flushKeylog = useCallback(async () => {
@@ -85,17 +96,29 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       const downs = events.filter((e) => e.down);
       if (downs.length === 0 && pasteCount.current === 0) return;
       const injected = downs.filter((e) => e.injected).length;
-      await sendOpLogBatch({
-        batchSeq: ++opLogSeq.current,
-        keystrokeCount: downs.filter((e) => !e.injected).length,
-        pasteEventCount: pasteCount.current,
-        syntheticFlags: injected > 0 ? { bulk_insert: true, chars_count: injected } : undefined,
-      });
+      const flags = injected > 0 ? { bulk_insert: true, chars_count: injected } : undefined;
+      if (rt?.enabled) {
+        rt.emit("oplog", {
+          batch_seq: ++opLogSeq.current,
+          keystroke_count: downs.filter((e) => !e.injected).length,
+          paste_event_count: pasteCount.current,
+          synthetic_flags: flags,
+          // compact keystroke stream [vk, t, injected] for replay; archived to object storage by the worker
+          raw_ops_payload: JSON.stringify(downs.slice(0, 3000).map((e) => [e.vk, e.t, e.injected ? 1 : 0])),
+        });
+      } else {
+        await sendOpLogBatch({
+          batchSeq: ++opLogSeq.current,
+          keystrokeCount: downs.filter((e) => !e.injected).length,
+          pasteEventCount: pasteCount.current,
+          syntheticFlags: flags,
+        });
+      }
       pasteCount.current = 0;
     } catch (err) {
       console.error("[guard] Gửi op-log lỗi:", err);
     }
-  }, []);
+  }, [rt]);
 
   const stop = useCallback(async () => {
     if (!activeRef.current) return;
@@ -122,6 +145,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
 
     on(
       onMonitor("monitor://foreground", (p) => {
+        rt?.setState({ focus: p.isSelf });
         if (p.isSelf) return;
         record("WINDOW_LOST_FOCUS", "MEDIUM", `Chuyển sang ứng dụng khác: ${p.name || "không rõ"}${p.title ? ` — ${p.title}` : ""}`, {
           process: p.name,
@@ -141,6 +165,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     );
     on(
       onMonitor("monitor://banned-app", (p) => {
+        if (bypass("devices")) return; // dev: OBS & co do not lock the exam
         setState((s) => ({ ...s, bannedRunning: p.running }));
         if (p.running.length > 0) {
           const names = [...new Set(p.running.map((x) => x.name))].join(", ");
@@ -150,7 +175,8 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     );
     on(
       onMonitor("monitor://devices", (p) => {
-        setState((s) => ({ ...s, displays: p.displays.length, microphones: p.microphones.length }));
+        setState((s) => ({ ...s, displays: bypass("devices") ? Math.min(1, p.displays.length) : p.displays.length, microphones: p.microphones.length }));
+        if (bypass("devices")) return;
         if (p.displays.length > 1) {
           record("MULTIPLE_MONITORS", "HIGH", `Phát hiện ${p.displays.length} màn hình`, { displays: p.displays });
         }
@@ -172,6 +198,24 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     const flushTimer = window.setInterval(() => void flushKeylog(), KEYLOG_FLUSH_MS);
     on(() => window.clearInterval(flushTimer));
 
+    // presence signals for the proctor dashboard: window focus + fullscreen, sent with every heartbeat
+    rt?.setState({ focus: document.hasFocus(), fullscreen: !LOCKDOWN });
+    const onFocus = () => rt?.setState({ focus: true });
+    const onBlur = () => rt?.setState({ focus: false });
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    on(() => window.removeEventListener("focus", onFocus));
+    on(() => window.removeEventListener("blur", onBlur));
+    if (LOCKDOWN) {
+      const fsTimer = window.setInterval(() => {
+        void getCurrentWindow()
+          .isFullscreen()
+          .then((fs) => rt?.setState({ fullscreen: fs }))
+          .catch(() => {});
+      }, 3000);
+      on(() => window.clearInterval(fsTimer));
+    }
+
     try {
       await startMonitor({
         watchDevices: true,
@@ -191,10 +235,12 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
         microphones: snap.microphones.length,
         externalKeyboards: kb,
       }));
-      if (snap.displays.length > 1) {
-        record("MULTIPLE_MONITORS", "HIGH", `Vào phòng thi khi đang có ${snap.displays.length} màn hình`, { displays: snap.displays });
+      if (!bypass("devices")) {
+        if (snap.displays.length > 1) {
+          record("MULTIPLE_MONITORS", "HIGH", `Vào phòng thi khi đang có ${snap.displays.length} màn hình`, { displays: snap.displays });
+        }
+        if (kb > 1) record("MULTIPLE_KEYBOARDS", "MEDIUM", `Phát hiện ${kb} bàn phím ngoài`);
       }
-      if (kb > 1) record("MULTIPLE_KEYBOARDS", "MEDIUM", `Phát hiện ${kb} bàn phím ngoài`);
     } catch (err) {
       console.error("[guard] Không bật được giám sát:", err);
     }
@@ -204,7 +250,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       await win.setFullscreen(true).catch(() => {});
       await win.setAlwaysOnTop(true).catch(() => {});
     }
-  }, [record, flushKeylog]);
+  }, [record, flushKeylog, rt]);
 
   // Chặn dán (nếu cấu hình yêu cầu) — mọi lần dán đều được đếm vào op-log.
   const onPaste = useCallback(
@@ -234,5 +280,5 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
         ? `Hãy ngắt kết nối màn hình phụ (đang có ${state.displays} màn hình)`
         : null;
 
-  return { ...state, blockReason, start, stop, onPaste };
+  return { ...state, blockReason, start, stop, onPaste, report: record };
 }
