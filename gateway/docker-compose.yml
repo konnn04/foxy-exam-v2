@@ -1,0 +1,32 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: foxy-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-foxyexam.com}
+      SERVER_NAME: ${SERVER_NAME:-foxyexam.com *.foxyexam.com localhost 127.0.0.1}
+      CORE_HOST: ${CORE_HOST:-app:8000}
+      REVERB_HOST: ${REVERB_HOST:-app:8080}
+      AI_HOST: ${AI_HOST:-ai-worker:8000}
+      LIVEKIT_HOST: ${LIVEKIT_HOST:-livekit:7880}
+      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-100M}
+    volumes:
+      # Mount external certificates if available (e.g. Cloudflare Origin or Let's Encrypt)
+      - ./certs:/etc/nginx/certs:ro
+      - gateway_logs:/var/log/nginx
+    networks:
+      - foxy-network
+
+volumes:
+  gateway_logs:
+
+networks:
+  foxy-network:
+    name: foxy-network
+    driver: bridge
