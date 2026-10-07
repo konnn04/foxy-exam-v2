@@ -11,6 +11,8 @@ export interface LiveRow {
   screen?: boolean;
   latency_ms?: number;
   question?: number;
+  attention?: number;
+  faces?: number;
   last_seen_ms: number;
   violations: number;
   last_violation?: { type: string; severity: string; ts: number };

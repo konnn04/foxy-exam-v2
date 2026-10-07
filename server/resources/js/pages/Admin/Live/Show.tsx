@@ -3,10 +3,12 @@ import { router } from '@inertiajs/react';
 import { Activity, Ban, LayoutGrid, List, Megaphone, Radio, Search, Square, TriangleAlert } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { Dot, EmptyState, FeedPlaceholder, FxButton, Modal, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
+import { Dot, EmptyState, FxButton, Modal, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
 import { hhmm, hhmmss, severityOf, timeAgo, violationDetail, violationLabel } from '@/components/foxy/domain';
 import { cn } from '@/lib/utils';
 import { useLiveRoom, type LiveRow } from '@/hooks/use-live-room';
+import { useLiveVideo, type FeedSource } from '@/hooks/use-live-video';
+import { LiveFeed } from '@/components/foxy/live-feed';
 import { useDialog } from '@/components/foxy/dialogs';
 
 interface LiveAttempt {
@@ -106,6 +108,8 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
   const dialog = useDialog();
   const rt = useLiveRoom(exam.id);
   const hubLive = rt.state === 'live';
+  const video = useLiveVideo(exam.id, rt.state !== 'disabled');
+  const [source, setSource] = useState<FeedSource>('camera');
 
   const warn = async (a: LiveAttempt) => {
     const msg = await dialog.prompt({ title: `Nhắc nhở ${a.name}`, label: 'Nội dung hiển thị trên máy thí sinh', initial: 'Hãy quay lại màn hình làm bài.' });
@@ -229,6 +233,17 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
               <Search className="size-3.5 opacity-60" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tên / MSSV" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
             </div>
+            {video.ready && (
+              <Segmented
+                size="sm"
+                value={source}
+                onChange={setSource}
+                options={[
+                  { value: 'camera', label: 'Camera' },
+                  { value: 'screen', label: 'Màn hình' },
+                ]}
+              />
+            )}
             <Segmented
               size="sm"
               value={view}
@@ -261,7 +276,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                       s.state === 'offline' && 'opacity-70',
                     )}
                   >
-                    <FeedPlaceholder label={s.state === 'offline' ? 'no signal' : 'camera feed'}>
+                    <LiveFeed track={video.tracks[s.id]?.[source]} label={s.state === 'offline' ? 'no signal' : video.ready ? 'chưa có hình' : 'camera feed'}>
                       <span className="absolute left-1.5 top-1.5 flex items-center gap-[5px] rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-[4px]">
                         <Dot tone={st.tone} />
                         {st.label}
@@ -272,7 +287,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                           {s.violations_count}
                         </span>
                       )}
-                    </FeedPlaceholder>
+                    </LiveFeed>
                     <div className="flex flex-col gap-1.5 px-3 py-2.5">
                       <div className="flex justify-between gap-2">
                         <span className="truncate text-[13px] font-semibold">
@@ -292,7 +307,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                         <span>{s.state === 'done' ? 'đã nộp' : s.ops_per_min != null ? `${s.ops_per_min} op/m` : '— op/m'}</span>
                         <span>
                           {hubLive && s.hub
-                            ? `${s.hub.latency_ms ?? '—'} ms${s.hub.camera === false ? ' · mất cam' : ''}${s.hub.screen === false ? ' · mất màn hình' : ''}`
+                            ? `${s.hub.latency_ms ?? '—'} ms${s.hub.attention != null ? ` · tập trung ${s.hub.attention}%` : ''}${s.hub.faces != null && s.hub.faces !== 1 ? ` · ${s.hub.faces} mặt` : ''}${s.hub.camera === false ? ' · mất cam' : ''}${s.hub.screen === false ? ' · mất màn hình' : ''}`
                             : s.last_activity_at
                               ? `sự kiện ${timeAgo(s.last_activity_at)}`
                               : ''}

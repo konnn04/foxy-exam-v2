@@ -38,3 +38,14 @@ so a released client cannot enable them whatever is in `localStorage`.
 * Server side: `AI_ENFORCE=false` lets exams that ask for face monitoring start when no AI worker exists.
 
 Config: `client/.env.example`. Verification of the batching client against a real stack: `bash realtime/scripts/smoke.sh`.
+
+## Giám sát, khoá thi và chạy code (cập nhật)
+
+- Mọi request của cửa sổ thi gửi `X-Foxy-Attempt`; server chọn đúng lượt thi nên thi lại không ghi đè lượt cũ.
+- Rời phòng/mất kết nối quá 5 phút: client coi là vắng, server (`attempts:expire-offline`) đóng lượt thi với `ended_reason=ABSENT`.
+- Đóng cửa sổ thi/Alt+F4 chỉ phát `exam://close-requested`; UI hiện hộp xác nhận, nút thoát mở sau 5 giây. Thoát thật gọi `runtime.end()` (tắt camera, guard, realtime).
+- Mất camera hoặc dừng chia sẻ màn hình (khi kỳ thi yêu cầu) sẽ che bài thi và cho nút bật lại.
+- `allowed_apps` (mặc định `devenv`, `code`) chỉ áp dụng cho kỳ thi lập trình: các app này không bị ép on-top/đổi cửa sổ; app khác vẫn ghi nhận.
+- MediaPipe FaceLandmarker: `pnpm sync:mediapipe` chép wasm + model vào `public/mediapipe`; delegate chọn ở Cài đặt (tự động GPU → CPU).
+- Chạy thử code dùng trình biên dịch có sẵn trên máy (g++, clang++, MSVC, Python, Java) qua `runner_toolchains` / `runner_run`.
+- Màn giám sát: `GET /admin/exams/{id}/live-video` cấp token LiveKit ẩn, chỉ subscribe; tile hiển thị camera hoặc màn hình của thí sinh.

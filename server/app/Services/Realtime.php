@@ -96,6 +96,37 @@ class Realtime
         ];
     }
 
+    /** LiveKit token for a proctor: hidden, subscribe-only, limited to the exam's room. */
+    public function proctorLiveKitToken(User $user, \App\Models\Exam $exam, int $ttlSeconds = 3600): ?array
+    {
+        $key = (string) config('services.realtime.livekit.api_key');
+        $secret = (string) config('services.realtime.livekit.api_secret');
+        $url = (string) config('services.realtime.livekit.url');
+        if ($key === '' || $secret === '' || $url === '') {
+            return null;
+        }
+        $room = 'exam-' . $exam->id;
+        $identity = 'proctor-' . $user->id . '-' . bin2hex(random_bytes(3));
+        $now = time();
+
+        return [
+            'url' => $url,
+            'room' => $room,
+            'token' => $this->jwt([
+                'iss' => $key,
+                'sub' => $identity,
+                'name' => $user->name,
+                'nbf' => $now - 5,
+                'exp' => $now + $ttlSeconds,
+                'metadata' => json_encode(['oid' => (int) $exam->organization_id, 'role' => 'proctor']),
+                'video' => [
+                    'room' => $room, 'roomJoin' => true, 'hidden' => true,
+                    'canPublish' => false, 'canSubscribe' => true, 'canPublishData' => false,
+                ],
+            ], $secret),
+        ];
+    }
+
     // ------------------------------------------------------------------ service-to-service signatures
 
     /** @return array{0: string, 1: string} [timestamp, signature] */

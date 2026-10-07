@@ -261,6 +261,18 @@ class MonitoringController extends Controller
         ]);
     }
 
+    /** Subscribe-only LiveKit token so the live screen can show candidates' camera and screen. */
+    public function liveVideo(int $examId)
+    {
+        $this->guardStaff();
+        $exam = Exam::findOrFail($examId);
+        $this->tenant->enforceOwnership($exam);
+
+        $info = app(Realtime::class)->proctorLiveKitToken(Auth::user(), $exam);
+
+        return $info ? response()->json(['enabled' => true] + $info) : response()->json(['enabled' => false], 503);
+    }
+
     /** /admin/attempts/{id} — one candidate's session, violation timeline & review. */
     public function attempt(int $attemptId)
     {
