@@ -1,9 +1,9 @@
-# Server stack (no client apps) for Coolify. Domains, ports and env: docs/REALTIME.md §5.
+# Server stack (no client apps) for Coolify. Domains, secrets and ports: docs/REALTIME.md §5.
 
 x-realtime-env: &realtime-env
   REDIS_URL: redis://redis:6379/0
-  RT_JWT_SECRET: ${RT_JWT_SECRET:?}
-  RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?}
+  RT_JWT_SECRET: ${SERVICE_PASSWORD_64_RTJWT}
+  RT_INTERNAL_SECRET: ${SERVICE_PASSWORD_64_RTINTERNAL}
 
 services:
   gateway:
@@ -11,15 +11,16 @@ services:
       context: ./gateway
     restart: unless-stopped
     environment:
-      GATEWAY_TLS: "off"
-      CORE_HOST: app:8000
-      REVERB_HOST: app:8000
-      AI_HOST: app:8000
-      LIVEKIT_HOST: livekit:7880
-      INGEST_HOST: ingest:8081
-      HUB_HOST: hub:8082
-      RECORD_HOST: record:8083
-      CLIENT_MAX_BODY_SIZE: 100M
+      - SERVICE_FQDN_GATEWAY_80
+      - GATEWAY_TLS=off
+      - CORE_HOST=app:8000
+      - REVERB_HOST=app:8000
+      - AI_HOST=app:8000
+      - LIVEKIT_HOST=livekit:7880
+      - INGEST_HOST=ingest:8081
+      - HUB_HOST=hub:8082
+      - RECORD_HOST=record:8083
+      - CLIENT_MAX_BODY_SIZE=100M
     expose:
       - "80"
     depends_on:
@@ -36,14 +37,14 @@ services:
       APP_NAME: FoxyExam
       APP_ENV: production
       APP_DEBUG: ${APP_DEBUG:-false}
-      APP_KEY: ${APP_KEY:?}
-      APP_URL: https://${APP_DOMAIN:?}
+      APP_KEY: ${APP_KEY}
+      APP_URL: https://${SERVICE_FQDN_GATEWAY}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-foxy_core}
       DB_USERNAME: ${DB_USERNAME:-foxy}
-      DB_PASSWORD: ${DB_PASSWORD:?}
+      DB_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: sync
@@ -51,15 +52,15 @@ services:
       AI_WORKER_URL: ${AI_WORKER_URL:-}
       AI_WORKER_TIMEOUT: ${AI_WORKER_TIMEOUT:-2}
       AI_ENFORCE: ${AI_ENFORCE:-false}
-      RT_JWT_SECRET: ${RT_JWT_SECRET:?}
-      RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?}
-      RT_INGEST_URL: https://${APP_DOMAIN}/rt/ingest
+      RT_JWT_SECRET: ${SERVICE_PASSWORD_64_RTJWT}
+      RT_INTERNAL_SECRET: ${SERVICE_PASSWORD_64_RTINTERNAL}
+      RT_INGEST_URL: https://${SERVICE_FQDN_GATEWAY}/rt/ingest
       RT_INGEST_INTERNAL_URL: http://ingest:8081
-      RT_HUB_URL: wss://${APP_DOMAIN}/rt/hub
-      RT_RECORD_URL: https://${APP_DOMAIN}/rt/record
-      LIVEKIT_PUBLIC_URL: wss://lk.${APP_DOMAIN}
+      RT_HUB_URL: wss://${SERVICE_FQDN_GATEWAY}/rt/hub
+      RT_RECORD_URL: https://${SERVICE_FQDN_GATEWAY}/rt/record
+      LIVEKIT_PUBLIC_URL: wss://${SERVICE_FQDN_LIVEKIT}
       LIVEKIT_API_KEY: foxy
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+      LIVEKIT_API_SECRET: ${SERVICE_PASSWORD_64_LIVEKIT}
     expose:
       - "8000"
     volumes:
@@ -87,7 +88,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *realtime-env
-      ALLOWED_ORIGINS: ${APP_DOMAIN}
+      ALLOWED_ORIGINS: ${SERVICE_FQDN_GATEWAY}
       HUB_TICK: 1s
       HUB_OFFLINE_AFTER: ${HUB_OFFLINE_AFTER:-20s}
     expose:
@@ -104,8 +105,8 @@ services:
       LARAVEL_BULK_URL: http://app:8000/api/internal/v1/events/bulk
       WORKER_BATCH: ${WORKER_BATCH:-500}
       S3_ENDPOINT: minio:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-foxyminio}
+      S3_SECRET_KEY: ${SERVICE_PASSWORD_64_MINIO}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
     depends_on:
@@ -122,19 +123,19 @@ services:
     environment:
       <<: *realtime-env
       RECORD_DB_DRIVER: pgx
-      RECORD_DB_DSN: postgres://${DB_USERNAME:-foxy}:${DB_PASSWORD}@postgres:5432/foxy_record?sslmode=disable
+      RECORD_DB_DSN: postgres://${DB_USERNAME:-foxy}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/foxy_record?sslmode=disable
       RECORD_RETENTION_DAYS: ${RECORD_RETENTION_DAYS:-0}
       S3_ENDPOINT: minio:9000
-      S3_PUBLIC_ENDPOINT: s3.${APP_DOMAIN}
+      S3_PUBLIC_ENDPOINT: ${SERVICE_FQDN_MINIO}
       S3_PUBLIC_SSL: "true"
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-foxyminio}
+      S3_SECRET_KEY: ${SERVICE_PASSWORD_64_MINIO}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
       EGRESS_S3_ENDPOINT: http://minio:9000
       LIVEKIT_URL: http://livekit:7880
       LIVEKIT_API_KEY: foxy
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+      LIVEKIT_API_SECRET: ${SERVICE_PASSWORD_64_LIVEKIT}
     expose:
       - "8083"
     depends_on:
@@ -150,7 +151,8 @@ services:
     restart: unless-stopped
     command: ["--config", "/etc/livekit.yaml"]
     environment:
-      LIVEKIT_KEYS: "foxy: ${LIVEKIT_API_SECRET:?}"
+      - SERVICE_FQDN_LIVEKIT_7880
+      - LIVEKIT_KEYS=foxy: ${SERVICE_PASSWORD_64_LIVEKIT}
     expose:
       - "7880"
       - "7881"
@@ -169,7 +171,7 @@ services:
     environment:
       EGRESS_CONFIG_BODY: |
         api_key: foxy
-        api_secret: ${LIVEKIT_API_SECRET:?}
+        api_secret: ${SERVICE_PASSWORD_64_LIVEKIT}
         ws_url: ws://livekit:7880
         redis:
           address: redis:6379
@@ -185,7 +187,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_DATABASE:-foxy_core}
       POSTGRES_USER: ${DB_USERNAME:-foxy}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/server/initdb:/docker-entrypoint-initdb.d:ro
@@ -212,8 +214,9 @@ services:
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?}
+      - SERVICE_FQDN_MINIO_9000
+      - MINIO_ROOT_USER=${S3_ACCESS_KEY:-foxyminio}
+      - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
     expose:
       - "9000"
     volumes:

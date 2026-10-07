@@ -3,6 +3,11 @@
 set -e
 cd /app
 
+if [ -z "${APP_KEY:-}" ]; then
+  echo "APP_KEY is empty: set it in the environment (php artisan key:generate --show)" >&2
+  exit 1
+fi
+
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
