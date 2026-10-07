@@ -22,7 +22,21 @@ export const VIOLATION_LABEL: Record<string, string> = {
   MULTIPLE_PEOPLE: 'Nhiều người trong khung hình',
   NO_FACE_DETECTED: 'Không thấy khuôn mặt',
   PROHIBITED_DEVICE: 'Thiết bị / vật cấm',
+  BANNED_APP: 'Chạy ứng dụng bị cấm',
+  APP_NOT_ALLOWED: 'Dùng ứng dụng không được phép',
+  MULTIPLE_MONITORS: 'Nhiều màn hình',
+  CAPTURE_DEVICE: 'Thiết bị capture / video-in',
+  DEVICE_CHANGED: 'Cắm / rút thiết bị',
+  SYSTEM_SHORTCUT: 'Phím tắt hệ thống',
+  LOOKING_AWAY: 'Nhìn ra ngoài màn hình',
+  FACE_TOO_FAR: 'Ngồi quá xa camera',
+  CAMERA_LOST: 'Mất camera',
+  SCREEN_SHARE_STOPPED: 'Dừng chia sẻ màn hình',
+  OFFLINE_TOO_LONG: 'Mất kết nối quá lâu',
 };
+
+/** Violations that depend on AI / probability and wait for a proctor; everything else is confirmed on arrival. */
+export const NEEDS_REVIEW = ['FACE_MISMATCH', 'MULTIPLE_PEOPLE', 'NO_FACE_DETECTED', 'LOOKING_AWAY', 'FACE_TOO_FAR', 'PROHIBITED_DEVICE'];
 export const violationLabel = (t?: string) => (t && VIOLATION_LABEL[t]) || t || 'Vi phạm';
 
 /** Groups used by the "Vi phạm theo loại" donut. */

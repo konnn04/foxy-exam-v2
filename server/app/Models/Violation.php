@@ -37,6 +37,10 @@ class Violation extends Model
     {
         static::addGlobalScope('counted', fn ($q) => $q->where('violations.voided', false));
         static::creating(function (self $v) {
+            // facts the client observed itself need no proctor decision; AI / probabilistic ones stay pending
+            if (!$v->is_reviewed && !$v->is_false_positive && !\App\Support\ViolationCatalog::needsReview((string) $v->violation_type)) {
+                $v->is_reviewed = true;
+            }
             if ($v->exam_attempt_id && ExamAttempt::whereKey($v->exam_attempt_id)->whereNotNull('voided_at')->exists()) {
                 $v->voided = true;
             }

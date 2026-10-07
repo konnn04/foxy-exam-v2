@@ -43,7 +43,7 @@ class ContextScopeTest extends TestCase
         $problem = ProgrammingProblem::create(['question_set_id' => $progSet->id, 'title' => 'P', 'description' => 'd', 'difficulty' => 'EASY', 'time_limit_ms' => 1000, 'memory_limit_mb' => 64, 'order' => 1]);
         $exam = Exam::create(['organization_id' => $org->id, 'course_id' => $course->id, 'question_set_id' => $set->id, 'title' => 'EB', 'code' => 'EB-1', 'type' => 'QUIZ', 'status' => 'PUBLISHED', 'duration_minutes' => 30, 'created_by' => $owner->id]);
         $attempt = ExamAttempt::create(['exam_id' => $exam->id, 'user_id' => $owner->id, 'attempt_number' => 1, 'status' => 'SUBMITTED']);
-        $violation = Violation::create(['exam_attempt_id' => $attempt->id, 'violation_type' => 'TAB_SWITCH', 'severity' => 'LOW', 'timestamp' => now()]);
+        $violation = Violation::create(['exam_attempt_id' => $attempt->id, 'violation_type' => 'LOOKING_AWAY', 'severity' => 'LOW', 'timestamp' => now()]);
 
         return compact('org', 'owner', 'course', 'set', 'question', 'progSet', 'problem', 'exam', 'attempt', 'violation');
     }

@@ -141,4 +141,16 @@ class AttemptLifecycleTest extends TestCase
         $roster = $this->actingAs($admin)->getJson("/admin/courses/{$exam->course_id}/roster")->assertOk()->json();
         $this->assertTrue(collect($roster)->pluck('id')->contains($student->id));
     }
+
+    public function test_facts_are_confirmed_on_arrival_but_ai_findings_wait_for_a_proctor(): void
+    {
+        $a = $this->attempt(1);
+        $mk = fn ($t) => Violation::create(['exam_attempt_id' => $a->id, 'violation_type' => $t, 'severity' => 'LOW', 'timestamp' => now()]);
+
+        $this->assertTrue((bool) $mk('WINDOW_LOST_FOCUS')->fresh()->is_reviewed);
+        $this->assertTrue((bool) $mk('BANNED_APP')->fresh()->is_reviewed);
+        $this->assertFalse((bool) $mk('LOOKING_AWAY')->fresh()->is_reviewed);
+        $this->assertFalse((bool) $mk('PROHIBITED_DEVICE')->fresh()->is_reviewed);
+        $this->assertFalse((bool) $mk('SOMETHING_NEW')->fresh()->is_reviewed, 'unclassified types are not trusted blindly');
+    }
 }
