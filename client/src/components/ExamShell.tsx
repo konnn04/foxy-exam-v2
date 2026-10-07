@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { AlertTriangle, Camera, Clock, Cpu, Lock, Mic, Monitor, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Button, cx } from "./ui";
 import { LOCKDOWN, type ExamGuardState } from "../lib/examGuard";
+import { DevPanel } from "./DevPanel";
+import { activeBypasses } from "../lib/dev";
+import type { ExamWarning } from "../lib/examRuntime";
+import type { RtStatus } from "../lib/realtime";
 
 export function formatCountdown(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -28,6 +32,11 @@ export function ExamShell({
   toolbar,
   children,
   panelExtra,
+  warning,
+  onDismissWarning,
+  paused,
+  realtime,
+  media,
 }: {
   title: string;
   subtitle: string;
@@ -40,6 +49,13 @@ export function ExamShell({
   toolbar?: ReactNode;
   children: ReactNode;
   panelExtra?: ReactNode;
+  /** Proctor message (command WARN) shown above the paper until dismissed. */
+  warning?: ExamWarning | null;
+  onDismissWarning?: () => void;
+  /** Proctor paused this attempt: the paper is covered. */
+  paused?: boolean;
+  realtime?: RtStatus;
+  media?: string;
 }) {
   const low = remainingSeconds !== null && remainingSeconds < 300;
 
@@ -52,6 +68,9 @@ export function ExamShell({
         <span className="text-white/70">| Không thu nhỏ, đổi cửa sổ hoặc chụp màn hình</span>
         <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-[#7ee2a0]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#7ee2a0] live-dot" /> {guard.active ? "đang giám sát" : "chưa giám sát"}
+          {realtime && <span className={cx("ml-2", realtime === "degraded" && "text-[#ffd479]")}>· {realtime === "live" ? "realtime" : realtime === "degraded" ? "mạng chập chờn" : realtime === "connecting" ? "đang kết nối" : "REST"}</span>}
+          {media && media !== "none" && <span className="ml-2">· cam/màn hình {media === "connected" ? "đang phát" : media}</span>}
+          {activeBypasses().length > 0 && <span className="ml-2 text-[#ffd479]">· DEV bypass: {activeBypasses().join(",")}</span>}
         </span>
       </div>
 
@@ -77,11 +96,33 @@ export function ExamShell({
         </div>
       </header>
 
+      {warning && (
+        <div className="flex shrink-0 items-start gap-3 border-b border-warning/50 bg-warning-soft px-5 py-2.5 text-sm">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-warning">Giám thị nhắc nhở</p>
+            <p className="whitespace-pre-wrap text-fg">{warning.message}</p>
+          </div>
+          <Button size="sm" onClick={onDismissWarning}>
+            Đã hiểu
+          </Button>
+        </div>
+      )}
+
       {toolbar}
 
       <div className="flex min-h-0 flex-1">
         <div className="relative flex min-w-0 flex-1 flex-col">
           {children}
+          {paused && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-app/95 backdrop-blur-md">
+              <div className="max-w-md rounded-2xl border border-line bg-surface p-6 text-center shadow-xl">
+                <Clock size={28} className="mx-auto text-warning" />
+                <p className="mt-3 text-sm font-semibold text-fg">Giám thị đã tạm dừng bài thi của bạn</p>
+                <p className="mt-1 text-xs text-muted">Vui lòng chờ — bài làm sẽ tự mở lại khi giám thị cho phép tiếp tục.</p>
+              </div>
+            </div>
+          )}
           {guard.blockReason && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-app/85 backdrop-blur-md">
               <div className="max-w-md rounded-2xl border border-danger/40 bg-surface p-6 text-center shadow-xl">
@@ -115,6 +156,7 @@ export function ExamShell({
         </span>
         <span className="ml-auto">Foxy Exam</span>
       </footer>
+      <DevPanel />
     </div>
   );
 }

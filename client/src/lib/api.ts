@@ -11,6 +11,17 @@ import { getAuth } from "./authStore";
  * này CORS bị siết lại ở production, chuyển client này sang plugin-http.
  */
 
+/** Media paths from the server are relative (`/storage/...`): resolve them against the API origin. */
+export function assetUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^(https?:|data:|blob:)/.test(path)) return path;
+  try {
+    return new URL(path, API_BASE_URL).toString();
+  } catch {
+    return path;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -420,9 +431,33 @@ export interface ClassicalOption {
 export type QuestionType =
   | "SINGLE_CHOICE"
   | "MULTIPLE_CHOICE"
+  | "TRUE_FALSE"
+  | "MULTIPLE_FILL_IN_BLANK"
   | "SHORT_ANSWER"
   | "ESSAY"
   | "GROUP_QUESTION";
+
+/**
+ * Per-type options as the server sends them to a candidate (never an answer key):
+ * fill-in-blank -> blank_count, short answer -> max_length, essay -> mode + limits, group -> media + passage.
+ */
+export interface QuestionSettings {
+  blank_count?: number;
+  max_length?: number;
+  mode?: "write" | "audio" | "file";
+  min_words?: number;
+  max_words?: number;
+  prep_seconds?: number;
+  max_seconds?: number;
+  max_files?: number;
+  accept?: string;
+  media?: "text" | "audio" | "image";
+  passage?: string;
+  audio_url?: string | null;
+  listen_limit?: number;
+  allow_seek?: boolean;
+  image_url?: string | null;
+}
 
 export interface ClassicalQuestionItem {
   id: number;
@@ -432,6 +467,9 @@ export interface ClassicalQuestionItem {
   difficulty?: string;
   order?: number;
   parent_id?: number | null;
+  image?: string | null;
+  skill?: string | null;
+  settings?: QuestionSettings | null;
   options: ClassicalOption[];
   saved_answer?: {
     answer_id?: number | null;
@@ -554,5 +592,58 @@ export function reportViolation(input: {
       severity: input.severity,
       details: input.details,
     }),
+  });
+}
+
+
+// ---------------------------------------------------------------------------
+// Exam detail (lobby) + realtime session
+// ---------------------------------------------------------------------------
+
+export interface ExamDetail {
+  id: number;
+  title: string;
+  code: string;
+  type: ExamKind;
+  status: string;
+  duration_minutes: number;
+  start_time: string | null;
+  end_time: string | null;
+  description: string | null;
+  monitoring_config: (Partial<MonitoringConfig> & { require_mic?: boolean }) | null;
+  can_start: boolean;
+  ai_service: { required: boolean; available: boolean; status: string; message: string };
+  course: { id: number | null; name: string | null; code: string | null };
+  latest_attempt: { id: number; status: string } | null;
+}
+
+export function getExam(examId: number): Promise<ApiEnvelope<ExamDetail>> {
+  return request<ApiEnvelope<ExamDetail>>(`/student/exams/${examId}`);
+}
+
+export interface RealtimeSession {
+  attempt_id: number;
+  exam_id: number;
+  server_time_ms: number;
+  remaining_seconds: number;
+  expires_at: string;
+  ingest: {
+    url: string;
+    time_url: string;
+    token: string;
+    flush_interval_ms: number;
+    max_batch_events: number;
+    max_body_bytes: number;
+    compress: string;
+  };
+  evidence: { presign_url: string; commit_url: string; allowed_content_types: string[] };
+  livekit: { url: string; room: string; identity: string; token: string } | null;
+}
+
+/** 503 + `error_code: "REALTIME_DISABLED"` when the server runs without the realtime plane. */
+export function getRealtimeSession(attemptId?: number): Promise<ApiEnvelope<RealtimeSession>> {
+  return request<ApiEnvelope<RealtimeSession>>("/student/realtime/session", {
+    method: "POST",
+    body: JSON.stringify(attemptId ? { attempt_id: attemptId } : {}),
   });
 }

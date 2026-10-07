@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpenText, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, Loader2, Save } from "lucide-react";
+import { BookOpenText, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, Loader2, Save, X } from "lucide-react";
 import { ConfirmModal, ExamShell } from "../components/ExamShell";
 import { Badge, Button, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { clearSession, getSession, type Session } from "../lib/session";
-import { useExamGuard } from "../lib/examGuard";
+import { useExamRuntime } from "../lib/examRuntime";
+import ExamLobby from "../components/ExamLobby";
+import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
   ApiError,
   finishExam,
   saveQuestionAnswer,
   submitExamAttempt,
   takeExam,
+  assetUrl,
   type ClassicalQuestionItem,
   type QuestionType,
 } from "../lib/api";
@@ -24,6 +27,8 @@ interface AnswerState {
 const TYPE_META: Record<QuestionType, { label: string; tone: "info" | "accent" | "warning" | "success" | "neutral" }> = {
   SINGLE_CHOICE: { label: "Trắc nghiệm", tone: "info" },
   MULTIPLE_CHOICE: { label: "Nhiều đáp án", tone: "accent" },
+  TRUE_FALSE: { label: "Đúng / Sai", tone: "info" },
+  MULTIPLE_FILL_IN_BLANK: { label: "Điền chỗ trống", tone: "accent" },
   SHORT_ANSWER: { label: "Trả lời ngắn", tone: "warning" },
   ESSAY: { label: "Tự luận", tone: "success" },
   GROUP_QUESTION: { label: "Đoạn đọc", tone: "neutral" },
@@ -38,6 +43,7 @@ const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
  * nhập nên không thể tải lúc mount). Đáp án tự lưu lên server sau 400ms.
  */
 export default function ExamClassic() {
+  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam());
   const [session, setSession] = useState<Session | null>(() => getSession());
   const [questions, setQuestions] = useState<ClassicalQuestionItem[]>([]);
   const [monitoring, setMonitoring] = useState<Session["exam"]["monitoring_config"] | null>(null);
@@ -56,7 +62,8 @@ export default function ExamClassic() {
   const saveTimers = useRef<Record<number, number>>({});
   const loadedAttempt = useRef<number | null>(null);
 
-  const guard = useExamGuard(monitoring);
+  const runtime = useExamRuntime(monitoring);
+  const guard = runtime.guard;
 
   // Chỉ tính câu có thể trả lời (bỏ đoạn đọc gốc của nhóm câu hỏi).
   const answerable = questions.filter((q) => q.type !== "GROUP_QUESTION");
@@ -94,7 +101,7 @@ export default function ExamClassic() {
           }
           setAnswers(initial);
           setTimeRemaining(typeof res.data.time_remaining_seconds === "number" ? res.data.time_remaining_seconds : null);
-          void guard.start();
+          void runtime.begin(s.attemptId);
         })
         .catch((err) => {
           loadedAttempt.current = null;
@@ -106,7 +113,16 @@ export default function ExamClassic() {
     [],
   );
 
-  useEffect(() => onWindowShown(() => load()), [load]);
+  // The window is shown either to run the lobby (a pending exam, no attempt yet) or to resume a running attempt.
+  useEffect(
+    () =>
+      onWindowShown(() => {
+        const p = getPendingExam();
+        setPending(p);
+        if (!p) load();
+      }),
+    [load],
+  );
 
   useEffect(() => {
     const t = window.setInterval(() => setTimeRemaining((p) => (p === null ? p : Math.max(0, p - 1))), 1000);
@@ -169,14 +185,25 @@ export default function ExamClassic() {
     if (!a) return false;
     if (q.type === "SINGLE_CHOICE") return typeof a.answerId === "number";
     if (q.type === "MULTIPLE_CHOICE") return (a.selectedAnswerIds?.length ?? 0) > 0;
+    if (q.type === "MULTIPLE_FILL_IN_BLANK") return parseBlanks(a.answerContent).some((x) => x.trim());
     return Boolean(a.answerContent?.trim());
   };
   const answeredCount = answerable.filter(isAnswered).length;
 
   async function leave() {
-    await guard.stop();
+    await runtime.end();
     await switchWindow(AppWindow.Main);
   }
+
+  // The server ended the attempt (proctor force-end, exam closed): stop and go home.
+  useEffect(() => {
+    if (!runtime.ended) return;
+    clearSession();
+    void leave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime.ended]);
+
+  useEffect(() => runtime.setQuestion(questions[index]?.id ?? 0), [index, questions, runtime]);
 
   async function handleSubmit() {
     if (!session) return;
@@ -193,6 +220,23 @@ export default function ExamClassic() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (pending) {
+    return (
+      <ExamLobby
+        pending={pending}
+        onStarted={() => {
+          setPending(null);
+          load(true);
+        }}
+        onCancel={() => {
+          clearPendingExam();
+          setPending(null);
+          void switchWindow(AppWindow.Main);
+        }}
+      />
+    );
   }
 
   if (!session || loading || loadError || questions.length === 0) {
@@ -233,6 +277,11 @@ export default function ExamClassic() {
         remainingSeconds={timeRemaining}
         onSubmit={() => setShowSubmit(true)}
         guard={guard}
+        warning={runtime.warning}
+        onDismissWarning={runtime.dismissWarning}
+        paused={runtime.paused}
+        realtime={runtime.status}
+        media={runtime.mediaState}
         toolbar={
           <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-5 text-xs">
             <span className="font-medium text-fg">
@@ -302,14 +351,8 @@ export default function ExamClassic() {
 
           <main className="min-w-0 flex-1 overflow-y-auto bg-app">
             <div className="selectable mx-auto max-w-3xl px-8 py-7">
-              {parent && (
-                <div className="mb-5 rounded-xl border border-line bg-surface p-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle">
-                    <BookOpenText size={12} /> Đoạn đọc dùng chung
-                  </p>
-                  <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{parent.content}</p>
-                </div>
-              )}
+              {parent && <GroupPassage parent={parent} />}
+              {current.image && <img src={assetUrl(current.image) ?? ""} alt="" className="mb-4 max-h-72 rounded-xl border border-line object-contain" />}
 
               <div className="flex items-center gap-2">
                 <Badge tone={meta.tone}>{meta.label}</Badge>
@@ -317,7 +360,7 @@ export default function ExamClassic() {
                 {current.type === "MULTIPLE_CHOICE" && <span className="text-[11px] text-muted">· chọn nhiều đáp án</span>}
               </div>
               <h2 className="mt-3 text-[13px] font-semibold text-accent-fg">Câu {index + 1}</h2>
-              <p className="mt-1 whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-fg">{current.content}</p>
+              {current.type !== "MULTIPLE_FILL_IN_BLANK" && <p className="mt-1 whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-fg">{current.content}</p>}
 
               <div className="mt-5">
                 {current.type === "SINGLE_CHOICE" && (
@@ -360,8 +403,40 @@ export default function ExamClassic() {
                   </div>
                 )}
 
+                {current.type === "TRUE_FALSE" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { v: "true", label: "Đúng", icon: <Check size={16} /> },
+                      { v: "false", label: "Sai", icon: <X size={16} /> },
+                    ].map((o) => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => update(current.id, { ...a, answerContent: o.v })}
+                        className={cx(
+                          "flex h-16 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition",
+                          a.answerContent === o.v ? "border-accent bg-accent-soft text-fg" : "border-line bg-surface text-muted hover:border-line-strong",
+                        )}
+                      >
+                        {o.icon} {o.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {current.type === "MULTIPLE_FILL_IN_BLANK" && (
+                  <FillBlanks
+                    content={current.content}
+                    count={current.settings?.blank_count ?? 0}
+                    values={parseBlanks(a.answerContent)}
+                    onPaste={guard.onPaste}
+                    onChange={(vals) => update(current.id, { ...a, answerContent: JSON.stringify(vals) })}
+                  />
+                )}
+
                 {current.type === "SHORT_ANSWER" && (
                   <input
+                    maxLength={current.settings?.max_length ?? 300}
                     value={a.answerContent ?? ""}
                     onChange={(e) => update(current.id, { ...a, answerContent: e.target.value })}
                     onPaste={guard.onPaste}
@@ -372,9 +447,26 @@ export default function ExamClassic() {
 
                 {current.type === "ESSAY" && (
                   <div className="overflow-hidden rounded-xl border border-line-strong bg-surface focus-within:border-fg/60">
+                    {current.settings?.mode && current.settings.mode !== "write" && (
+                      <p className="border-b border-warning/40 bg-warning-soft px-3 py-2 text-[11px] text-warning">
+                        Câu này yêu cầu nộp {current.settings.mode === "audio" ? "bản ghi âm" : "tệp đính kèm"} — hình thức này chưa được hỗ trợ trên ứng dụng. Hãy ghi chú ngắn gọn bên dưới và báo giám thị.
+                      </p>
+                    )}
                     <div className="flex items-center justify-between border-b border-line px-3 py-1.5 text-[11px] text-subtle">
-                      <span>Dán từ ngoài bị giới hạn</span>
-                      <span className="font-mono">{wordCount(a.answerContent ?? "")} từ</span>
+                      <span>
+                        Dán từ ngoài bị giới hạn
+                        {!!current.settings?.min_words && ` · tối thiểu ${current.settings.min_words} từ`}
+                        {!!current.settings?.max_words && ` · tối đa ${current.settings.max_words} từ`}
+                      </span>
+                      <span
+                        className={cx(
+                          "font-mono",
+                          !!current.settings?.max_words && wordCount(a.answerContent ?? "") > (current.settings?.max_words ?? 0) && "text-danger",
+                          !!current.settings?.min_words && wordCount(a.answerContent ?? "") < (current.settings?.min_words ?? 0) && "text-warning",
+                        )}
+                      >
+                        {wordCount(a.answerContent ?? "")} từ
+                      </span>
                     </div>
                     <textarea
                       rows={12}
@@ -503,5 +595,102 @@ function Option({
       </span>
       <span className="flex-1">{children}</span>
     </button>
+  );
+}
+
+function parseBlanks(raw: string | null | undefined): string[] {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.map((x) => String(x ?? "")) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The question text with `[1]`, `[2]` markers turned into inline inputs (extra blanks, if any, go below). */
+function FillBlanks({
+  content,
+  count,
+  values,
+  onChange,
+  onPaste,
+}: {
+  content: string;
+  count: number;
+  values: string[];
+  onChange: (v: string[]) => void;
+  onPaste: (e: React.ClipboardEvent) => void;
+}) {
+  const parts = content.split(/(\[\d+\])/g);
+  const total = Math.max(count, ...parts.map((p) => Number(/^\[(\d+)\]$/.exec(p)?.[1] ?? 0)));
+  const set = (i: number, v: string) => {
+    const next = Array.from({ length: total }, (_, k) => values[k] ?? "");
+    next[i] = v;
+    onChange(next);
+  };
+  const input = (i: number) => (
+    <input
+      key={`b${i}`}
+      value={values[i] ?? ""}
+      onChange={(e) => set(i, e.target.value)}
+      onPaste={onPaste}
+      aria-label={`Chỗ trống ${i + 1}`}
+      placeholder={`(${i + 1})`}
+      className="mx-1 inline-block h-8 w-40 rounded-lg border border-line-strong bg-surface px-2 text-center text-sm text-fg outline-none focus:border-fg/60"
+    />
+  );
+  const used = new Set<number>();
+  return (
+    <div>
+      <p className="whitespace-pre-wrap text-[15px] font-medium leading-[2.4] text-fg">
+        {parts.map((p, i) => {
+          const m = /^\[(\d+)\]$/.exec(p);
+          if (!m) return <span key={i}>{p}</span>;
+          used.add(Number(m[1]) - 1);
+          return input(Number(m[1]) - 1);
+        })}
+      </p>
+      {Array.from({ length: total }, (_, i) => i)
+        .filter((i) => !used.has(i))
+        .map((i) => (
+          <div key={i} className="mt-2 flex items-center gap-2 text-xs text-muted">
+            Chỗ trống {i + 1}: {input(i)}
+          </div>
+        ))}
+    </div>
+  );
+}
+
+/** Shared passage of a GROUP_QUESTION: text, image or audio (limited plays, optional seeking). */
+function GroupPassage({ parent }: { parent: ClassicalQuestionItem }) {
+  const st = parent.settings ?? {};
+  const [plays, setPlays] = useState(0);
+  const limit = st.listen_limit ?? 0; // 0 = unlimited
+  const audio = useRef<HTMLAudioElement>(null);
+  const blocked = limit > 0 && plays >= limit;
+  return (
+    <div className="mb-5 rounded-xl border border-line bg-surface p-4">
+      <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle">
+        <BookOpenText size={12} /> {st.media === "audio" ? "Bài nghe dùng chung" : st.media === "image" ? "Hình ảnh dùng chung" : "Đoạn đọc dùng chung"}
+      </p>
+      {parent.content && <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{parent.content}</p>}
+      {st.passage && <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{st.passage}</p>}
+      {st.media === "image" && st.image_url && <img src={assetUrl(st.image_url) ?? ""} alt="" className="mt-3 max-h-80 rounded-lg border border-line object-contain" />}
+      {st.media === "audio" && st.audio_url && (
+        <div className="mt-3 flex items-center gap-3">
+          <audio ref={audio} src={assetUrl(st.audio_url) ?? undefined} controls={!!st.allow_seek && !blocked} onPlay={() => setPlays((n) => n + 1)} className="h-9 flex-1" />
+          {!st.allow_seek && (
+            <Button size="sm" disabled={blocked} onClick={() => void audio.current?.play()}>
+              Phát
+            </Button>
+          )}
+          {limit > 0 && (
+            <span className="font-mono text-[11px] text-muted">
+              {Math.min(plays, limit)}/{limit} lượt nghe
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

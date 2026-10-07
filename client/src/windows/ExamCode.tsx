@@ -5,7 +5,9 @@ import { ConfirmModal, ExamShell } from "../components/ExamShell";
 import { Badge, Button, Empty, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { getSession, clearSession, type Session } from "../lib/session";
-import { useExamGuard } from "../lib/examGuard";
+import { useExamRuntime } from "../lib/examRuntime";
+import ExamLobby from "../components/ExamLobby";
+import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
   ApiError,
   finishExam,
@@ -37,7 +39,9 @@ function starterCode(problem: Problem, language: string): string {
  * Server chưa có API "chạy thử" nên không có nút Run — chỉ có Nộp bài để chấm.
  */
 export default function ExamCode() {
+  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam());
   const [session, setSession] = useState<Session | null>(() => getSession());
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
 
   const [examInfo, setExamInfo] = useState<PaperData["exam"] | null>(null);
   const [problems, setProblems] = useState<Problem[] | null>(null);
@@ -59,7 +63,8 @@ export default function ExamCode() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const guard = useExamGuard(examInfo?.monitoring_config);
+  const runtime = useExamRuntime(examInfo?.monitoring_config);
+  const guard = runtime.guard;
 
   const currentProblem = problems?.[activeIdx] ?? null;
   const currentLanguage = currentProblem ? (languageByProblem[currentProblem.id] ?? "cpp") : "cpp";
@@ -76,9 +81,19 @@ export default function ExamCode() {
   }
 
   async function leave() {
-    await guard.stop();
+    await runtime.end();
     await switchWindow(AppWindow.Main);
   }
+
+  // The server ended the attempt (proctor force-end, exam closed): stop and go home.
+  useEffect(() => {
+    if (!runtime.ended) return;
+    clearSession();
+    void leave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime.ended]);
+
+  useEffect(() => runtime.setQuestion(problems?.[activeIdx]?.id ?? 0), [activeIdx, problems, runtime]);
 
   const loadedAttemptRef = useRef<number | null>(null);
   useEffect(() => {
@@ -107,7 +122,7 @@ export default function ExamCode() {
         }
         setLanguageByProblem(langInit);
         setCodeByKey(codeInit);
-        void guard.start();
+        void runtime.begin(current.attemptId);
         await refreshSubmissions();
       } catch (err) {
         setLoadError(err instanceof ApiError ? err.message : "Không tải được đề thi.");
@@ -117,7 +132,12 @@ export default function ExamCode() {
       }
     }
 
-    return onWindowShown(() => void loadPaper());
+    loadRef.current = loadPaper;
+    return onWindowShown(() => {
+      const p = getPendingExam();
+      setPending(p); // a pending exam means: show the lobby first, the attempt does not exist yet
+      if (!p) void loadPaper();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -215,6 +235,23 @@ export default function ExamCode() {
     await leave();
   }
 
+  if (pending) {
+    return (
+      <ExamLobby
+        pending={pending}
+        onStarted={() => {
+          setPending(null);
+          void loadRef.current?.();
+        }}
+        onCancel={() => {
+          clearPendingExam();
+          setPending(null);
+          void switchWindow(AppWindow.Main);
+        }}
+      />
+    );
+  }
+
   if (!session || loadingPaper || loadError || !problems || !examInfo || !currentProblem) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-app text-sm text-muted">
@@ -246,6 +283,11 @@ export default function ExamCode() {
         submitLabel="Kết thúc ca thi"
         onSubmit={() => setConfirmFinish(true)}
         guard={guard}
+        warning={runtime.warning}
+        onDismissWarning={runtime.dismissWarning}
+        paused={runtime.paused}
+        realtime={runtime.status}
+        media={runtime.mediaState}
         headerExtra={
           <div className="flex gap-1">
             {problems.map((p, idx) => {

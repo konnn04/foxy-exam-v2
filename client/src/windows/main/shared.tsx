@@ -22,7 +22,7 @@ export interface PageProps {
   data: StudentData;
   loading: boolean;
   startingId: number | null;
-  onStart: (exam: { id: number }) => void;
+  onStart: (exam: { id: number; title: string; code: string; type: "QUIZ" | "PROGRAMMING" | "HYBRID" }) => void;
   onNavigate: (page: Page) => void;
   device: DeviceCheck;
 }

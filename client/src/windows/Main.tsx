@@ -22,7 +22,8 @@ import { BrandMark, Button, cx } from "../components/ui";
 import { AppWindow, onWindowShown, openPopup, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
 import { clearAuth, getAuth, saveAuth, type AuthData } from "../lib/authStore";
-import { clearSession, saveSession } from "../lib/session";
+import { clearSession } from "../lib/session";
+import { savePendingExam } from "../lib/lobbyMedia";
 import { useTheme } from "../lib/theme";
 import {
   ApiError,
@@ -32,7 +33,6 @@ import {
   getHealth,
   getMe,
   logoutRemote,
-  startExam,
 } from "../lib/api";
 import { examState, initials, useDeviceCheck, type ExamItem, type Page, type PageProps, type StudentData } from "./main/shared";
 import Dashboard from "./main/Dashboard";
@@ -142,27 +142,17 @@ export default function Main() {
     await goAuth();
   }
 
-  async function handleStart(exam: { id: number }) {
+  /**
+   * Picking an exam opens the exam window in its LOBBY (device check). The attempt - and so the exam clock - is
+   * created only when the student presses "Bắt đầu" there (see components/ExamLobby.tsx).
+   */
+  async function handleStart(exam: { id: number; title: string; code: string; type: "QUIZ" | "PROGRAMMING" | "HYBRID" }) {
     if (!auth) return;
     setStartingId(exam.id);
     setError(null);
     try {
-      const res = (await startExam(exam.id)).data;
-      saveSession({
-        token: auth.token,
-        attemptId: res.attempt_id,
-        attemptNumber: res.attempt_number,
-        maxAttempts: null,
-        student: { id: auth.user.id, username: auth.user.username, name: auth.user.name },
-        exam: {
-          id: res.exam.id,
-          title: res.exam.title,
-          code: res.exam.code,
-          duration_minutes: res.duration_minutes,
-          monitoring_config: res.exam.monitoring_config,
-        },
-      });
-      await switchWindow(res.exam.type === "QUIZ" ? AppWindow.ExamClassic : AppWindow.ExamCode);
+      savePendingExam({ id: exam.id, title: exam.title, code: exam.code, type: exam.type });
+      await switchWindow(exam.type === "QUIZ" ? AppWindow.ExamClassic : AppWindow.ExamCode);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không vào được phòng thi.");
     } finally {
