@@ -1,0 +1,162 @@
+// Package e2e wires the real handlers together (ingest -> Redis stream -> worker -> core, and ingest -> hub)
+// on an in-memory Redis, proving the whole pipeline end to end without any external service.
+package e2e
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
+
+	"github.com/foxyexam/realtime/internal/auth"
+	"github.com/foxyexam/realtime/internal/hub"
+	"github.com/foxyexam/realtime/internal/ingest"
+	"github.com/foxyexam/realtime/internal/obs"
+	"github.com/foxyexam/realtime/internal/store"
+	"github.com/foxyexam/realtime/internal/worker"
+)
+
+var (
+	jwtSecret = []byte("e2e-jwt")
+	intSecret = []byte("e2e-internal")
+)
+
+// fakeCore plays Laravel: verifies the HMAC the worker sends and records the batches.
+type fakeCore struct {
+	mu      sync.Mutex
+	batches []worker.Batch
+	badSigs int
+}
+
+func (f *fakeCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	if err := auth.VerifyBody(intSecret, body, r.Header.Get(auth.HeaderTimestamp), r.Header.Get(auth.HeaderSignature), time.Now(), time.Minute); err != nil {
+		f.mu.Lock()
+		f.badSigs++
+		f.mu.Unlock()
+		http.Error(w, "bad signature", 401)
+		return
+	}
+	var b worker.Batch
+	_ = json.Unmarshal(body, &b)
+	f.mu.Lock()
+	f.batches = append(f.batches, b)
+	f.mu.Unlock()
+	w.Write([]byte(`{"success":true}`))
+}
+
+func TestWholePipeline(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	st := store.New(rdb)
+	log := obs.Logger("e2e")
+
+	core := &fakeCore{}
+	coreSrv := httptest.NewServer(core)
+	defer coreSrv.Close()
+
+	ing := httptest.NewServer(ingest.New(ingest.Config{JWTSecret: jwtSecret, InternalSecret: intSecret}, st, log, obs.NewMetrics()).Handler())
+	defer ing.Close()
+	h := hub.New(hub.Config{JWTSecret: jwtSecret, Tick: 30 * time.Millisecond}, st, log, obs.NewMetrics())
+	hubSrv := httptest.NewServer(h.Handler())
+	defer hubSrv.Close()
+
+	w := worker.New(worker.Config{Block: 20 * time.Millisecond, Backoff: time.Millisecond}, st, worker.NewLaravelSink(coreSrv.URL, intSecret), nil, log, obs.NewMetrics())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go w.Run(ctx)
+
+	// -- a candidate sends one batch: heartbeats, a violation and a paste op-log
+	cand := auth.Sign(jwtSecret, auth.Claims{Role: auth.RoleCandidate, AttemptID: 5, ExamID: 2, UserID: 9, OrgID: 1, Exp: time.Now().Add(time.Hour).Unix()})
+	ev := func(seq int, typ string, data any) map[string]any {
+		d, _ := json.Marshal(data)
+		return map[string]any{"seq": seq, "t": typ, "ts": time.Now().UnixMilli(), "data": json.RawMessage(d)}
+	}
+	body, _ := json.Marshal(map[string]any{"events": []any{
+		ev(1, "hb", map[string]any{"focus": true, "fullscreen": true, "camera": true}),
+		ev(2, "violation", map[string]any{"violation_type": "TAB_SWITCH", "severity": "MEDIUM"}),
+		ev(3, "oplog", map[string]any{"batch_seq": 1, "keystroke_count": 20, "paste_event_count": 1, "synthetic_flags": map[string]any{"bulk_insert": true}}),
+	}})
+	req, _ := http.NewRequest("POST", ing.URL+"/v1/batch", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+cand)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatalf("ingest: %v %v", resp, err)
+	}
+	resp.Body.Close()
+
+	// -- the core receives the events as signed batches (the worker may split them across two rounds)
+	var vio []worker.Violation
+	var ops []worker.OpLog
+	var hbs []worker.Heartbeat
+	collect := func() {
+		core.mu.Lock()
+		defer core.mu.Unlock()
+		vio, ops, hbs = nil, nil, nil
+		for _, b := range core.batches {
+			vio = append(vio, b.Violations...)
+			ops = append(ops, b.OpLogs...)
+			hbs = append(hbs, b.Heartbeats...)
+		}
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if collect(); len(vio) == 1 && len(ops) == 1 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	collect()
+	core.mu.Lock()
+	bad := core.badSigs
+	core.mu.Unlock()
+	if bad != 0 {
+		t.Fatalf("core saw %d bad signatures", bad)
+	}
+	if len(vio) != 1 || vio[0].ClientEventID != "5:2" || len(ops) != 1 || ops[0].Pastes != 1 || len(hbs) != 1 {
+		t.Fatalf("content wrong: vio=%+v ops=%+v hbs=%+v", vio, ops, hbs)
+	}
+
+	// -- and a proctor sees the live state (derived from the same events)
+	proctor := auth.Sign(jwtSecret, auth.Claims{Role: auth.RoleProctor, ExamIDs: []int64{2}, OrgID: 1, Exp: time.Now().Add(time.Hour).Unix()})
+	req, _ = http.NewRequest("GET", hubSrv.URL+"/v1/rooms/2/snapshot", nil)
+	req.Header.Set("Authorization", "Bearer "+proctor)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var snap hub.Message
+	json.NewDecoder(resp.Body).Decode(&snap)
+	if len(snap.Rows) != 1 || snap.Rows[0].Status != hub.StatusOnline || snap.Rows[0].Violations != 1 || snap.Counts.Online != 1 {
+		t.Fatalf("hub snapshot wrong: %+v", snap)
+	}
+}
+
+// Known-answer tests: values generated by the PHP side (Realtime::candidateToken / Realtime::sign) with fixed
+// secrets. If either language changes its encoding, this fails before a deploy does.
+func TestPHPCompatibility(t *testing.T) {
+	const phpJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiY2FuZGlkYXRlIiwiYWlkIjo1LCJlaWQiOjIsInVpZCI6OSwib2lkIjoxLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6NDEwMjQ0NDgwMH0.1I54Awkkak9m0CoKqz7LkkQjauTrpwJahmroew2jCEs"
+	c, err := auth.Verify([]byte("kat-jwt-secret"), phpJWT, time.Now())
+	if err != nil || c.Role != "candidate" || c.AttemptID != 5 || c.ExamID != 2 || c.UserID != 9 || c.OrgID != 1 {
+		t.Fatalf("Go cannot read the PHP token: %+v %v", c, err)
+	}
+
+	body := []byte(`{"attempt_id":5,"exam_id":2,"user_id":9,"status":"ended"}`)
+	const phpSig = "d5fab0ae931ac7a751ac7a2c67661635db7279718824e9817e3c6cba41490afa"
+	if err := auth.VerifyBody([]byte("kat-internal-secret"), body, "1700000000", phpSig, time.Unix(1700000000, 0), time.Minute); err != nil {
+		t.Fatalf("Go cannot verify the PHP signature: %v", err)
+	}
+	// and Go's own signature equals PHP's
+	if _, sig := auth.SignBody([]byte("kat-internal-secret"), body, time.Unix(1700000000, 0)); sig != phpSig {
+		t.Fatalf("signature mismatch: %s", sig)
+	}
+}
