@@ -91,4 +91,38 @@ class AttemptLifecycleTest extends TestCase
         $this->actingAs($admin)->post('/admin/exams', array_merge($base, ['title' => 'AppsOff', 'allowed_apps_enabled' => false, 'allowed_apps' => ['devenv']]))->assertSessionHasNoErrors()->assertRedirect('/admin/exams');
         $this->assertEquals([], Exam::where('title', 'AppsOff')->first()->monitoring_config['allowed_apps']);
     }
+
+    public function test_a_voided_attempt_keeps_its_data_but_leaves_the_violation_counts(): void
+    {
+        $a = $this->attempt(1);
+        foreach (['BANNED_APP', 'LOOKING_AWAY'] as $t) {
+            Violation::create(['exam_attempt_id' => $a->id, 'violation_type' => $t, 'severity' => 'LOW', 'timestamp' => now()]);
+        }
+        $admin = User::where('username', 'admin_hcmus')->first();
+
+        $this->actingAs($admin)->post("/admin/attempts/{$a->id}/void", ['void' => true, 'reason' => 'sự cố mạng'])->assertRedirect();
+        $this->assertNotNull($a->fresh()->voided_at);
+        $this->assertEquals('FORCE_ENDED', $a->fresh()->status);
+        $this->assertEquals(0, Violation::where('exam_attempt_id', $a->id)->count());
+        $this->assertEquals(2, Violation::withoutGlobalScopes()->where('exam_attempt_id', $a->id)->count());
+
+        $late = Violation::create(['exam_attempt_id' => $a->id, 'violation_type' => 'BANNED_APP', 'severity' => 'LOW', 'timestamp' => now()]);
+        $this->assertTrue($late->fresh()->voided || Violation::withoutGlobalScopes()->find($late->id)->voided);
+
+        $this->actingAs($admin)->post("/admin/attempts/{$a->id}/void", ['void' => false])->assertRedirect();
+        $this->assertNull($a->fresh()->voided_at);
+        $this->assertEquals(3, Violation::where('exam_attempt_id', $a->id)->count());
+    }
+
+    public function test_bulk_review_applies_one_decision_to_many_violations(): void
+    {
+        $a = $this->attempt(1);
+        $ids = collect(range(1, 3))->map(fn () => Violation::create(['exam_attempt_id' => $a->id, 'violation_type' => 'WINDOW_LOST_FOCUS', 'severity' => 'LOW', 'timestamp' => now()])->id)->all();
+        $admin = User::where('username', 'admin_hcmus')->first();
+
+        $this->actingAs($admin)->post('/admin/violations/bulk-review', ['ids' => $ids, 'decision' => 'confirmed'])->assertRedirect();
+        $this->assertEquals(3, Violation::whereIn('id', $ids)->where('is_reviewed', true)->where('is_false_positive', false)->count());
+        $this->actingAs($admin)->post('/admin/violations/bulk-review', ['ids' => $ids, 'decision' => 'false_positive'])->assertRedirect();
+        $this->assertEquals(3, Violation::whereIn('id', $ids)->where('is_false_positive', true)->count());
+    }
 }

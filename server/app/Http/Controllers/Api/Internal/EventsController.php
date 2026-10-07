@@ -50,7 +50,7 @@ class EventsController extends Controller
 
         DB::transaction(function () use ($violations, $oplogs, $heartbeats, $attempts, &$stats, &$points) {
             $seen = array_fill_keys(
-                Violation::whereIn('client_event_id', $this->clientIds($violations, $oplogs))->pluck('client_event_id')->all(),
+                Violation::withoutGlobalScopes()->whereIn('client_event_id', $this->clientIds($violations, $oplogs))->pluck('client_event_id')->all(),
                 true,
             );
             $seenOps = array_fill_keys(

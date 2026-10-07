@@ -152,6 +152,7 @@ class MonitoringController extends Controller
                     'ended_reason' => $a->ended_reason,
                     'status' => $a->status,
                     'is_flagged' => (bool) $a->is_flagged,
+                    'voided' => $a->voided_at !== null,
                     'risk_score' => (int) $a->risk_score,
                     'started_at' => $a->started_at?->toIso8601String(),
                     'submitted_at' => $a->submitted_at?->toIso8601String(),
@@ -279,7 +280,7 @@ class MonitoringController extends Controller
         $this->guardStaff();
         $attempt = $this->attemptOrFail($attemptId);
 
-        $violations = Violation::where('exam_attempt_id', $attempt->id)
+        $violations = Violation::withoutGlobalScope('counted')->where('exam_attempt_id', $attempt->id)
             ->orderBy('timestamp')
             ->get()
             ->map(fn ($v) => [
@@ -314,6 +315,52 @@ class MonitoringController extends Controller
             'typing' => $typing,
             'submissions' => $submissions,
         ]);
+    }
+
+    /** POST /admin/violations/bulk-review — one decision for many violations of the same organization. */
+    public function bulkReview(Request $request)
+    {
+        $this->guardStaff();
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:2000'],
+            'ids.*' => ['integer'],
+            'decision' => ['required', 'in:confirmed,false_positive,pending'],
+        ]);
+
+        $violations = Violation::with('attempt.exam')->whereIn('id', $validated['ids'])->get();
+        foreach ($violations->pluck('attempt.exam')->filter()->unique('id') as $exam) {
+            $this->tenant->enforceOwnership($exam);
+        }
+        Violation::whereIn('id', $violations->pluck('id'))->update(match ($validated['decision']) {
+            'confirmed' => ['is_reviewed' => true, 'is_false_positive' => false],
+            'false_positive' => ['is_reviewed' => true, 'is_false_positive' => true],
+            'pending' => ['is_reviewed' => false, 'is_false_positive' => false],
+        });
+
+        return back();
+    }
+
+    /** POST /admin/attempts/{id}/void — cancel (or restore) an attempt: kept, but out of scores and violation counts. */
+    public function voidAttempt(Request $request, int $attemptId)
+    {
+        $this->guardStaff();
+        $validated = $request->validate(['void' => ['required', 'boolean'], 'reason' => ['nullable', 'string', 'max:255']]);
+        $attempt = $this->attemptOrFail($attemptId);
+        $void = (bool) $validated['void'];
+
+        if ($void && $attempt->status === 'IN_PROGRESS') {
+            $attempt->status = 'FORCE_ENDED';
+            $attempt->submitted_at = now();
+        }
+        $attempt->voided_at = $void ? now() : null;
+        $attempt->void_reason = $void ? ($validated['reason'] ?? null) : null;
+        $attempt->save();
+        Violation::withoutGlobalScope('counted')->where('exam_attempt_id', $attempt->id)->update(['voided' => $void]);
+        if ($void) {
+            app(Realtime::class)->lifecycle($attempt, 'force_ended');
+        }
+
+        return back()->with('success', $void ? 'Đã hủy phiên thi.' : 'Đã khôi phục phiên thi.');
     }
 
     /** POST /admin/violations/{id}/review — confirmed | false_positive | pending. */
@@ -405,6 +452,8 @@ class MonitoringController extends Controller
             'score' => $attempt->score,
             'risk_score' => (int) $attempt->risk_score,
             'is_flagged' => (bool) $attempt->is_flagged,
+            'voided_at' => $attempt->voided_at?->toIso8601String(),
+            'void_reason' => $attempt->void_reason,
             'started_at' => $attempt->started_at?->toIso8601String(),
             'submitted_at' => $attempt->submitted_at?->toIso8601String(),
             'device_info' => $attempt->device_info,

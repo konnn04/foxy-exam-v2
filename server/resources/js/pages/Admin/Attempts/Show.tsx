@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { CircleCheck, Code, ExternalLink, Monitor, RotateCcw, ShieldAlert, ShieldCheck, Video } from 'lucide-react';
+import { Ban, CircleCheck, Code, ExternalLink, Monitor, RotateCcw, ShieldAlert, ShieldCheck, Undo2, Video } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, FeedPlaceholder, FxButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
@@ -15,6 +15,7 @@ import {
   violationDetail,
   violationLabel,
 } from '@/components/foxy/domain';
+import { useDialog } from '@/components/foxy/dialogs';
 import { cn } from '@/lib/utils';
 
 export interface AttemptPayload {
@@ -24,6 +25,8 @@ export interface AttemptPayload {
   score: number | null;
   risk_score: number;
   is_flagged: boolean;
+  voided_at: string | null;
+  void_reason: string | null;
   started_at: string | null;
   submitted_at: string | null;
   device_info: Record<string, unknown> | null;
@@ -53,6 +56,28 @@ interface Props {
 
 const BINS = 72;
 
+interface Group {
+  key: number;
+  head: ViolationRow;
+  rows: ViolationRow[];
+  last: ViolationRow;
+}
+
+/** Consecutive violations of one type collapse into a single entry until a different type shows up. */
+function groupViolations(list: ViolationRow[]): Group[] {
+  const out: Group[] = [];
+  for (const v of list) {
+    const g = out.at(-1);
+    if (g && g.head.type === v.type) {
+      g.rows.push(v);
+      g.last = v;
+    } else {
+      out.push({ key: v.id, head: v, rows: [v], last: v });
+    }
+  }
+  return out;
+}
+
 export function deviceLabel(d: Record<string, unknown> | null) {
   if (!d) return '';
   const app = d.client_version || d.app_version || d.version;
@@ -65,9 +90,14 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
     const q = typeof window !== 'undefined' ? Number(new URLSearchParams(window.location.search).get('violation')) : 0;
     return violations.some((v) => v.id === q) ? q : violations.find((v) => !v.is_reviewed)?.id ?? violations[0]?.id ?? 0;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const dialog = useDialog();
+  const groups = useMemo(() => groupViolations(violations), [violations]);
   const [selId, setSelId] = useState(initialId);
   const [busy, setBusy] = useState(false);
-  const sel = violations.find((v) => v.id === selId) ?? violations[0];
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId)) ?? groups[0];
+  const sel = selGroup?.head;
+  const voided = attempt.voided_at !== null;
 
   const start = attempt.started_at ? new Date(attempt.started_at).getTime() : null;
   const endIso =
@@ -104,13 +134,46 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const decide = (decision: 'confirmed' | 'false_positive' | 'pending') => {
     if (!sel) return;
     setBusy(true);
-    const idx = violations.findIndex((v) => v.id === sel.id);
-    router.post(`/admin/violations/${sel.id}/review`, { decision }, {
+    const idx = groups.indexOf(selGroup);
+    review(
+      selGroup.rows.map((v) => v.id),
+      decision,
+      () => decision !== 'pending' && groups[idx + 1] && setSelId(groups[idx + 1].head.id),
+    );
+  };
+
+  const review = (ids: number[], decision: 'confirmed' | 'false_positive' | 'pending', after?: () => void) => {
+    setBusy(true);
+    router.post('/admin/violations/bulk-review', { ids, decision }, {
       preserveScroll: true,
       only: ['violations'],
-      onSuccess: () => decision !== 'pending' && violations[idx + 1] && setSelId(violations[idx + 1].id),
+      onSuccess: () => {
+        setChecked(new Set());
+        after?.();
+      },
       onFinish: () => setBusy(false),
     });
+  };
+
+  const toggle = (g: Group) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      const all = g.rows.every((v) => next.has(v.id));
+      g.rows.forEach((v) => (all ? next.delete(v.id) : next.add(v.id)));
+      return next;
+    });
+  const allChecked = violations.length > 0 && checked.size === violations.length;
+
+  const toggleVoid = async () => {
+    const ok = await dialog.confirm({
+      title: voided ? 'Khôi phục phiên thi?' : 'Hủy phiên thi này?',
+      text: voided
+        ? 'Phiên thi được tính lại vào điểm trung bình và số vi phạm.'
+        : 'Phiên thi được giữ lại nhưng không tính vào điểm trung bình và bộ đếm vi phạm. Đang làm bài sẽ bị dừng.',
+      tone: voided ? 'default' : 'danger',
+      confirmLabel: voided ? 'Khôi phục' : 'Hủy phiên thi',
+    });
+    if (ok) router.post(`/admin/attempts/${attempt.id}/void`, { void: !voided }, { preserveScroll: true });
   };
 
   const st = ATTEMPT_STATUS[attempt.status] ?? { label: attempt.status, tone: 'neutral' as const };
@@ -134,10 +197,13 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
         leading={<div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold">{initials(attempt.user.name)}</div>}
         title={attempt.user.name}
         badges={
-          <Pill tone={st.tone}>
-            {attempt.status === 'SUBMITTED' && <CircleCheck className="size-3" />}
-            {st.label}
-          </Pill>
+          <>
+            <Pill tone={st.tone}>
+              {attempt.status === 'SUBMITTED' && <CircleCheck className="size-3" />}
+              {st.label}
+            </Pill>
+            {voided && <Pill tone="danger">Đã hủy</Pill>}
+          </>
         }
         desc={
           <>
@@ -147,11 +213,16 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
           </>
         }
         actions={
-          isCode && (
-            <FxButton variant="primary" icon={Code} onClick={() => router.visit(`/admin/attempts/${attempt.id}/submissions`)}>
-              Xem bài làm
+          <>
+            <FxButton variant={voided ? undefined : 'danger'} icon={voided ? Undo2 : Ban} onClick={toggleVoid}>
+              {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
             </FxButton>
-          )
+            {isCode && (
+              <FxButton variant="primary" icon={Code} onClick={() => router.visit(`/admin/attempts/${attempt.id}/submissions`)}>
+                Xem bài làm
+              </FxButton>
+            )}
+          </>
         }
       />
 
@@ -206,14 +277,14 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
               </div>
               <span>Vi phạm</span>
               <div className="relative h-[22px] rounded bg-surface">
-                {violations.map((v) => (
+                {groups.map((g) => (
                   <button
-                    key={v.id}
+                    key={g.key}
                     type="button"
-                    title={violationLabel(v.type)}
-                    onClick={() => setSelId(v.id)}
-                    className={cn('absolute top-[3px] h-4 w-2.5 cursor-pointer rounded-[3px] p-0', v.id === sel?.id && 'ring-2 ring-foreground')}
-                    style={{ left: `calc(${pos(v.timestamp)}% - 5px)`, background: TONE_VAR[severityOf(v.severity).tone] }}
+                    title={`${violationLabel(g.head.type)}${g.rows.length > 1 ? ` ×${g.rows.length}` : ''}`}
+                    onClick={() => setSelId(g.head.id)}
+                    className={cn('absolute top-[3px] h-4 w-2.5 cursor-pointer rounded-[3px] p-0', g.key === selGroup?.key && 'ring-2 ring-foreground')}
+                    style={{ left: `calc(${pos(g.head.timestamp)}% - 5px)`, background: TONE_VAR[severityOf(g.head.severity).tone] }}
                   />
                 ))}
                 {sel && <span className="absolute -bottom-1 -top-1 w-0.5 rounded bg-foreground" style={{ left: `${pos(sel.timestamp)}%` }} />}
@@ -245,7 +316,14 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 <Pill tone={severityOf(sel.severity).tone} size="sm" className="font-semibold">
                   {severityOf(sel.severity).label}
                 </Pill>
-                <span className="flex-1 text-[15px] font-semibold">{violationLabel(sel.type)}</span>
+                <span className="flex-1 text-[15px] font-semibold">
+                  {violationLabel(sel.type)}
+                  {selGroup.rows.length > 1 && (
+                    <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                      ×{selGroup.rows.length} · {clockOffset(attempt.started_at, sel.timestamp)} → {clockOffset(attempt.started_at, selGroup.last.timestamp)}
+                    </span>
+                  )}
+                </span>
                 <span className="font-mono text-xs text-muted-foreground">{sel.type}</span>
               </div>
               <div className="flex flex-col gap-3.5 p-4">
@@ -295,10 +373,13 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
           )}
         </div>
 
-        <Panel padded={false} className="min-w-0 flex-[1_1_320px] overflow-hidden">
-          <div className="flex flex-col gap-2.5 border-b border-border px-4 py-3.5">
+        <Panel padded={false} className="sticky top-20 flex max-h-[calc(100vh-6rem)] min-w-0 flex-[1_1_320px] flex-col overflow-hidden">
+          <div className="flex shrink-0 flex-col gap-2.5 border-b border-border px-4 py-3.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold">Vi phạm ({violations.length})</span>
+              <span className="font-semibold">
+                Vi phạm ({violations.length}
+                {groups.length !== violations.length ? ` · ${groups.length} nhóm` : ''})
+              </span>
               <span className="text-xs text-muted-foreground">{pendingCount} chờ duyệt</span>
             </div>
             <div className="flex gap-1.5">
@@ -313,37 +394,65 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 </span>
               ))}
             </div>
+            {violations.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <label className="flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={() => setChecked(allChecked ? new Set() : new Set(violations.map((v) => v.id)))}
+                    className="size-3.5 accent-[var(--primary)]"
+                  />
+                  {checked.size > 0 ? `Đã chọn ${checked.size}` : 'Chọn tất cả'}
+                </label>
+                <div className="flex-1" />
+                <FxButton icon={ShieldCheck} disabled={busy || checked.size === 0} onClick={() => review([...checked], 'false_positive')}>
+                  Nhầm
+                </FxButton>
+                <FxButton variant="danger" icon={ShieldAlert} disabled={busy || checked.size === 0} onClick={() => review([...checked], 'confirmed')}>
+                  Xác nhận
+                </FxButton>
+              </div>
+            )}
           </div>
-          {violations.map((v) => {
-            const sev = severityOf(v.severity);
-            const rs = reviewStatus(v);
-            const on = v.id === sel?.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setSelId(v.id)}
-                className={cn(
-                  'flex w-full cursor-pointer flex-col gap-1.5 border-b border-border px-4 py-3 text-left last:border-b-0',
-                  on ? 'bg-muted/60 shadow-[inset_2px_0_0_var(--primary)]' : 'hover:bg-surface',
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <Pill tone={sev.tone} size="sm" className="font-semibold">
-                    {sev.label}
-                  </Pill>
-                  <span className="flex-1 truncate text-[13px] font-medium">{violationLabel(v.type)}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{clockOffset(attempt.started_at, v.timestamp)}</span>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {groups.map((g) => {
+              const v = g.head;
+              const sev = severityOf(v.severity);
+              const reviewed = g.rows.every((x) => x.is_reviewed);
+              const rs = reviewStatus({ ...v, is_reviewed: reviewed, is_false_positive: reviewed && g.rows.every((x) => x.is_false_positive) });
+              const on = g.key === selGroup?.key;
+              const all = g.rows.every((x) => checked.has(x.id));
+              return (
+                <div key={g.key} className={cn('flex border-b border-border last:border-b-0', on ? 'bg-muted/60 shadow-[inset_2px_0_0_var(--primary)]' : 'hover:bg-surface')}>
+                  <label className="flex shrink-0 cursor-pointer items-start py-3.5 pl-4">
+                    <input type="checkbox" checked={all} onChange={() => toggle(g)} className="size-3.5 accent-[var(--primary)]" />
+                  </label>
+                  <button type="button" onClick={() => setSelId(v.id)} className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 px-3 py-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <Pill tone={sev.tone} size="sm" className="font-semibold">
+                        {sev.label}
+                      </Pill>
+                      <span className="flex-1 truncate text-[13px] font-medium">
+                        {violationLabel(v.type)}
+                        {g.rows.length > 1 && <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">×{g.rows.length}</span>}
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {clockOffset(attempt.started_at, v.timestamp)}
+                        {g.rows.length > 1 && `–${clockOffset(attempt.started_at, g.last.timestamp).slice(3)}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pl-0.5">
+                      <span className="flex-1 truncate text-xs text-muted-foreground">{violationDetail(v.details) || v.type}</span>
+                      <Pill tone={rs.tone} size="sm">
+                        {rs.label}
+                      </Pill>
+                    </div>
+                  </button>
                 </div>
-                <div className="flex items-center gap-2 pl-0.5">
-                  <span className="flex-1 truncate text-xs text-muted-foreground">{violationDetail(v.details) || v.type}</span>
-                  <Pill tone={rs.tone} size="sm">
-                    {rs.label}
-                  </Pill>
-                </div>
-              </button>
-            );
-          })}
+              );
+            })}
+          </div>
         </Panel>
       </div>
     </AdminLayout>

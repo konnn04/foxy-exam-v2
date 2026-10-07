@@ -17,6 +17,7 @@ interface LiveAttempt {
   username: string;
   attempt_number?: number;
   ended_reason?: string | null;
+  voided?: boolean;
   status: string;
   is_flagged: boolean;
   risk_score: number;

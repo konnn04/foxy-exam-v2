@@ -20,6 +20,8 @@ class ExamAttempt extends Model
         'submitted_at',
         'score',
         'risk_score',
+        'voided_at',
+        'void_reason',
         'is_flagged',
         'device_info',
         'session_token',

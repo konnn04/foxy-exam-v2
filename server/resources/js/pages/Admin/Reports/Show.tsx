@@ -33,6 +33,7 @@ interface Props {
     avatar?: string;
     attempt_number?: number;
     ended_reason?: string | null;
+    voided?: boolean;
     status: string;
     score?: number;
     started_at?: string;
@@ -67,7 +68,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
   const rt = useLiveRoom(exam.id, exam.status === 'IN_PROGRESS' || attempts.some((a) => a.status === 'IN_PROGRESS'));
   const isCode = exam.type !== 'QUIZ';
   const st = EXAM_STATUS[exam.status] ?? { label: exam.status, tone: 'neutral' as const };
-  const submitted = attempts.filter((a) => a.status === 'SUBMITTED' || a.status === 'FORCE_ENDED');
+  const submitted = attempts.filter((a) => !a.voided && a.status === 'SUBMITTED' || a.status === 'FORCE_ENDED');
   const scores = submitted.map((a) => Number(a.score ?? 0));
   const avg = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
   const pending = violations.filter((v) => reviewStatus(v).key === 'pending').length;
@@ -170,6 +171,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
                 const hs = HUB_STATUS[h?.status ?? 'offline'];
                 return <Pill tone={hs.tone}>{hs.label}</Pill>;
               }
+              if (a.voided) return <Pill tone="danger">Đã hủy</Pill>;
               if (a.status === 'SUBMITTED' && a.ended_reason === 'ABSENT') return <Pill tone="warning">Vắng thi</Pill>;
               const s = ATTEMPT_STATUS[a.status] ?? { label: a.status, tone: 'neutral' as const };
               return <Pill tone={s.tone}>{s.label}</Pill>;

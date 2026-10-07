@@ -738,6 +738,7 @@ Route::middleware(['auth'])->group(function () {
                 'avatar' => $att->user?->avatar,
                 'attempt_number' => $att->attempt_number,
                 'ended_reason' => $att->ended_reason,
+                'voided' => $att->voided_at !== null,
                 'status' => $att->status,
                 'score' => $att->score,
                 'started_at' => $att->started_at?->format('d/m/Y H:i:s'),
@@ -2007,6 +2008,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/attempts/{id}/force-end', [\App\Http\Controllers\Admin\MonitoringController::class, 'forceEndAttempt'])->whereNumber('id');
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
     Route::get('/attempts/{id}/submissions', [\App\Http\Controllers\Admin\MonitoringController::class, 'submissions'])->whereNumber('id');
+    Route::post('/violations/bulk-review', [\App\Http\Controllers\Admin\MonitoringController::class, 'bulkReview']);
+    Route::post('/attempts/{id}/void', [\App\Http\Controllers\Admin\MonitoringController::class, 'voidAttempt'])->whereNumber('id');
     Route::post('/violations/{id}/review', [\App\Http\Controllers\Admin\MonitoringController::class, 'review'])->whereNumber('id');
 });
 
