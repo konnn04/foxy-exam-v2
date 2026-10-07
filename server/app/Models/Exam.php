@@ -63,6 +63,12 @@ class Exam extends Model
         return $this->belongsToMany(User::class, 'exam_proctors')->withTimestamps();
     }
 
+    /** Enrolled students who may not sit this exam. */
+    public function excludedStudents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'exam_excluded_students')->withTimestamps();
+    }
+
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);

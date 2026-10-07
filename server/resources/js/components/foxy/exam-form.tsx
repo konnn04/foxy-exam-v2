@@ -28,6 +28,9 @@ import {
 } from './ui';
 import { DIFFICULTY, initials } from './domain';
 import { useDialog } from './dialogs';
+import { Combobox } from './combobox';
+import { DateTimeInput } from './datetime-input';
+import { StudentPicker } from './student-picker';
 import { cn } from '@/lib/utils';
 
 export type ExamKind = 'general' | 'programming';
@@ -59,6 +62,7 @@ export interface ExamPayload {
   monitoring_config: Record<string, any>;
   attempts_count: number;
   proctor_ids?: number[];
+  excluded_student_ids?: number[];
 }
 
 export interface ProctorOption {
@@ -117,18 +121,6 @@ const PRESET: Record<Exclude<MonLevel, 'custom'>, MonKey[]> = {
   strict: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'track_keystroke', 'require_mic'],
 };
 
-const toLocal = (iso: string | null) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-const fromLocal = (v: string) => {
-  if (!v) return null;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-};
-
 function detectLevel(kind: ExamKind, f: Record<MonKey, boolean>): MonLevel {
   const keys = MON_KEYS[kind];
   const on = keys.filter((k) => f[k]);
@@ -165,6 +157,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     require_screen: pick('require_screen', false),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
+    excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
     proctor_ids: (exam?.proctor_ids ?? (user?.id ? [user.id] : [])) as number[],
   }));
   const [step, setStep] = useState(0);
@@ -358,13 +351,15 @@ export function ExamInfoStep({ page, state }: { page: ExamFormPageProps; state: 
       </Field>
       <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
         <Field label="Khóa học" error={errors.course_id}>
-          <FxSelect value={form.course_id} onChange={(e) => set('course_id', Number(e.target.value))}>
-            {page.courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} — {c.name}
-              </option>
-            ))}
-          </FxSelect>
+          <Combobox
+            items={page.courses.map((c) => ({ value: c.id, hint: c.code, label: c.name, right: <span className="text-xs text-muted-foreground">{c.students_count ?? 0} SV</span> }))}
+            value={form.course_id}
+            onChange={(i) => {
+              set('course_id', Number(i.value));
+              set('excluded_student_ids', []);
+            }}
+            placeholder="Chọn khóa học"
+          />
         </Field>
         <Field label="Thời lượng" error={errors.duration_minutes} hint="Từ 15 đến 300 phút">
           <FxInput type="number" min={15} max={300} suffix="phút" value={form.duration_minutes} onChange={(e) => set('duration_minutes', Number(e.target.value))} />
@@ -372,10 +367,10 @@ export function ExamInfoStep({ page, state }: { page: ExamFormPageProps; state: 
       </div>
       <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
         <Field label="Mở phòng" error={errors.start_time} hint="Để trống = mở ngay khi lên lịch">
-          <FxInput type="datetime-local" mono value={toLocal(form.start_time)} onChange={(e) => set('start_time', fromLocal(e.target.value))} />
+          <DateTimeInput value={form.start_time} onChange={(v) => set('start_time', v)} />
         </Field>
         <Field label="Đóng phòng" error={errors.end_time} hint="Để trống = không giới hạn">
-          <FxInput type="datetime-local" mono value={toLocal(form.end_time)} onChange={(e) => set('end_time', fromLocal(e.target.value))} />
+          <DateTimeInput value={form.end_time} onChange={(v) => set('end_time', v)} />
         </Field>
       </div>
       {page.exam && (
@@ -423,29 +418,31 @@ export function ExamSetStep({ page, state }: { page: ExamFormPageProps; state: E
             desc="Tạo bộ đề trong Ngân hàng đề rồi quay lại bước này."
           />
         ) : (
-          sets.map((q) => {
-            const on = q.id === form.question_set_id;
-            return (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => set('question_set_id', q.id)}
-                className={cn(
-                  'flex w-full cursor-pointer items-center gap-3 border-b border-border px-4 py-3 text-left last:border-b-0',
-                  on ? 'bg-primary/8 shadow-[inset_2px_0_0_var(--primary)]' : 'hover:bg-surface',
-                )}
-              >
-                <span className={cn('size-3.5 shrink-0 rounded-full', on ? 'border-4 border-primary' : 'border-2 border-foreground/30')} />
-                <span className="font-mono text-xs text-muted-foreground">{q.code}</span>
-                <span className="flex-1 font-medium">{q.name}</span>
-                {q.status === 'DRAFT' && <Pill size="sm">Nháp</Pill>}
-                <span className="text-[13px] text-muted-foreground">
-                  {q.questions_count ?? 0} {isCode ? 'bài' : 'câu'}
-                  {!isCode && q.max_score ? ` · ${q.max_score} điểm` : ''}
+          <div className="flex flex-col gap-3 p-4">
+            <Combobox
+              items={sets.map((q) => ({
+                value: q.id,
+                hint: q.code,
+                label: q.name,
+                right: <span className="text-xs text-muted-foreground">{q.status === 'DRAFT' ? 'Nháp · ' : ''}{q.questions_count ?? 0} {isCode ? 'bài' : 'câu'}</span>,
+              }))}
+              value={form.question_set_id || null}
+              onChange={(i) => set('question_set_id', Number(i.value))}
+              placeholder={`Chọn ${KIND_META[kind].setLabel}…`}
+              invalid={!!errors.question_set_id}
+            />
+            {chosen && (
+              <div className="flex items-center gap-3 rounded-[10px] bg-surface p-3 text-[13px]">
+                <span className="font-mono text-xs text-muted-foreground">{chosen.code}</span>
+                <span className="flex-1 font-medium">{chosen.name}</span>
+                {chosen.status === 'DRAFT' && <Pill size="sm">Nháp</Pill>}
+                <span className="text-muted-foreground">
+                  {chosen.questions_count ?? 0} {isCode ? 'bài' : 'câu'}
+                  {!isCode && chosen.max_score ? ` · ${chosen.max_score} điểm` : ''}
                 </span>
-              </button>
-            );
-          })
+              </div>
+            )}
+          </div>
         )}
         {errors.question_set_id && <div className="px-4 py-2.5 text-xs text-danger-fg">{errors.question_set_id}</div>}
         {changedSet && (
@@ -607,12 +604,13 @@ export function ExamCandidatesStep({ page, state }: { page: ExamFormPageProps; s
   return (
     <div className="flex flex-wrap items-start gap-4">
       <Panel className="flex flex-[1_1_380px] flex-col gap-3">
-        <PanelTitle title="Thí sinh" desc="Lấy từ danh sách ghi danh của khóa học" />
+        <PanelTitle title="Thí sinh" desc="Mặc định tất cả sinh viên ghi danh được thi. Bỏ chọn để cấm thi từng người." />
         <div className="flex items-center gap-3 rounded-[10px] bg-surface p-3">
           <GraduationCap className="size-4" />
           <span className="flex-1">{course ? `${course.code} — ${course.name}` : 'Chưa chọn khóa học'}</span>
           <span className="font-semibold">{course?.students_count ?? 0} SV</span>
         </div>
+        {course && <StudentPicker courseId={course.id} excluded={state.form.excluded_student_ids} onChange={(ids) => state.set('excluded_student_ids', ids)} />}
         {q && (course?.students_count ?? 0) > q.students_limit && (
           <div className="text-xs text-danger-fg">
             Vượt giới hạn {q.students_limit} thí sinh / kỳ của gói {q.plan_name}.

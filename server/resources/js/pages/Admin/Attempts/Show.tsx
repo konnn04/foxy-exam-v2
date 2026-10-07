@@ -15,6 +15,7 @@ import {
   violationDetail,
   violationLabel,
 } from '@/components/foxy/domain';
+import { useMore } from '@/hooks/use-more';
 import { useDialog } from '@/components/foxy/dialogs';
 import { cn } from '@/lib/utils';
 
@@ -98,6 +99,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId)) ?? groups[0];
   const sel = selGroup?.head;
   const voided = attempt.voided_at !== null;
+  const more = useMore(groups.length, 40);
 
   const start = attempt.started_at ? new Date(attempt.started_at).getTime() : null;
   const endIso =
@@ -416,7 +418,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {groups.map((g) => {
+            {groups.slice(0, more.count).map((g) => {
               const v = g.head;
               const sev = severityOf(v.severity);
               const reviewed = g.rows.every((x) => x.is_reviewed);
@@ -452,6 +454,11 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 </div>
               );
             })}
+            {more.hasMore && (
+              <div ref={more.sentinel} className="py-3 text-center text-xs text-muted-foreground">
+                Đang tải thêm…
+              </div>
+            )}
           </div>
         </Panel>
       </div>

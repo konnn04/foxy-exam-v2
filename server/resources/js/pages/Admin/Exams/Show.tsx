@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/datetime';
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Check, Copy, Eye, FileText, Pencil, ShieldAlert, Trash2, Users, X } from 'lucide-react';
@@ -47,7 +48,7 @@ const Q_TYPE: Record<string, string> = {
 };
 
 const fmtDate = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Không giới hạn';
+  iso ? formatDateTime(iso) : 'Không giới hạn';
 
 export default function ShowExam({ user, teams, exam }: Props) {
   const isCode = exam.question_set ? exam.question_set.type === 'PROGRAMMING' : exam.type !== 'QUIZ';

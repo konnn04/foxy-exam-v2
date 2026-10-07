@@ -1,3 +1,4 @@
+import { formatTime } from '@/lib/datetime';
 import type { Tone } from './ui';
 
 /** Severity → short label + tone, as in the design's SEV map (CRITICAL folds into "Cao"). */
@@ -115,9 +116,9 @@ export function timeAgo(iso?: string | null) {
 }
 
 export const hhmm = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+  iso ? formatTime(iso) : '--:--';
 export const hhmmss = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--';
+  iso ? formatTime(iso, true) : '--:--:--';
 
 /** Short human summary of a violation's JSON `details`. */
 export function violationDetail(details: unknown): string {

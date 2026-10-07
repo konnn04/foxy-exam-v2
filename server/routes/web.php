@@ -746,9 +746,13 @@ Route::middleware(['auth'])->group(function () {
                 'violations_count' => $att->violations_count,
             ]);
 
-        $violations = Violation::whereHas('attempt', fn($q) => $q->where('exam_id', $examId))
+        $violationsQuery = fn () => Violation::whereHas('attempt', fn($q) => $q->where('exam_id', $examId));
+        $violationsTotal = $violationsQuery()->count();
+        $violationsPending = $violationsQuery()->where('is_reviewed', false)->count();
+        $violations = $violationsQuery()
             ->with('attempt.user:id,name,username')
-            ->latest()
+            ->orderByDesc('id')
+            ->limit(40)
             ->get()
             ->map(fn($v) => [
                 'id' => $v->id,
@@ -764,6 +768,8 @@ Route::middleware(['auth'])->group(function () {
             ]);
 
         return Inertia::render('Admin/Reports/Show', [
+            'violations_total' => $violationsTotal,
+            'violations_pending' => $violationsPending,
             'user' => $userData,
             'teams' => $teams,
             'exam' => [
@@ -1056,6 +1062,8 @@ Route::middleware(['auth'])->group(function () {
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
             'proctor_ids' => ['nullable', 'array', 'max:50'],
             'proctor_ids.*' => ['integer'],
+            'excluded_student_ids' => ['nullable', 'array', 'max:5000'],
+            'excluded_student_ids.*' => ['integer'],
         ]);
 
         $questionSet = QuestionSet::findOrFail($validated['question_set_id']);
@@ -1103,6 +1111,7 @@ Route::middleware(['auth'])->group(function () {
         ]);
 
         $exam->proctors()->sync($syncProctors($org->id, $validated['proctor_ids'] ?? [], $currentUser->id));
+        $exam->excludedStudents()->sync(\App\Support\Roster::onlyEnrolled((int) $exam->course_id, $validated['excluded_student_ids'] ?? []));
 
         $quotaService->recordExamCreated($org);
 
@@ -1230,8 +1239,16 @@ Route::middleware(['auth'])->group(function () {
                 'monitoring_config' => $exam->monitoring_config ?? (object) [],
                 'attempts_count' => $exam->attempts()->count(),
                 'proctor_ids' => $exam->proctors()->pluck('users.id')->values(),
+                'excluded_student_ids' => $exam->excludedStudents()->pluck('users.id')->values(),
             ],
         ]);
+    });
+
+    Route::get('/admin/courses/{id}/roster', function (Request $request, $id) {
+        $course = \App\Models\Course::findOrFail($id);
+        app(TenantContext::class)->enforceOwnership($course);
+
+        return response()->json(\App\Support\Roster::of($course, (string) $request->query('q', '')));
     });
 
     Route::post('/admin/exams/{id}/update', function (Request $request, $id) use ($syncProctors) {
@@ -1267,6 +1284,8 @@ Route::middleware(['auth'])->group(function () {
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
             'proctor_ids' => ['nullable', 'array', 'max:50'],
             'proctor_ids.*' => ['integer'],
+            'excluded_student_ids' => ['nullable', 'array', 'max:5000'],
+            'excluded_student_ids.*' => ['integer'],
         ]);
 
         $qs = !empty($validated['question_set_id']) ? QuestionSet::find($validated['question_set_id']) : $exam->questionSet;
@@ -1311,6 +1330,9 @@ Route::middleware(['auth'])->group(function () {
             'monitoring_config' => $config,
         ]);
 
+        if ($request->has('excluded_student_ids')) {
+            $exam->excludedStudents()->sync(\App\Support\Roster::onlyEnrolled((int) $exam->course_id, $validated['excluded_student_ids'] ?? []));
+        }
         if ($request->has('proctor_ids')) {
             $exam->proctors()->sync($syncProctors($exam->organization_id, $validated['proctor_ids'] ?? [], Auth::id()));
         }
@@ -2004,6 +2026,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/exams/{id}/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'show'])->whereNumber('id');
     Route::post('/exams/{id}/end', [\App\Http\Controllers\Admin\MonitoringController::class, 'end'])->whereNumber('id');
     Route::get('/exams/{id}/realtime', [\App\Http\Controllers\Admin\MonitoringController::class, 'realtime'])->whereNumber('id');
+    Route::get('/exams/{id}/violations', [\App\Http\Controllers\Admin\MonitoringController::class, 'violationsPage'])->whereNumber('id');
     Route::get('/exams/{id}/live-video', [\App\Http\Controllers\Admin\MonitoringController::class, 'liveVideo'])->whereNumber('id');
     Route::post('/attempts/{id}/force-end', [\App\Http\Controllers\Admin\MonitoringController::class, 'forceEndAttempt'])->whereNumber('id');
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');

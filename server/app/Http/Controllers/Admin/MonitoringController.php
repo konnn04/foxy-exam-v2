@@ -166,7 +166,7 @@ class MonitoringController extends Controller
 
         $feed = Violation::whereHas('attempt', fn ($q) => $q->where('exam_id', $exam->id))
             ->with('attempt.user:id,name,username')
-            ->latest('timestamp')
+            ->orderByDesc('id')
             ->take(40)
             ->get()
             ->map(fn ($v) => [
@@ -259,6 +259,38 @@ class MonitoringController extends Controller
             'hub_ws_url' => rtrim((string) config('services.realtime.hub_url'), '/') . "/v1/rooms/{$exam->id}/ws",
             'hub_http_url' => rtrim((string) config('services.realtime.hub_url'), '/'),
             'record_url' => rtrim((string) config('services.realtime.record_url'), '/'),
+        ]);
+    }
+
+    /** GET /admin/exams/{id}/violations?before=ID&limit=N — newest-first cursor pages of an exam's violations. */
+    public function violationsPage(Request $request, int $examId)
+    {
+        $this->guardStaff();
+        $exam = Exam::findOrFail($examId);
+        $this->tenant->enforceOwnership($exam);
+        $limit = max(1, min(100, (int) $request->query('limit', 40)));
+
+        $rows = Violation::whereHas('attempt', fn ($q) => $q->where('exam_id', $exam->id))
+            ->with('attempt.user:id,name,username')
+            ->when($request->query('before'), fn ($q, $before) => $q->where('id', '<', (int) $before))
+            ->orderByDesc('id')
+            ->limit($limit + 1)
+            ->get();
+
+        return response()->json([
+            'has_more' => $rows->count() > $limit,
+            'data' => $rows->take($limit)->map(fn ($v) => [
+                'id' => $v->id,
+                'attempt_id' => $v->exam_attempt_id,
+                'type' => $v->violation_type,
+                'severity' => $v->severity,
+                'details' => $v->details,
+                'student_name' => $v->attempt?->user?->name ?? 'Thí sinh',
+                'student_username' => $v->attempt?->user?->username ?? '',
+                'timestamp' => $v->timestamp?->toIso8601String(),
+                'is_reviewed' => (bool) $v->is_reviewed,
+                'is_false_positive' => (bool) $v->is_false_positive,
+            ])->values(),
         ]);
     }
 

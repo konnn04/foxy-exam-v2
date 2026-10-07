@@ -35,6 +35,9 @@ class ExamController extends Controller
                 'message' => 'Bạn không thuộc khóa học của kỳ thi này.',
             ], 403);
         }
+        if ($exam->excludedStudents()->whereKey($user->id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Bạn không nằm trong danh sách dự thi của kỳ thi này.'], 403);
+        }
 
         $exam->loadMissing(['course:id,name,code', 'questionSet:id,name,type,max_score']);
 
@@ -99,6 +102,9 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => 'Bạn chưa ghi danh vào môn học này.',
             ], 403);
+        }
+        if ($exam->excludedStudents()->whereKey($user->id)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Bạn không nằm trong danh sách dự thi của kỳ thi này.'], 403);
         }
 
         if ($exam->status !== 'PUBLISHED' && $exam->status !== 'IN_PROGRESS') {

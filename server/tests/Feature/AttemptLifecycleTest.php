@@ -125,4 +125,20 @@ class AttemptLifecycleTest extends TestCase
         $this->actingAs($admin)->post('/admin/violations/bulk-review', ['ids' => $ids, 'decision' => 'false_positive'])->assertRedirect();
         $this->assertEquals(3, Violation::whereIn('id', $ids)->where('is_false_positive', true)->count());
     }
+
+    public function test_an_excluded_student_cannot_see_or_start_the_exam(): void
+    {
+        $exam = Exam::where('code', 'FOXY-2026')->first();
+        $student = User::where('username', 'student01')->first();
+        $exam->excludedStudents()->sync([$student->id]);
+
+        $this->actingAs($student, 'sanctum')->getJson("/api/v1/student/exams/{$exam->id}")->assertStatus(403);
+        $this->actingAs($student, 'sanctum')->postJson("/api/v1/student/exams/{$exam->id}/start", ['device_info' => ['os' => 'test']])->assertStatus(403);
+        $ids = collect($this->actingAs($student, 'sanctum')->getJson("/api/v1/student/courses/{$exam->course_id}/exams")->json('data'))->pluck('id');
+        $this->assertFalse($ids->contains($exam->id));
+
+        $admin = User::where('username', 'admin_hcmus')->first();
+        $roster = $this->actingAs($admin)->getJson("/admin/courses/{$exam->course_id}/roster")->assertOk()->json();
+        $this->assertTrue(collect($roster)->pluck('id')->contains($student->id));
+    }
 }

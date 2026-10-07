@@ -70,6 +70,7 @@ class CourseController extends Controller
 
         $exams = Exam::where('course_id', $course->id)
             ->where('status', 'PUBLISHED')
+            ->whereDoesntHave('excludedStudents', fn ($q) => $q->where('users.id', $user->id))
             ->with(['questionSet:id,name,type,max_score'])
             ->withCount(['programmingProblems'])
             ->orderBy('start_time', 'desc')
@@ -143,6 +144,7 @@ class CourseController extends Controller
 
         $exams = Exam::where('course_id', $course->id)
             ->where('status', 'PUBLISHED')
+            ->whereDoesntHave('excludedStudents', fn ($q) => $q->where('users.id', $user->id))
             ->with(['questionSet:id,name,type,max_score'])
             ->orderBy('created_at', 'desc')
             ->get()

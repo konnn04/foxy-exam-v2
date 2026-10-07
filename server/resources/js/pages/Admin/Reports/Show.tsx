@@ -1,6 +1,8 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
+import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
+import { formatTime } from '@/lib/datetime';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { FxButton, IconButton, PageHeader, Panel, Pill, type Tone } from '@/components/foxy/ui';
@@ -40,6 +42,8 @@ interface Props {
     submitted_at?: string;
     violations_count: number;
   }[];
+  violations_total?: number;
+  violations_pending?: number;
   violations: {
     id: number;
     attempt_id: number;
@@ -63,7 +67,9 @@ const HUB_STATUS: Record<string, { label: string; tone: Tone }> = {
   ended: { label: 'Đã kết thúc', tone: 'info' },
 };
 
-export default function ExamReportShow({ user, teams, exam, attempts = [], violations = [] }: Props) {
+export default function ExamReportShow({ user, teams, exam, attempts = [], violations: head = [], violations_total = 0, violations_pending = 0 }: Props) {
+  const feed = useViolationFeed(exam.id, head as FeedRow[]);
+  const violations = feed.rows as unknown as Props['violations'];
   // the session list shows what the clients really report, not the stored status (falls back when realtime is off)
   const rt = useLiveRoom(exam.id, exam.status === 'IN_PROGRESS' || attempts.some((a) => a.status === 'IN_PROGRESS'));
   const isCode = exam.type !== 'QUIZ';
@@ -71,7 +77,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
   const submitted = attempts.filter((a) => !a.voided && a.status === 'SUBMITTED' || a.status === 'FORCE_ENDED');
   const scores = submitted.map((a) => Number(a.score ?? 0));
   const avg = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
-  const pending = violations.filter((v) => reviewStatus(v).key === 'pending').length;
+  const pending = violations_pending;
 
   return (
     <AdminLayout
@@ -115,7 +121,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
           ['Đã nộp', submitted.length],
           ['Điểm trung bình', avg.toFixed(2)],
           ['Điểm cao nhất', scores.length ? Math.max(...scores) : '—'],
-          ['Vi phạm', violations.length],
+          ['Vi phạm', violations_total],
           ['Chờ duyệt', pending],
         ].map(([k, v]) => (
           <div key={String(k)} className="flex flex-col gap-1 bg-card px-4 py-3.5">
@@ -198,6 +204,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
           <span className="font-semibold">Vi phạm trong kỳ thi</span>
           <span className="text-xs text-muted-foreground">{pending} chờ duyệt</span>
         </div>
+        <div className="max-h-[560px] overflow-y-auto">
         {violations.length === 0 && <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">Chưa ghi nhận vi phạm nào.</div>}
         {violations.map((v) => {
           const sev = severityOf(v.severity);
@@ -209,7 +216,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
               onClick={() => router.visit(`/admin/attempts/${v.attempt_id}?violation=${v.id}`)}
               className="flex w-full cursor-pointer items-center gap-3 border-b border-border px-4 py-2.5 text-left last:border-b-0 hover:bg-surface"
             >
-              <span className="w-[68px] shrink-0 font-mono text-[11px] text-muted-foreground">{new Date(v.timestamp).toLocaleTimeString('vi-VN')}</span>
+              <span className="w-[68px] shrink-0 font-mono text-[11px] text-muted-foreground">{formatTime(v.timestamp, true)}</span>
               <Pill tone={sev.tone} size="sm">
                 {sev.label}
               </Pill>
@@ -224,6 +231,12 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
             </button>
           );
         })}
+        {feed.hasMore && (
+          <div ref={feed.sentinel} className="py-3 text-center text-xs text-muted-foreground">
+            Đang tải thêm…
+          </div>
+        )}
+        </div>
       </Panel>
     </AdminLayout>
   );

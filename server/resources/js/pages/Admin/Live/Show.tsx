@@ -7,6 +7,7 @@ import { Dot, EmptyState, FxButton, Modal, PageHeader, Panel, Pill, Segmented, t
 import { hhmm, hhmmss, severityOf, timeAgo, violationDetail, violationLabel } from '@/components/foxy/domain';
 import { cn } from '@/lib/utils';
 import { useLiveRoom, type LiveRow } from '@/hooks/use-live-room';
+import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
 import { useLiveVideo, type FeedSource } from '@/hooks/use-live-video';
 import { LiveFeed } from '@/components/foxy/live-feed';
 import { useDialog } from '@/components/foxy/dialogs';
@@ -100,7 +101,9 @@ function useCountdown(end: string | null) {
   return { now, left: `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}` };
 }
 
-export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
+export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }: Props) {
+  const violationFeed = useViolationFeed(exam.id, feedHead as FeedRow[]);
+  const feed = violationFeed.rows as unknown as FeedItem[];
   const [filter, setFilter] = useState<'all' | 'viol' | 'offline' | 'done'>('all');
   const [q, setQ] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -404,6 +407,11 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                 </button>
               );
             })}
+            {violationFeed.hasMore && (
+              <div ref={violationFeed.sentinel} className="py-3 text-center text-xs text-muted-foreground">
+                Đang tải thêm…
+              </div>
+            )}
           </div>
         </Panel>
       </div>
