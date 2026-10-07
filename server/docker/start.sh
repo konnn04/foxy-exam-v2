@@ -3,9 +3,17 @@
 set -e
 cd /app
 
-if [ -z "${APP_KEY:-}" ]; then
-  echo "APP_KEY is empty: set it in the environment (php artisan key:generate --show)" >&2
-  exit 1
+key_ok() {
+  php -r '$k = getenv("APP_KEY") ?: ""; if (strpos($k, "base64:") === 0) { $k = base64_decode(substr($k, 7), true) ?: ""; } exit(strlen($k) === 32 ? 0 : 1);'
+}
+
+# no usable key supplied: keep one generated key on the storage volume so sessions survive restarts
+if ! key_ok; then
+  KEYFILE=storage/app/.app_key
+  mkdir -p storage/app
+  [ -s "$KEYFILE" ] || echo "base64:$(head -c 32 /dev/urandom | base64)" > "$KEYFILE"
+  export APP_KEY="$(cat "$KEYFILE")"
+  echo ">> APP_KEY missing or not 32 bytes: using the generated key in $KEYFILE" >&2
 fi
 
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
