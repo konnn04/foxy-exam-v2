@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Activity, LayoutGrid, List, Search, Square, TriangleAlert } from 'lucide-react';
+import { Activity, Ban, LayoutGrid, List, Megaphone, Radio, Search, Square, TriangleAlert } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { Dot, EmptyState, FeedPlaceholder, FxButton, Modal, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
 import { hhmm, hhmmss, severityOf, timeAgo, violationDetail, violationLabel } from '@/components/foxy/domain';
 import { cn } from '@/lib/utils';
+import { useLiveRoom, type LiveRow } from '@/hooks/use-live-room';
+import { useDialog } from '@/components/foxy/dialogs';
 
 interface LiveAttempt {
   id: number;
@@ -53,17 +55,29 @@ interface Props {
   serverTime: string;
 }
 
-type TileState = 'coding' | 'flagged' | 'offline' | 'done';
+type TileState = 'coding' | 'flagged' | 'away' | 'offline' | 'done';
 const TILE: Record<TileState, { label: string; tone: Tone }> = {
   coding: { label: 'Đang làm', tone: 'success' },
   flagged: { label: 'Cảnh báo', tone: 'danger' },
+  away: { label: 'Rời cửa sổ thi', tone: 'warning' },
   offline: { label: 'Mất kết nối', tone: 'neutral' },
   done: { label: 'Đã nộp', tone: 'info' },
 };
 const OFFLINE_AFTER_MS = 2 * 60 * 1000;
 
-function stateOf(a: LiveAttempt, now: number): TileState {
+/**
+ * Tile state. When the realtime hub is connected the status comes from what the client really reports
+ * (heartbeat age, focus, fullscreen); otherwise it falls back to the polled database activity.
+ */
+function stateOf(a: LiveAttempt, now: number, hub: LiveRow | undefined, hubLive: boolean): TileState {
   if (a.status === 'SUBMITTED' || a.status === 'FORCE_ENDED') return 'done';
+  if (hubLive) {
+    if (!hub || hub.status === 'offline') return 'offline';
+    if (hub.status === 'ended') return 'done';
+    if (hub.status === 'away') return 'away';
+    if (a.pending_violations_count > 0 || a.is_flagged) return 'flagged';
+    return 'coding';
+  }
   if (a.status === 'IN_PROGRESS' && a.last_activity_at && now - new Date(a.last_activity_at).getTime() > OFFLINE_AFTER_MS) return 'offline';
   if (a.pending_violations_count > 0 || a.is_flagged) return 'flagged';
   return 'coding';
@@ -87,6 +101,26 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [confirmEnd, setConfirmEnd] = useState(false);
   const { now, left } = useCountdown(exam.end_time);
+  const dialog = useDialog();
+  const rt = useLiveRoom(exam.id);
+  const hubLive = rt.state === 'live';
+
+  const warn = async (a: LiveAttempt) => {
+    const msg = await dialog.prompt({ title: `Nhắc nhở ${a.name}`, label: 'Nội dung hiển thị trên máy thí sinh', initial: 'Hãy quay lại màn hình làm bài.' });
+    if (!msg) return;
+    const ok = await rt.sendCommand(a.id, 'WARN', msg);
+    if (ok) dialog.toast.success('Đã gửi cảnh báo');
+    else dialog.toast.error('Không gửi được cảnh báo');
+  };
+  const suspend = async (a: LiveAttempt) => {
+    const ok = await dialog.confirm({
+      title: `Đình chỉ ${a.name}?`,
+      text: 'Phiên thi kết thúc ngay và không thể tiếp tục.',
+      tone: 'danger',
+      confirmLabel: 'Đình chỉ',
+    });
+    if (ok) router.post(`/admin/attempts/${a.id}/force-end`, {}, { preserveScroll: true });
+  };
 
   // Realtime: refresh tiles and the event feed every 10 s.
   useEffect(() => {
@@ -94,7 +128,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
     return () => clearInterval(t);
   }, []);
 
-  const rows = useMemo(() => attempts.map((a) => ({ ...a, state: stateOf(a, now) })), [attempts, now]);
+  const rows = useMemo(() => attempts.map((a) => ({ ...a, state: stateOf(a, now, rt.rows[a.id], hubLive), hub: rt.rows[a.id] })), [attempts, now, rt.rows, hubLive]);
   const count = (s: TileState) => rows.filter((r) => r.state === s).length;
   const withViol = rows.filter((r) => r.violations_count > 0).length;
   const pending = rows.reduce((n, r) => n + r.pending_violations_count, 0);
@@ -110,6 +144,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
 
   const stats: { label: string; v: number; tone: Tone }[] = [
     { label: 'Đang làm', v: count('coding') + count('flagged'), tone: 'success' },
+    { label: 'Rời cửa sổ', v: count('away'), tone: 'warning' },
     { label: 'Đã nộp', v: count('done'), tone: 'info' },
     { label: 'Mất kết nối', v: count('offline'), tone: 'neutral' },
     { label: 'Có vi phạm', v: withViol, tone: 'danger' },
@@ -212,10 +247,12 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
               {visible.map((s) => {
                 const st = TILE[s.state];
                 return (
-                  <button
+                  <div
                     key={s.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.visit(`/admin/attempts/${s.id}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && router.visit(`/admin/attempts/${s.id}`)}
                     className={cn(
                       'cursor-pointer overflow-hidden rounded-xl border bg-card text-left',
                       s.violations_count ? 'border-danger/55' : 'border-border',
@@ -248,10 +285,26 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                       )}
                       <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
                         <span>{s.state === 'done' ? 'đã nộp' : s.ops_per_min != null ? `${s.ops_per_min} op/m` : '— op/m'}</span>
-                        <span>{s.last_activity_at ? `sự kiện ${timeAgo(s.last_activity_at)}` : ''}</span>
+                        <span>
+                          {hubLive && s.hub
+                            ? `${s.hub.latency_ms ?? '—'} ms${s.hub.camera === false ? ' · mất cam' : ''}${s.hub.screen === false ? ' · mất màn hình' : ''}`
+                            : s.last_activity_at
+                              ? `sự kiện ${timeAgo(s.last_activity_at)}`
+                              : ''}
+                        </span>
                       </div>
+                      {hubLive && s.state !== 'done' && (
+                        <div className="flex gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <FxButton size="sm" icon={Megaphone} onClick={() => warn(s)}>
+                            Nhắc
+                          </FxButton>
+                          <FxButton size="sm" icon={Ban} className="text-danger-fg" onClick={() => suspend(s)}>
+                            Đình chỉ
+                          </FxButton>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -290,7 +343,17 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
               <Activity className="size-4" />
               Luồng sự kiện
             </span>
-            <span className="text-xs text-muted-foreground">Tự cập nhật 10s</span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {hubLive ? (
+                <>
+                  <Radio className="size-3 text-success-fg" /> Realtime
+                </>
+              ) : rt.state === 'disabled' ? (
+                'Tự cập nhật 10s'
+              ) : (
+                'Đang kết nối realtime…'
+              )}
+            </span>
           </div>
           <div className="max-h-[640px] overflow-y-auto">
             {feed.length === 0 && <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">Chưa có sự kiện vi phạm.</div>}

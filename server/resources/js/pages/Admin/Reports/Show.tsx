@@ -3,7 +3,8 @@ import { router } from '@inertiajs/react';
 import { Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { FxButton, IconButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
+import { FxButton, IconButton, PageHeader, Panel, Pill, type Tone } from '@/components/foxy/ui';
+import { useLiveRoom } from '@/hooks/use-live-room';
 import { FxList } from '@/components/foxy/fx-list';
 import { ATTEMPT_STATUS, initials, reviewStatus, severityOf, violationDetail, violationLabel } from '@/components/foxy/domain';
 import { EXAM_STATUS } from '@/components/foxy/exam-form';
@@ -51,7 +52,17 @@ interface Props {
 }
 
 /** Báo cáo kỳ thi: điểm, lượt làm bài và vi phạm của toàn phòng. */
+const HUB_STATUS: Record<string, { label: string; tone: Tone }> = {
+  online: { label: 'Đang làm', tone: 'success' },
+  away: { label: 'Rời cửa sổ', tone: 'warning' },
+  offline: { label: 'Mất kết nối', tone: 'neutral' },
+  paused: { label: 'Tạm dừng', tone: 'info' },
+  ended: { label: 'Đã kết thúc', tone: 'info' },
+};
+
 export default function ExamReportShow({ user, teams, exam, attempts = [], violations = [] }: Props) {
+  // the session list shows what the clients really report, not the stored status (falls back when realtime is off)
+  const rt = useLiveRoom(exam.id, exam.status === 'IN_PROGRESS' || attempts.some((a) => a.status === 'IN_PROGRESS'));
   const isCode = exam.type !== 'QUIZ';
   const st = EXAM_STATUS[exam.status] ?? { label: exam.status, tone: 'neutral' as const };
   const submitted = attempts.filter((a) => a.status === 'SUBMITTED' || a.status === 'FORCE_ENDED');
@@ -151,6 +162,11 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
             label: 'Trạng thái',
             width: '120px',
             render: (a) => {
+              if (a.status === 'IN_PROGRESS' && rt.state === 'live') {
+                const h = rt.rows[a.id];
+                const hs = HUB_STATUS[h?.status ?? 'offline'];
+                return <Pill tone={hs.tone}>{hs.label}</Pill>;
+              }
               const s = ATTEMPT_STATUS[a.status] ?? { label: a.status, tone: 'neutral' as const };
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
