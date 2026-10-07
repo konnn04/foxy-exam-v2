@@ -43,6 +43,7 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
     return;
   }
 
+  console.info(`[windowNav] ${current.label} -> ${toLabel}`);
   await target.show();
   await target.setFocus();
   await emitTo(toLabel, SHOWN_EVENT, toLabel);
@@ -57,6 +58,13 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
       await w?.hide().catch(() => {});
     }),
   );
+
+  // whatever hid the target meanwhile (a stray close, a racing switch) must not leave the student with nothing on screen
+  if (!(await target.isVisible().catch(() => true))) {
+    console.warn(`[windowNav] "${toLabel}" was hidden right after being shown; showing it again`, new Error().stack);
+    await target.show();
+    await target.setFocus();
+  }
 
   // Windows sometimes leaves a window behind another app's: a short always-on-top pulse raises it for real.
   if (toLabel === AppWindow.ExamClassic || toLabel === AppWindow.ExamCode) {

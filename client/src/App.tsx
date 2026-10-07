@@ -7,6 +7,7 @@ import ExamClassic from "./windows/ExamClassic";
 import ExamCode from "./windows/ExamCode";
 import { AppWindow } from "./lib/windowNav";
 import DialogHost from "./components/Dialogs";
+import { dialog, errorText } from "./lib/dialog";
 
 /**
  * Mỗi cửa sổ Tauri load chung một bundle React duy nhất, nên ở đây ta chỉ cần
@@ -18,6 +19,19 @@ function App() {
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
+    // an error nobody caught must still reach the student instead of the window silently doing nothing
+    const show = (title: string, err: unknown) => {
+      console.error(`[app] ${title}`, err);
+      void dialog.alert({ title, text: errorText(err), tone: "danger" });
+    };
+    const onError = (e: ErrorEvent) => show("Có lỗi không mong muốn", e.error ?? e.message);
+    const onRejection = (e: PromiseRejectionEvent) => show("Thao tác thất bại", e.reason);
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
   }, []);
 
   const screen = (() => {
