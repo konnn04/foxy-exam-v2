@@ -29,6 +29,9 @@ export interface HeartbeatState {
   screen?: boolean;
   latency_ms?: number;
   question?: number;
+  /** 0..100 from the on-device face analysis */
+  attention?: number;
+  faces?: number;
 }
 
 interface QueuedEvent {
@@ -51,18 +54,6 @@ export interface RealtimeHandlers {
 
 const MAX_QUEUE = 5000;
 const FLUSH_TIMEOUT_MS = 8000;
-
-/** Violation types the realtime plane knows; the client's extra detectors are mapped onto them. */
-const SERVER_TYPE: Record<string, string> = {
-  BANNED_APP: "PROHIBITED_DEVICE",
-  MULTIPLE_MONITORS: "PROHIBITED_DEVICE",
-  DEVICE_CHANGED: "PROHIBITED_DEVICE",
-  SYSTEM_SHORTCUT: "TAB_SWITCH",
-};
-
-export function toServerViolation(type: string): string {
-  return SERVER_TYPE[type] ?? type;
-}
 
 export class RealtimeClient {
   private session: RealtimeSession | null = null;

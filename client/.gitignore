@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# fetched by scripts/sync-mediapipe.mjs
+public/mediapipe

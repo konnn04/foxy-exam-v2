@@ -23,6 +23,7 @@ import { AppWindow, onWindowShown, openPopup, switchWindow } from "../lib/window
 import { setAuthenticated } from "../lib/auth";
 import { clearAuth, getAuth, saveAuth, type AuthData } from "../lib/authStore";
 import { clearSession } from "../lib/session";
+import { takeNotice } from "../lib/notice";
 import { savePendingExam } from "../lib/lobbyMedia";
 import { useTheme } from "../lib/theme";
 import {
@@ -116,6 +117,8 @@ export default function Main() {
   useEffect(() => {
     void load();
     return onWindowShown(() => {
+      const notice = takeNotice();
+      if (notice) setError(notice);
       void load();
       device.refresh();
     });

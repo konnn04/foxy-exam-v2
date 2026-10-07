@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./config";
 import { getAuth } from "./authStore";
+import { getSession } from "./session";
 
 /**
  * Client gọi FoxyExam Core API. Toàn bộ type ở dưới lấy từ dữ liệu response
@@ -50,6 +51,9 @@ async function request<T>(
   if (auth) {
     const auth = getAuth();
     if (auth) headers.Authorization = `Bearer ${auth.token}`;
+    // a student can hold several attempts (retakes, parallel exams): name the one this window belongs to
+    const attempt = getSession()?.attemptId;
+    if (attempt) headers["X-Foxy-Attempt"] = String(attempt);
   }
 
   let res: Response;
@@ -84,6 +88,10 @@ async function request<T>(
 // ---------------------------------------------------------------------------
 
 export interface MonitoringConfig {
+  /** process names (lowercase, no .exe) usable during the exam; empty = everything but the exam is a violation */
+  allowed_apps?: string[];
+  require_screen?: boolean;
+  require_mic?: boolean;
   prevent_tab_switch: boolean;
   prevent_paste: boolean;
   max_paste_chars: number;
@@ -568,7 +576,13 @@ export type ViolationType =
   | "BANNED_APP"
   | "MULTIPLE_MONITORS"
   | "SYSTEM_SHORTCUT"
-  | "DEVICE_CHANGED";
+  | "DEVICE_CHANGED"
+  | "APP_NOT_ALLOWED"
+  | "LOOKING_AWAY"
+  | "FACE_TOO_FAR"
+  | "CAMERA_LOST"
+  | "SCREEN_SHARE_STOPPED"
+  | "OFFLINE_TOO_LONG";
 
 export type ViolationSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 

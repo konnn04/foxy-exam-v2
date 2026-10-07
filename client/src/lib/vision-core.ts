@@ -1,0 +1,115 @@
+/**
+ * Pure maths + decision logic of the camera attention check (no MediaPipe, no DOM): head pose from the facial
+ * transformation matrix, gaze from blendshapes, an attention score, and the debounce that turns noisy per-frame
+ * readings into a few meaningful violations.
+ */
+
+export interface FrameReading {
+  faces: number;
+  /** face width / frame width of the first face, 0..1 */
+  faceRatio: number;
+  /** degrees; 0 = looking at the screen */
+  yaw: number;
+  pitch: number;
+  /** 0..1 how far the eyes look away from the screen centre */
+  eyeAway: number;
+}
+
+export const EMPTY_READING: FrameReading = { faces: 0, faceRatio: 0, yaw: 0, pitch: 0, eyeAway: 0 };
+
+const deg = (r: number) => (r * 180) / Math.PI;
+
+/** Head yaw / pitch (degrees) from MediaPipe's 4x4 column-major facial transformation matrix. */
+export function headPose(m: ArrayLike<number>): { yaw: number; pitch: number } {
+  // third column of the rotation = where the face looks
+  const fx = m[8];
+  const fy = m[9];
+  const fz = m[10];
+  return { yaw: deg(Math.atan2(fx, Math.abs(fz))), pitch: deg(Math.atan2(fy, Math.hypot(fx, fz))) };
+}
+
+type Shapes = Record<string, number>;
+
+/** 0..1 how far the eyes look sideways / up / down (MediaPipe blendshape scores). */
+export function eyeAway(s: Shapes): number {
+  const g = (k: string) => s[k] ?? 0;
+  const horizontal = Math.abs(g("eyeLookOutRight") + g("eyeLookInLeft") - g("eyeLookInRight") - g("eyeLookOutLeft")) / 2;
+  const vertical = Math.abs(g("eyeLookUpLeft") + g("eyeLookUpRight") - g("eyeLookDownLeft") - g("eyeLookDownRight")) / 2;
+  return Math.min(1, Math.max(horizontal, vertical));
+}
+
+/** Face width as a share of the frame, from normalized landmarks. */
+export function faceRatio(points: { x: number }[]): number {
+  if (points.length === 0) return 0;
+  let lo = 1;
+  let hi = 0;
+  for (const p of points) {
+    if (p.x < lo) lo = p.x;
+    if (p.x > hi) hi = p.x;
+  }
+  return Math.max(0, hi - lo);
+}
+
+export const LIMITS = { yaw: 35, pitch: 30, eye: 0.6, tooFar: 0.14 };
+
+export function isLookingAway(r: FrameReading): boolean {
+  return Math.abs(r.yaw) > LIMITS.yaw || Math.abs(r.pitch) > LIMITS.pitch || r.eyeAway > LIMITS.eye;
+}
+
+/** 0..100: how much the candidate faces the screen. 0 when nobody is there. */
+export function attention(r: FrameReading): number {
+  if (r.faces === 0) return 0;
+  const worst = Math.max(Math.abs(r.yaw) / 45, Math.abs(r.pitch) / 40, r.eyeAway / 0.8);
+  return Math.round(Math.max(0, Math.min(1, 1 - worst)) * 100);
+}
+
+// ---------------------------------------------------------------------------------------------
+
+export type VisionEventKind = "NO_FACE_DETECTED" | "MULTIPLE_PEOPLE" | "LOOKING_AWAY" | "FACE_TOO_FAR";
+
+export interface VisionEvent {
+  kind: VisionEventKind;
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  message: string;
+  seconds: number;
+}
+
+/** How long a condition must last before it is a violation, and how long before it may be reported again. */
+export const RULES: Record<VisionEventKind, { after: number; severity: VisionEvent["severity"]; cooldown: number; message: string }> = {
+  NO_FACE_DETECTED: { after: 5, severity: "MEDIUM", cooldown: 30, message: "Không thấy khuôn mặt thí sinh" },
+  MULTIPLE_PEOPLE: { after: 2, severity: "HIGH", cooldown: 30, message: "Có nhiều hơn một người trong khung hình" },
+  LOOKING_AWAY: { after: 6, severity: "LOW", cooldown: 45, message: "Nhìn ra ngoài màn hình quá lâu" },
+  FACE_TOO_FAR: { after: 8, severity: "LOW", cooldown: 60, message: "Ngồi quá xa camera" },
+};
+
+/** Feeds frame readings in, emits an event when a condition has lasted long enough (once per cooldown). */
+export class AttentionTracker {
+  private since: Partial<Record<VisionEventKind, number>> = {};
+  private lastEmit: Partial<Record<VisionEventKind, number>> = {};
+
+  /** @param t seconds (monotonic) */
+  update(r: FrameReading, t: number): VisionEvent[] {
+    const active: Record<VisionEventKind, boolean> = {
+      NO_FACE_DETECTED: r.faces === 0,
+      MULTIPLE_PEOPLE: r.faces > 1,
+      LOOKING_AWAY: r.faces === 1 && isLookingAway(r),
+      FACE_TOO_FAR: r.faces === 1 && r.faceRatio < LIMITS.tooFar,
+    };
+    const out: VisionEvent[] = [];
+    for (const kind of Object.keys(active) as VisionEventKind[]) {
+      if (!active[kind]) {
+        delete this.since[kind];
+        continue;
+      }
+      this.since[kind] ??= t;
+      const lasted = t - this.since[kind]!;
+      const rule = RULES[kind];
+      const quiet = t - (this.lastEmit[kind] ?? -Infinity) >= rule.cooldown;
+      if (lasted >= rule.after && quiet) {
+        this.lastEmit[kind] = t;
+        out.push({ kind, severity: rule.severity, message: rule.message, seconds: Math.round(lasted) });
+      }
+    }
+    return out;
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * Dev-only bypasses for testing the exam flow without a proctoring-grade machine
- * (no camera, two monitors, OBS running...). Kiosk lockdown is already off in dev builds (see LOCKDOWN).
+ * (no camera, two monitors, OBS running...). Lockdown is ON in dev builds too; the `lockdown` flag turns it off.
  *
  * HARD RULE: every flag is `false` unless `import.meta.env.DEV` is true (`pnpm tauri dev` / `pnpm dev`).
  * Production builds replace DEV with `false` at build time, so these code paths are dead and tree-shaken —
@@ -16,6 +16,7 @@ export type DevFlag =
   | "setup" // skip the pre-exam device check ("lobby") entirely
   | "camera" // treat the camera as OK / not required, do not publish video
   | "screen" // treat screen sharing as OK / not required
+  | "lockdown" // do not force fullscreen / always-on-top / shortcut blocking (lockdown is on in dev builds too)
   | "devices" // ignore extra monitors, banned apps and external keyboards (no lockdown block, no violations for them)
   | "realtime" // do not use the realtime plane, fall back to the plain REST endpoints
   | "network"; // continue even when the server health check fails
@@ -24,6 +25,7 @@ export const DEV_FLAGS: { flag: DevFlag; label: string; hint: string }[] = [
   { flag: "setup", label: "Bỏ qua bước kiểm tra thiết bị", hint: "Vào thẳng phòng thi" },
   { flag: "camera", label: "Bỏ qua camera", hint: "Không cần camera, không phát video" },
   { flag: "screen", label: "Bỏ qua chia sẻ màn hình", hint: "Không cần quyền quay màn hình" },
+  { flag: "lockdown", label: "Không khoá máy", hint: "Không ép toàn màn hình / luôn trên cùng / chặn phím tắt" },
   { flag: "devices", label: "Bỏ qua nhiều màn hình / app cấm", hint: "Không khoá bài khi có OBS, màn hình phụ…" },
   { flag: "realtime", label: "Tắt realtime (dùng REST)", hint: "Test đường dự phòng /student/violation, /op-log" },
   { flag: "network", label: "Bỏ qua kiểm tra mạng", hint: "Cho vào thi dù health check lỗi" },

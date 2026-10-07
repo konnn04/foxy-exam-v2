@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { Camera, Download, Keyboard, LogOut, Mic, Monitor, MonitorSmartphone, Mouse, Palette, RefreshCw, Usb } from "lucide-react";
+import { Camera, Cpu, Download, Keyboard, LogOut, Mic, Monitor, MonitorSmartphone, Mouse, Palette, RefreshCw, Usb } from "lucide-react";
 import { Badge, Button, Card, CardHeader, cx } from "../../components/ui";
 import { useTheme, type ThemePref } from "../../lib/theme";
 import { AppWindow, openPopup } from "../../lib/windowNav";
 import { getAuth } from "../../lib/authStore";
+import { getFaceDelegate, setFaceDelegate, type FaceDelegate } from "../../lib/vision";
 import type { Device, DeviceKind } from "../../lib/monitor";
 import type { PageProps } from "./shared";
 
@@ -18,6 +19,7 @@ const KIND_META: Record<DeviceKind, { label: string; icon: typeof Camera }> = {
 export default function Settings({ device, onLogout }: PageProps & { onLogout: () => void }) {
   const { pref, setPref } = useTheme();
   const [version, setVersion] = useState("");
+  const [delegate, setDelegate] = useState<FaceDelegate>(getFaceDelegate);
   useEffect(() => void getVersion().then(setVersion).catch(() => {}), []);
 
   const snap = device.snapshot;
@@ -48,6 +50,37 @@ export default function Settings({ device, onLogout }: PageProps & { onLogout: (
                 {label}
               </button>
             ))}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader icon={<Cpu size={15} />} title="Phân tích khuôn mặt (MediaPipe)" />
+          <div className="space-y-2 p-4">
+            <div className="flex gap-2">
+              {(
+                [
+                  ["auto", "Tự động"],
+                  ["gpu", "GPU"],
+                  ["cpu", "CPU"],
+                ] as [FaceDelegate, string][]
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setFaceDelegate(value);
+                    setDelegate(value);
+                  }}
+                  className={cx(
+                    "flex-1 rounded-lg border px-3 py-2 text-xs transition",
+                    delegate === value ? "border-accent bg-accent-soft font-medium text-accent-fg" : "border-line text-muted hover:bg-surface-3",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted">Tự động dùng GPU và chuyển sang CPU nếu GPU không chạy được. Áp dụng từ lần vào thi tiếp theo.</p>
           </div>
         </Card>
 

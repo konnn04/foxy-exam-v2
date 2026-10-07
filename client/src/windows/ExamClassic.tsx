@@ -4,6 +4,8 @@ import { ConfirmModal, ExamShell } from "../components/ExamShell";
 import { Badge, Button, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { clearSession, getSession, type Session } from "../lib/session";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
 import ExamLobby from "../components/ExamLobby";
 import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
@@ -114,15 +116,16 @@ export default function ExamClassic() {
   );
 
   // The window is shown either to run the lobby (a pending exam, no attempt yet) or to resume a running attempt.
-  useEffect(
-    () =>
-      onWindowShown(() => {
-        const p = getPendingExam();
-        setPending(p);
-        if (!p) load();
-      }),
-    [load],
-  );
+  useEffect(() => {
+    const shown = () => {
+      const p = getPendingExam();
+      setPending(p);
+      if (!p) load();
+    };
+    // a window reloaded after an exam is hidden; one that is already visible at mount missed the "shown" event
+    void getCurrentWindow().isVisible().then((v) => v && shown());
+    return onWindowShown(shown);
+  }, [load]);
 
   useEffect(() => {
     const t = window.setInterval(() => setTimeRemaining((p) => (p === null ? p : Math.max(0, p - 1))), 1000);
@@ -190,14 +193,17 @@ export default function ExamClassic() {
   };
   const answeredCount = answerable.filter(isAnswered).length;
 
+  /** Leave the room (submitted or not): stop everything, show the dashboard, then reload this window so no state survives. */
   async function leave() {
     await runtime.end();
     await switchWindow(AppWindow.Main);
+    window.location.reload();
   }
 
   // The server ended the attempt (proctor force-end, exam closed): stop and go home.
   useEffect(() => {
     if (!runtime.ended) return;
+    setNotice(runtime.ended);
     clearSession();
     void leave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -276,12 +282,8 @@ export default function ExamClassic() {
         subtitle={`${session.exam.code} · Lần thi #${session.attemptNumber}`}
         remainingSeconds={timeRemaining}
         onSubmit={() => setShowSubmit(true)}
-        guard={guard}
-        warning={runtime.warning}
-        onDismissWarning={runtime.dismissWarning}
-        paused={runtime.paused}
-        realtime={runtime.status}
-        media={runtime.mediaState}
+        runtime={runtime}
+        onLeave={leave}
         toolbar={
           <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-5 text-xs">
             <span className="font-medium text-fg">

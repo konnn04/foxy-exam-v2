@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "r
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
 import { bypass } from "./dev";
-import { toServerViolation, type RealtimeClient } from "./realtime";
+import { type RealtimeClient } from "./realtime";
 import {
   DEFAULT_BANNED_APPS,
   drainKeylog,
@@ -19,7 +19,7 @@ import {
  * bản build production — chạy `tauri dev` vẫn thấy & báo vi phạm nhưng không
  * khoá máy, để lập trình viên không bị kẹt.
  */
-export const LOCKDOWN = import.meta.env.PROD;
+export const lockdownOn = () => !bypass("lockdown");
 
 const KEYLOG_FLUSH_MS = 15_000;
 
@@ -41,6 +41,8 @@ export interface ExamGuardState {
   externalKeyboards: number;
   /** Lý do màn hình làm bài đang bị che (phải khắc phục mới làm tiếp được). */
   blockReason: string | null;
+  /** The foreground app is one the exam allows (e.g. Visual Studio): the exam window then steps aside. */
+  allowedForeground: boolean;
 }
 
 const INITIAL: ExamGuardState = {
@@ -52,7 +54,10 @@ const INITIAL: ExamGuardState = {
   microphones: 0,
   externalKeyboards: 0,
   blockReason: null,
+  allowedForeground: false,
 };
+
+const procName = (n: string) => n.toLowerCase().replace(/\.exe$/, "");
 
 const externalKeyboards = (devices: Device[]) =>
   new Set(devices.filter((d) => d.kind === "keyboard" && d.hardwareId).map((d) => d.hardwareId)).size;
@@ -69,6 +74,8 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const opLogSeq = useRef(0);
   const pasteCount = useRef(0);
   const cleanup = useRef<(() => void)[]>([]);
+  const allowedApps = useRef<string[]>([]);
+  allowedApps.current = (config?.allowed_apps ?? []).map(procName);
 
   const record = useCallback(
     (type: ViolationType, severity: ViolationSeverity, message: string, details?: Record<string, unknown>) => {
@@ -77,7 +84,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       if (rt?.enabled) {
         // batched with everything else (about once a second); the original type is kept in details
         rt.emit("violation", {
-          violation_type: toServerViolation(type),
+          violation_type: type,
           severity,
           details: { message, client_type: type, ...details },
         });
@@ -127,7 +134,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     cleanup.current = [];
     await flushKeylog();
     await stopMonitor().catch(() => {});
-    if (LOCKDOWN) {
+    if (lockdownOn()) {
       const win = getCurrentWindow();
       await win.setAlwaysOnTop(false).catch(() => {});
       await win.setFullscreen(false).catch(() => {});
@@ -145,9 +152,12 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
 
     on(
       onMonitor("monitor://foreground", (p) => {
-        rt?.setState({ focus: p.isSelf });
-        if (p.isSelf) return;
-        record("WINDOW_LOST_FOCUS", "MEDIUM", `Chuyển sang ứng dụng khác: ${p.name || "không rõ"}${p.title ? ` — ${p.title}` : ""}`, {
+        const allowed = allowedApps.current.includes(procName(p.name));
+        rt?.setState({ focus: p.isSelf || allowed });
+        setState((st) => (st.allowedForeground === allowed && !p.isSelf ? st : { ...st, allowedForeground: allowed && !p.isSelf }));
+        if (p.isSelf || allowed) return;
+        // with an allow-list the offence is "app not allowed", otherwise plain loss of focus
+        record(allowedApps.current.length > 0 ? "APP_NOT_ALLOWED" : "WINDOW_LOST_FOCUS", "MEDIUM", `Chuyển sang ứng dụng khác: ${p.name || "không rõ"}${p.title ? ` — ${p.title}` : ""}`, {
           process: p.name,
           title: p.title,
         });
@@ -199,21 +209,42 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     on(() => window.clearInterval(flushTimer));
 
     // presence signals for the proctor dashboard: window focus + fullscreen, sent with every heartbeat
-    rt?.setState({ focus: document.hasFocus(), fullscreen: !LOCKDOWN });
+    rt?.setState({ focus: document.hasFocus(), fullscreen: !lockdownOn() });
     const onFocus = () => rt?.setState({ focus: true });
     const onBlur = () => rt?.setState({ focus: false });
     window.addEventListener("focus", onFocus);
     window.addEventListener("blur", onBlur);
     on(() => window.removeEventListener("focus", onFocus));
     on(() => window.removeEventListener("blur", onBlur));
-    if (LOCKDOWN) {
-      const fsTimer = window.setInterval(() => {
-        void getCurrentWindow()
-          .isFullscreen()
-          .then((fs) => rt?.setState({ fullscreen: fs }))
-          .catch(() => {});
-      }, 3000);
-      on(() => window.clearInterval(fsTimer));
+
+    // Lockdown: keep the exam window fullscreen, on top and focused. Re-asserted every 1.5 s because another
+    // always-on-top window (or Alt+Tab) can take the top spot at any time. With an allow-list the candidate
+    // must be able to open the allowed software, so the window is not forced and the app is only watched.
+    if (lockdownOn() && allowedApps.current.length === 0) {
+      const win = getCurrentWindow();
+      let busy = false;
+      const enforce = async () => {
+        if (busy || !activeRef.current) return;
+        busy = true;
+        try {
+          if (await win.isMinimized()) {
+            await win.unminimize();
+            record("WINDOW_LOST_FOCUS", "MEDIUM", "Thu nhỏ cửa sổ thi");
+          }
+          const fs = await win.isFullscreen();
+          rt?.setState({ fullscreen: fs });
+          if (!fs) await win.setFullscreen(true);
+          await win.setAlwaysOnTop(true);
+          if (!(await win.isFocused())) await win.setFocus();
+        } catch {
+          /* a failed enforcement round is retried on the next tick */
+        } finally {
+          busy = false;
+        }
+      };
+      void enforce();
+      const t = window.setInterval(() => void enforce(), 1500);
+      on(() => window.clearInterval(t));
     }
 
     try {
@@ -224,7 +255,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
         bannedApps: DEFAULT_BANNED_APPS,
         watchForeground: true,
         keyboardHook: true,
-        blockShortcuts: LOCKDOWN,
+        blockShortcuts: lockdownOn() && allowedApps.current.length === 0,
       });
       const snap = await getSnapshot();
       const kb = externalKeyboards(snap.devices);
@@ -245,11 +276,6 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       console.error("[guard] Không bật được giám sát:", err);
     }
 
-    if (LOCKDOWN) {
-      const win = getCurrentWindow();
-      await win.setFullscreen(true).catch(() => {});
-      await win.setAlwaysOnTop(true).catch(() => {});
-    }
   }, [record, flushKeylog, rt]);
 
   // Chặn dán (nếu cấu hình yêu cầu) — mọi lần dán đều được đếm vào op-log.

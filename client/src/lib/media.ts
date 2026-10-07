@@ -91,7 +91,7 @@ export interface LiveKitInfo {
 
 export class LiveKitPublisher {
   private room: Room | null = null;
-  private published = new Set<string>();
+  private tracks = new Map<string, MediaStreamTrack>();
 
   constructor(private onState?: (state: "connecting" | "connected" | "reconnecting" | "disconnected") => void) {}
 
@@ -103,26 +103,29 @@ export class LiveKitPublisher {
           s === ConnectionState.Connected ? "connected" : s === ConnectionState.Reconnecting ? "reconnecting" : s === ConnectionState.Disconnected ? "disconnected" : "connecting",
         );
       })
-      .on(RoomEvent.Disconnected, () => this.published.clear());
+      .on(RoomEvent.Disconnected, () => this.tracks.clear());
     this.onState?.("connecting");
     await room.connect(info.url, info.token, { autoSubscribe: false });
     this.room = room;
   }
 
-  /** Publish a captured stream's video track. A second call for the same kind is a no-op. */
+  /** Publish a captured stream's video track; a new track of the same kind replaces the old one (camera plugged back in). */
   async publish(kind: "camera" | "screen", stream: MediaStream): Promise<void> {
     const track = stream.getVideoTracks()[0];
-    if (!this.room || !track || this.published.has(kind)) return;
+    if (!this.room || !track) return;
+    const old = this.tracks.get(kind);
+    if (old === track) return;
+    if (old) await this.room.localParticipant.unpublishTrack(old).catch(() => {});
     await this.room.localParticipant.publishTrack(track, {
       source: kind === "camera" ? Track.Source.Camera : Track.Source.ScreenShare,
       simulcast: false,
       videoEncoding: kind === "camera" ? { maxBitrate: 350_000, maxFramerate: 12 } : { maxBitrate: 700_000, maxFramerate: 5 },
     });
-    this.published.add(kind);
+    this.tracks.set(kind, track);
   }
 
   async disconnect(): Promise<void> {
-    this.published.clear();
+    this.tracks.clear();
     await this.room?.disconnect().catch(() => {});
     this.room = null;
     this.onState?.("disconnected");

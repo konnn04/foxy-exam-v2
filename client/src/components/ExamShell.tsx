@@ -1,11 +1,12 @@
-import type { ReactNode } from "react";
-import { AlertTriangle, Camera, Clock, Cpu, Lock, Mic, Monitor, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, WifiOff } from "lucide-react";
 import { Button, cx } from "./ui";
-import { LOCKDOWN, type ExamGuardState } from "../lib/examGuard";
 import { DevPanel } from "./DevPanel";
+import { lockdownOn } from "../lib/examGuard";
 import { activeBypasses } from "../lib/dev";
-import type { ExamWarning } from "../lib/examRuntime";
-import type { RtStatus } from "../lib/realtime";
+import { OFFLINE_LIMIT_S, type useExamRuntime } from "../lib/examRuntime";
+
+type Runtime = ReturnType<typeof useExamRuntime>;
 
 export function formatCountdown(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -17,8 +18,9 @@ export function formatCountdown(totalSeconds: number): string {
 }
 
 /**
- * Khung chung cho cửa sổ thi: dải cảnh báo chế độ thi, header (tiêu đề, đồng hồ,
- * nộp bài), nội dung, panel giám sát bên phải, thanh trạng thái dưới cùng.
+ * Shared frame of the exam windows: lockdown banner with live status chips, header (title, clock, submit),
+ * the content, the monitoring panel (camera preview, attention, devices, violations) and the blocking overlays
+ * (lost camera / screen share, banned app, offline, paused). Closing the window asks first.
  */
 export function ExamShell({
   title,
@@ -28,15 +30,11 @@ export function ExamShell({
   submitLabel = "Nộp bài",
   onSubmit,
   submitDisabled,
-  guard,
+  runtime,
+  onLeave,
   toolbar,
   children,
   panelExtra,
-  warning,
-  onDismissWarning,
-  paused,
-  realtime,
-  media,
 }: {
   title: string;
   subtitle: string;
@@ -45,36 +43,33 @@ export function ExamShell({
   submitLabel?: string;
   onSubmit: () => void;
   submitDisabled?: boolean;
-  guard: ExamGuardState;
+  runtime: Runtime;
+  /** Leave the room WITHOUT submitting (the attempt stays open for 5 minutes). */
+  onLeave: () => Promise<void> | void;
   toolbar?: ReactNode;
   children: ReactNode;
   panelExtra?: ReactNode;
-  /** Proctor message (command WARN) shown above the paper until dismissed. */
-  warning?: ExamWarning | null;
-  onDismissWarning?: () => void;
-  /** Proctor paused this attempt: the paper is covered. */
-  paused?: boolean;
-  realtime?: RtStatus;
-  media?: string;
 }) {
+  const { guard, warning, paused, status, mediaState, blocker, offlineFor } = runtime;
   const low = remainingSeconds !== null && remainingSeconds < 300;
+  const offline = offlineFor >= 10; // ignore short hiccups
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-app text-fg">
-      {/* Dải chế độ thi */}
       <div className="flex h-7 shrink-0 items-center gap-2 bg-[#5c1a12] px-4 text-[11px] text-white">
         <Lock size={12} />
-        <span className="font-semibold uppercase tracking-wide">Chế độ thi{LOCKDOWN ? " — máy đang bị khoá" : " — bản dev (không khoá máy)"}</span>
+        <span className="font-semibold uppercase tracking-wide">Chế độ thi{lockdownOn() ? " — máy đang bị khoá" : " — không khoá máy (dev)"}</span>
         <span className="text-white/70">| Không thu nhỏ, đổi cửa sổ hoặc chụp màn hình</span>
-        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-[#7ee2a0]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#7ee2a0] live-dot" /> {guard.active ? "đang giám sát" : "chưa giám sát"}
-          {realtime && <span className={cx("ml-2", realtime === "degraded" && "text-[#ffd479]")}>· {realtime === "live" ? "realtime" : realtime === "degraded" ? "mạng chập chờn" : realtime === "connecting" ? "đang kết nối" : "REST"}</span>}
-          {media && media !== "none" && <span className="ml-2">· cam/màn hình {media === "connected" ? "đang phát" : media}</span>}
-          {activeBypasses().length > 0 && <span className="ml-2 text-[#ffd479]">· DEV bypass: {activeBypasses().join(",")}</span>}
+        <span className="ml-auto flex items-center gap-3 font-mono text-[10px]">
+          <Chip ok={guard.active} label={guard.active ? "giám sát" : "chưa giám sát"} />
+          <Chip ok={runtime.camera !== "lost"} off={runtime.camera === "none"} label="camera" />
+          <Chip ok={runtime.screen !== "lost"} off={runtime.screen === "none"} label="màn hình" />
+          <Chip ok={status === "live" || status === "off"} warn={status === "degraded"} label={status === "live" ? "realtime" : status === "degraded" ? "mạng chập chờn" : status === "connecting" ? "đang kết nối" : "REST"} />
+          {mediaState === "connected" && <Chip ok label="đang phát" />}
+          {activeBypasses().length > 0 && <span className="text-[#ffd479]">DEV bypass: {activeBypasses().join(",")}</span>}
         </span>
       </div>
 
-      {/* Header */}
       <header className="flex shrink-0 items-center gap-4 border-b border-line bg-surface px-5 py-2.5">
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold text-fg">{title}</h1>
@@ -103,9 +98,14 @@ export function ExamShell({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-warning">Giám thị nhắc nhở</p>
             <p className="whitespace-pre-wrap text-fg">{warning.message}</p>
           </div>
-          <Button size="sm" onClick={onDismissWarning}>
+          <Button size="sm" onClick={runtime.dismissWarning}>
             Đã hiểu
           </Button>
+        </div>
+      )}
+      {offline && offlineFor < OFFLINE_LIMIT_S && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-danger/50 bg-danger-soft px-5 py-2 text-xs text-danger">
+          <WifiOff size={14} /> Mất kết nối {formatCountdown(offlineFor)} — nếu quá {OFFLINE_LIMIT_S / 60} phút bạn sẽ bị tính vắng thi. Còn {formatCountdown(OFFLINE_LIMIT_S - offlineFor)}.
         </div>
       )}
 
@@ -115,29 +115,32 @@ export function ExamShell({
         <div className="relative flex min-w-0 flex-1 flex-col">
           {children}
           {paused && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-app/95 backdrop-blur-md">
-              <div className="max-w-md rounded-2xl border border-line bg-surface p-6 text-center shadow-xl">
-                <Clock size={28} className="mx-auto text-warning" />
-                <p className="mt-3 text-sm font-semibold text-fg">Giám thị đã tạm dừng bài thi của bạn</p>
-                <p className="mt-1 text-xs text-muted">Vui lòng chờ — bài làm sẽ tự mở lại khi giám thị cho phép tiếp tục.</p>
+            <Overlay z={30} icon={<Clock size={28} className="text-warning" />} title="Giám thị đã tạm dừng bài thi của bạn">
+              Vui lòng chờ — bài làm sẽ tự mở lại khi giám thị cho phép tiếp tục.
+            </Overlay>
+          )}
+          {blocker && (
+            <Overlay z={25} icon={blocker.kind === "camera" ? <Camera size={28} className="text-danger" /> : <MonitorUp size={28} className="text-danger" />} title="Bài thi đang bị tạm khoá">
+              {blocker.text}
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
+                  {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
+                </Button>
+                {runtime.restoreError && <span className="text-danger">{runtime.restoreError}</span>}
+                <span className="text-[11px] text-subtle">Sự việc đã được ghi nhận và gửi cho giám thị.</span>
               </div>
-            </div>
+            </Overlay>
           )}
           {guard.blockReason && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-app/85 backdrop-blur-md">
-              <div className="max-w-md rounded-2xl border border-danger/40 bg-surface p-6 text-center shadow-xl">
-                <ShieldAlert size={28} className="mx-auto text-danger" />
-                <p className="mt-3 text-sm font-semibold text-fg">Bài thi đang bị tạm khoá</p>
-                <p className="mt-1 text-xs text-muted">{guard.blockReason}</p>
-                <p className="mt-3 text-[11px] text-subtle">Màn hình sẽ tự mở lại khi vấn đề được khắc phục. Vi phạm đã được ghi nhận.</p>
-              </div>
-            </div>
+            <Overlay z={20} icon={<ShieldAlert size={28} className="text-danger" />} title="Bài thi đang bị tạm khoá">
+              {guard.blockReason}
+              <p className="mt-3 text-[11px] text-subtle">Màn hình sẽ tự mở lại khi vấn đề được khắc phục. Vi phạm đã được ghi nhận.</p>
+            </Overlay>
           )}
         </div>
-        <GuardPanel guard={guard}>{panelExtra}</GuardPanel>
+        <GuardPanel runtime={runtime}>{panelExtra}</GuardPanel>
       </div>
 
-      {/* Thanh trạng thái */}
       <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-line bg-surface-2 px-4 text-[11px] text-muted">
         <span className={cx("flex items-center gap-1", guard.violations.length > 0 && "text-danger")}>
           <AlertTriangle size={12} /> {guard.violations.length} vi phạm
@@ -156,12 +159,120 @@ export function ExamShell({
         </span>
         <span className="ml-auto">Foxy Exam</span>
       </footer>
+
+      {runtime.closeRequested && <ExitDialog onStay={runtime.dismissClose} onLeave={onLeave} />}
       <DevPanel />
     </div>
   );
 }
 
-function GuardPanel({ guard, children }: { guard: ExamGuardState; children?: ReactNode }) {
+function Chip({ ok, warn, off, label }: { ok: boolean; warn?: boolean; off?: boolean; label: string }) {
+  const color = off ? "text-white/40" : warn ? "text-[#ffd479]" : ok ? "text-[#7ee2a0]" : "text-[#ff8a80]";
+  return (
+    <span className={cx("flex items-center gap-1.5", color)}>
+      <span className={cx("h-1.5 w-1.5 rounded-full bg-current", ok && !off && !warn && "live-dot")} /> {label}
+    </span>
+  );
+}
+
+function Overlay({ icon, title, children, z }: { icon: ReactNode; title: string; children: ReactNode; z: number }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-app/90 backdrop-blur-md" style={{ zIndex: z }}>
+      <div className="max-w-md rounded-2xl border border-line bg-surface p-6 text-center text-xs text-muted shadow-xl">
+        <div className="flex justify-center">{icon}</div>
+        <p className="mt-3 text-sm font-semibold text-fg">{title}</p>
+        <div className="mt-1">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Closing the window = leaving the room: 5 seconds before the button works, so it cannot be hit by accident. */
+function ExitDialog({ onStay, onLeave }: { onStay: () => void; onLeave: () => Promise<void> | void }) {
+  const [left, setLeft] = useState(5);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (left <= 0) return;
+    const t = window.setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [left]);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-danger/40 bg-surface p-6 shadow-2xl">
+        <div className="flex items-center gap-2 text-danger">
+          <AlertTriangle size={18} />
+          <h3 className="text-base font-semibold text-fg">Rời phòng thi?</h3>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Bài của bạn <b className="text-fg">chưa được nộp</b>. Đồng hồ vẫn chạy, camera và giám sát sẽ tắt. Bạn có tối đa{" "}
+          <b className="text-fg">5 phút</b> để vào lại phòng thi; quá thời gian đó bạn bị tính <b className="text-danger">vắng thi</b> và bài làm hiện có sẽ được nộp tự động.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="primary" onClick={onStay} disabled={busy}>
+            Tiếp tục làm bài
+          </Button>
+          <Button
+            variant="danger"
+            disabled={left > 0 || busy}
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onLeave();
+            }}
+          >
+            {left > 0 ? `Rời phòng thi (${left}s)` : "Rời phòng thi"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CameraPreview({ runtime }: { runtime: Runtime }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const { cameraStream, camera, sample, visionError } = runtime;
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = cameraStream;
+  }, [cameraStream]);
+
+  if (camera === "none" && !cameraStream) {
+    return <div className="mx-3 mt-3 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] text-subtle">Không dùng camera trong kỳ thi này</div>;
+  }
+  const att = sample?.attention;
+  return (
+    <div className="mx-3 mt-3 overflow-hidden rounded-lg border border-line bg-black">
+      <div className="relative">
+        <video ref={ref} autoPlay muted playsInline className="aspect-[4/3] w-full -scale-x-100 object-cover" />
+        <span className={cx("absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold", camera === "lost" ? "text-[#ff8a80]" : "text-white")}>
+          <span className={cx("h-1.5 w-1.5 rounded-full", camera === "lost" ? "bg-danger" : "live-dot bg-danger")} /> {camera === "lost" ? "MẤT CAMERA" : "LIVE"}
+        </span>
+        {sample && sample.faces !== 1 && (
+          <span className="absolute inset-x-0 bottom-0 bg-danger/80 px-2 py-0.5 text-center text-[10px] font-semibold text-white">
+            {sample.faces === 0 ? "Không thấy khuôn mặt" : `${sample.faces} khuôn mặt trong khung`}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2 bg-surface-2 px-2.5 py-1.5 text-[10px] text-muted">
+        <Eye size={11} />
+        {att !== undefined ? (
+          <>
+            <span>Tập trung</span>
+            <span className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3">
+              <span className={cx("block h-full rounded-full", att >= 60 ? "bg-success" : att >= 30 ? "bg-warning" : "bg-danger")} style={{ width: `${att}%` }} />
+            </span>
+            <span className="font-mono">{att}%</span>
+            <span className="font-mono text-subtle">{sample?.delegate}</span>
+          </>
+        ) : (
+          <span>{visionError ? "Phân tích khuôn mặt tắt" : "Đang khởi động phân tích…"}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GuardPanel({ runtime, children }: { runtime: Runtime; children?: ReactNode }) {
+  const guard = runtime.guard;
   const row = (ok: boolean, icon: ReactNode, label: string, value: string) => (
     <div
       className={cx(
@@ -180,9 +291,10 @@ function GuardPanel({ guard, children }: { guard: ExamGuardState; children?: Rea
       <p className="flex items-center gap-1.5 border-b border-line px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
         <span className="h-1.5 w-1.5 rounded-full bg-danger live-dot" /> Đang giám sát
       </p>
+      <CameraPreview runtime={runtime} />
       <div className="space-y-1.5 p-3">
         {row(guard.displays <= 1, <Monitor size={13} />, "Màn hình", `${guard.displays}`)}
-        {row(guard.cameras > 0, <Camera size={13} />, "Camera", `${guard.cameras}`)}
+        {row(guard.cameras > 0 || runtime.camera !== "none", <Camera size={13} />, "Camera", runtime.camera === "lost" ? "mất" : `${Math.max(guard.cameras, runtime.camera === "ok" ? 1 : 0)}`)}
         {row(guard.microphones > 0, <Mic size={13} />, "Micro", `${guard.microphones}`)}
         {row(guard.bannedRunning.length === 0, <Cpu size={13} />, "Ứng dụng bị cấm", `${guard.bannedRunning.length}`)}
       </div>

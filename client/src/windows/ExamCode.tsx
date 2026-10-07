@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { listen, TauriEvent } from "@tauri-apps/api/event";
-import { CheckCircle2, Clock, FileCode2, History, Loader2, Send, XCircle } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { CheckCircle2, Clock, FileCode2, History, Loader2, Play, Send, XCircle } from "lucide-react";
 import { ConfirmModal, ExamShell } from "../components/ExamShell";
 import { Badge, Button, Empty, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { getSession, clearSession, type Session } from "../lib/session";
+import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
+import { listToolchains, runCode, type RunResult, type Toolchain } from "../lib/runner";
 import ExamLobby from "../components/ExamLobby";
 import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
@@ -36,7 +39,6 @@ function starterCode(problem: Problem, language: string): string {
  * khi được hiện bởi `switchWindow` và chỉ khi lượt thi khác lần trước — không
  * tải lại khi chỉ focus/kéo cửa sổ, để không ghi đè code đang gõ dở.
  *
- * Server chưa có API "chạy thử" nên không có nút Run — chỉ có Nộp bài để chấm.
  */
 export default function ExamCode() {
   const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam());
@@ -61,6 +63,11 @@ export default function ExamCode() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [toolchains, setToolchains] = useState<Toolchain[]>([]);
+  const [toolchainId, setToolchainId] = useState("");
+  const [stdin, setStdin] = useState("");
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [finishing, setFinishing] = useState(false);
 
   const runtime = useExamRuntime(examInfo?.monitoring_config);
@@ -80,14 +87,17 @@ export default function ExamCode() {
     }
   }
 
+  /** Leave the room (submitted or not): stop everything, show the dashboard, then reload this window so no state survives. */
   async function leave() {
     await runtime.end();
     await switchWindow(AppWindow.Main);
+    window.location.reload();
   }
 
   // The server ended the attempt (proctor force-end, exam closed): stop and go home.
   useEffect(() => {
     if (!runtime.ended) return;
+    setNotice(runtime.ended);
     clearSession();
     void leave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,11 +143,13 @@ export default function ExamCode() {
     }
 
     loadRef.current = loadPaper;
-    return onWindowShown(() => {
+    const shown = () => {
       const p = getPendingExam();
       setPending(p); // a pending exam means: show the lobby first, the attempt does not exist yet
       if (!p) void loadPaper();
-    });
+    };
+    void getCurrentWindow().isVisible().then((v) => v && shown());
+    return onWindowShown(shown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -189,6 +201,26 @@ export default function ExamCode() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    void listToolchains().then(setToolchains).catch(() => setToolchains([]));
+  }, []);
+
+  const toolchainsForLanguage = toolchains.filter((t) => t.language === currentLanguage);
+  const activeToolchain = toolchainsForLanguage.find((t) => t.id === toolchainId) ?? toolchainsForLanguage[0];
+
+  async function handleRun() {
+    if (!activeToolchain || !currentProblem) return;
+    setRunning(true);
+    setRunResult(null);
+    try {
+      setRunResult(await runCode(activeToolchain.id, currentCode, stdin, Math.max(currentProblem.time_limit_ms, 2000) + 1000));
+    } catch (err) {
+      setRunResult({ phase: "toolchain", ok: false, exit_code: null, stdout: "", stderr: String(err), timed_out: false, millis: 0 });
+    } finally {
+      setRunning(false);
+    }
+  }
 
   function handleLanguageChange(lang: string) {
     if (!currentProblem) return;
@@ -282,12 +314,8 @@ export default function ExamCode() {
         remainingSeconds={remainingSeconds}
         submitLabel="Kết thúc ca thi"
         onSubmit={() => setConfirmFinish(true)}
-        guard={guard}
-        warning={runtime.warning}
-        onDismissWarning={runtime.dismissWarning}
-        paused={runtime.paused}
-        realtime={runtime.status}
-        media={runtime.mediaState}
+        runtime={runtime}
+        onLeave={leave}
         headerExtra={
           <div className="flex gap-1">
             {problems.map((p, idx) => {
@@ -383,6 +411,22 @@ export default function ExamCode() {
                 ))}
               </select>
               <span className="font-mono text-muted">{LANG_FILE[currentLanguage] ?? "solution"}</span>
+              {toolchainsForLanguage.length > 0 ? (
+                <select
+                  value={activeToolchain?.id ?? ""}
+                  onChange={(e) => setToolchainId(e.target.value)}
+                  title="Trình biên dịch trên máy của bạn"
+                  className="h-7 max-w-[200px] rounded-md border border-line bg-surface px-2 text-xs text-fg outline-none"
+                >
+                  {toolchainsForLanguage.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} {t.version}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-[11px] text-warning">Máy chưa có trình biên dịch cho {LANG_LABEL[currentLanguage] ?? currentLanguage}</span>
+              )}
               <span className="ml-auto text-[11px] text-subtle">Dán từ ngoài bị giới hạn</span>
             </div>
             <textarea
@@ -393,6 +437,36 @@ export default function ExamCode() {
               spellCheck={false}
               className="min-h-0 flex-1 resize-none bg-surface p-4 font-mono text-[13px] leading-relaxed text-fg outline-none"
             />
+            <div className="shrink-0 border-t border-line bg-surface">
+              <div className="flex items-center gap-2 px-3 py-1.5">
+                <Button size="sm" icon={<Play size={12} />} loading={running} disabled={locked || !activeToolchain} onClick={() => void handleRun()}>
+                  Chạy thử
+                </Button>
+                <input
+                  value={stdin}
+                  onChange={(e) => setStdin(e.target.value)}
+                  placeholder="Dữ liệu vào (stdin)…"
+                  className="h-7 min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-2 font-mono text-xs text-fg outline-none"
+                />
+                {currentProblem.sample_test_cases[0] && (
+                  <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setStdin(currentProblem.sample_test_cases[0].input)}>
+                    Dùng ví dụ 1
+                  </button>
+                )}
+              </div>
+              {runResult && (
+                <pre className="selectable max-h-40 overflow-auto whitespace-pre-wrap border-t border-line bg-surface-2 px-3 py-2 font-mono text-xs text-fg">
+                  <span className={runResult.ok ? "text-success" : "text-danger"}>
+                    {runResult.phase === "compile" ? "Lỗi biên dịch" : runResult.timed_out ? "Quá thời gian" : runResult.ok ? "Chạy xong" : "Lỗi"}
+                    {runResult.millis > 0 && ` · ${runResult.millis}ms`}
+                    {runResult.exit_code !== null && runResult.exit_code !== 0 && ` · mã ${runResult.exit_code}`}
+                  </span>
+                  {"\n"}
+                  {runResult.stdout}
+                  {runResult.stderr && <span className="text-danger">{runResult.stderr}</span>}
+                </pre>
+              )}
+            </div>
             <div className="flex shrink-0 items-center gap-3 border-t border-line bg-surface px-3 py-2">
               {submitError ? (
                 <p className="text-xs text-danger">{submitError}</p>
