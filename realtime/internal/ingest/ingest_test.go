@@ -238,3 +238,29 @@ func TestLoadSheddingStretchesTheFlushInterval(t *testing.T) {
 		t.Fatalf("must be capped: %d", got)
 	}
 }
+
+func TestStateReportsWhereTheSequenceLeftOff(t *testing.T) {
+	e := setup(t, nil)
+	tok := candidate(5, 2)
+	get := func(token string) (int, map[string]any) {
+		req := httptest.NewRequest("GET", "/v1/state", nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		var out map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &out)
+		return rec.Code, out
+	}
+	if code, out := get(tok); code != 200 || out["last_seq"].(float64) != 0 {
+		t.Fatalf("fresh attempt: %d %v", code, out)
+	}
+	post(e.h, tok, map[string]any{"events": []any{ev(1, "hb", map[string]any{}), ev(7, "hb", map[string]any{})}})
+	if _, out := get(tok); out["last_seq"].(float64) != 7 {
+		t.Fatalf("after a batch: %v", out)
+	}
+	if code, _ := get(""); code != 401 {
+		t.Fatalf("no token: %d", code)
+	}
+}

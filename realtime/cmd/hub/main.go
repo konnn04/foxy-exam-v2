@@ -36,7 +36,7 @@ func main() {
 		OriginPatterns: origins,
 	}, store.New(rdb), log, obs.NewMetrics())
 
-	if err := serve.Run(ctx, ":"+config.Str("PORT", "8082"), h.Handler(), log, 0); err != nil {
+	if err := serve.Run(ctx, ":"+config.Str("PORT", "8082"), serve.CORS(h.Handler(), serve.Origins("CORS_ORIGINS")), log, 0); err != nil {
 		log.Error("server", "err", err)
 		os.Exit(1)
 	}

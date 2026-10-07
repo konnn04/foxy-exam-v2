@@ -31,7 +31,7 @@ func main() {
 		ShedInflight:   config.Int("INGEST_SHED_INFLIGHT", 2000),
 	}, store.New(rdb), log, obs.NewMetrics())
 
-	if err := serve.Run(ctx, ":"+config.Str("PORT", "8081"), s.Handler(), log, 20*time.Second); err != nil {
+	if err := serve.Run(ctx, ":"+config.Str("PORT", "8081"), serve.CORS(s.Handler(), serve.Origins("CORS_ORIGINS")), log, 20*time.Second); err != nil {
 		log.Error("server", "err", err)
 		os.Exit(1)
 	}

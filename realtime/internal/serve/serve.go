@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -54,4 +56,53 @@ func Run(ctx context.Context, addr string, h http.Handler, log *slog.Logger, wri
 		return err
 	}
 	return nil
+}
+
+// CORS lets FoxyClient (Tauri WebView, origin tauri://localhost or http://tauri.localhost) and the admin UI call
+// the services directly. Authentication is a bearer token in a header - never a cookie - so allowing any origin
+// does not enable CSRF; restrict with CORS_ORIGINS (comma separated) if you prefer.
+func CORS(next http.Handler, allowed []string) http.Handler {
+	allowAll := len(allowed) == 0
+	for _, a := range allowed {
+		if a == "*" {
+			allowAll = true
+		}
+	}
+	ok := func(origin string) bool {
+		if allowAll {
+			return true
+		}
+		for _, a := range allowed {
+			if a == origin {
+				return true
+			}
+		}
+		return false
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" && ok(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+			w.Header().Set("Access-Control-Expose-Headers", "Retry-After")
+			if r.Method == http.MethodOptions {
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Content-Encoding")
+				w.Header().Set("Access-Control-Max-Age", "600")
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Origins reads a comma separated list from the environment (empty = any origin).
+func Origins(env string) []string {
+	var out []string
+	for _, o := range strings.Split(os.Getenv(env), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	return out
 }

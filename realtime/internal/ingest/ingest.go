@@ -78,6 +78,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/batch", s.handleBatch)
 	mux.HandleFunc("GET /v1/time", s.handleTime)
+	mux.HandleFunc("GET /v1/state", s.handleState)
 	mux.HandleFunc("POST /internal/v1/lifecycle", s.handleLifecycle)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -100,6 +101,22 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func (s *Server) handleTime(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"server_ts": s.cfg.Now().UnixMilli()})
+}
+
+// handleState tells a (re)starting client where its sequence left off, so a reinstall or cleared storage can
+// never replay old seq numbers (which ingest would drop as duplicates).
+func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
+	claims, err := auth.Verify(s.cfg.JWTSecret, auth.BearerToken(r.Header.Get("Authorization")), s.cfg.Now())
+	if err != nil || claims.Role != auth.RoleCandidate || claims.AttemptID == 0 {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_token"})
+		return
+	}
+	last, err := s.st.LastSeq(r.Context(), claims.AttemptID)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "unavailable"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "last_seq": last, "server_ts": s.cfg.Now().UnixMilli()})
 }
 
 type rejection struct {

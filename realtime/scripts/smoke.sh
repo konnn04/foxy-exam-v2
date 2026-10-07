@@ -65,4 +65,15 @@ echo "violations in the core DB: ${V:-0} (TAB_SWITCH + BULK_PASTE expected)"
 [ "${V:-0}" -ge 2 ] 2>/dev/null || fail "worker did not deliver to Laravel"
 
 # a proctor ends the attempt: the client learns it with its next batch
+# the real client library against the same stack (batching, seq, gzip, session refresh)
+if [ -d "$ROOT/client/node_modules" ]; then
+  cd "$ROOT/client"
+  OUT=$(VITE_API_BASE_URL=$APP/api/v1 npx --yes vite-node scripts/realtime-e2e.ts 2>&1 | tail -3)
+  echo "client: $OUT"
+  echo "$OUT" | grep -q '"ok":true' || fail "client RealtimeClient e2e"
+  sleep 3
+  CV=$(cd "$ROOT/server" && tink 'echo app("db")->table("edit_op_logs")->where("keystroke_count",42)->count();')
+  echo "client oplogs delivered to the core: ${CV:-0}"
+  [ "${CV:-0}" -ge 1 ] 2>/dev/null || fail "client events did not reach the core"
+fi
 echo "SMOKE OK"
