@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // behind Coolify/Traefik and the nginx gateway: trust X-Forwarded-* so URLs and secure cookies are https
+        $middleware->trustProxies(at: '*');
         $middleware->prepend(\App\Http\Middleware\PortalAlias::class);
         $middleware->web(append: [
             \App\Http\Middleware\PortalRole::class,
