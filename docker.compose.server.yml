@@ -1,43 +1,20 @@
-# =============================================================================
-# FoxyExam — SERVER stack (everything except the desktop client)
-# Target: Linux + Coolify ("Docker Compose" build pack). Plain `docker compose` works too:
-#   docker compose -f docker.compose.server.yml --env-file .env.server up -d --build
-#
-# Coolify:
-#   * Domains (Coolify terminates TLS with its Traefik proxy, so no service here publishes 80/443):
-#       gateway  -> https://${APP_DOMAIN}            port 80     (web, /api, /rt/ingest, /rt/hub, /rt/record)
-#       livekit  -> https://lk.${APP_DOMAIN}         port 7880   (WebRTC signalling, wss://)
-#       minio    -> https://s3.${APP_DOMAIN}         port 9000   (presigned uploads / downloads)
-#   * Open on the VPS firewall: 7881/tcp and 7882/udp (LiveKit media).
-#   * Set every variable of .env.server.example in the Coolify "Environment variables" tab.
-#
-# Realtime data path (see docs/REALTIME.md):
-#   FoxyClient --batch/1s--> gateway /rt/ingest --> ingest --> Redis stream --> worker --bulk--> app (Laravel)
-#   Proctor UI <--WebSocket, 1 tick/s-- gateway /rt/hub <-- hub <-- Redis pub/sub <-- ingest
-#   FoxyClient --WebRTC--> livekit --egress--> minio (S3) <-- record (metadata in Postgres) <-- webhooks
-# =============================================================================
-
-x-restart: &restart
-  restart: unless-stopped
+# Server stack (no client apps) for Coolify. Domains, ports and env: docs/REALTIME.md §5.
 
 x-realtime-env: &realtime-env
   REDIS_URL: redis://redis:6379/0
-  RT_JWT_SECRET: ${RT_JWT_SECRET:?set RT_JWT_SECRET (shared with the app)}
-  RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?set RT_INTERNAL_SECRET (shared with the app)}
+  RT_JWT_SECRET: ${RT_JWT_SECRET:?}
+  RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?}
 
 services:
-  # ---------------------------------------------------------------------------
-  # Edge: one origin for web + api + realtime. Plain HTTP; Coolify adds TLS.
-  # ---------------------------------------------------------------------------
   gateway:
-    <<: *restart
     build:
       context: ./gateway
+    restart: unless-stopped
     environment:
       GATEWAY_TLS: "off"
       CORE_HOST: app:8000
-      REVERB_HOST: app:8000   # Reverb is not used; keeps nginx's upstream list resolvable
-      AI_HOST: app:8000       # AI services are not part of this stack yet
+      REVERB_HOST: app:8000
+      AI_HOST: app:8000
       LIVEKIT_HOST: livekit:7880
       INGEST_HOST: ingest:8081
       HUB_HOST: hub:8082
@@ -51,86 +28,84 @@ services:
       - hub
       - record
 
-  # ---------------------------------------------------------------------------
-  # Core: Laravel (admin / lecturer portal, REST API for FoxyClient, source of truth)
-  # ---------------------------------------------------------------------------
   app:
-    <<: *restart
     build:
       context: ./server
+    restart: unless-stopped
     environment:
       APP_NAME: FoxyExam
       APP_ENV: production
       APP_DEBUG: ${APP_DEBUG:-false}
-      APP_KEY: ${APP_KEY:?generate with: php artisan key:generate --show}
-      APP_URL: https://${APP_DOMAIN:?set APP_DOMAIN}
+      APP_KEY: ${APP_KEY:?}
+      APP_URL: https://${APP_DOMAIN:?}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-foxy_core}
       DB_USERNAME: ${DB_USERNAME:-foxy}
-      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?}
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: sync
-      FILESYSTEM_DISK: local
       RUN_MIGRATIONS: "true"
       AI_WORKER_URL: ${AI_WORKER_URL:-}
       AI_WORKER_TIMEOUT: ${AI_WORKER_TIMEOUT:-2}
-      AI_ENFORCE: ${AI_ENFORCE:-false}   # no AI worker in this stack yet: do not block exams that ask for face monitoring
-      # --- realtime plane
-      RT_JWT_SECRET: ${RT_JWT_SECRET:?set RT_JWT_SECRET}
-      RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?set RT_INTERNAL_SECRET}
-      RT_INGEST_URL: https://${APP_DOMAIN}/rt/ingest          # what FoxyClient calls
-      RT_INGEST_INTERNAL_URL: http://ingest:8081              # what the core calls (lifecycle)
-      RT_HUB_URL: wss://${APP_DOMAIN}/rt/hub                  # what the proctor UI connects to
+      AI_ENFORCE: ${AI_ENFORCE:-false}
+      RT_JWT_SECRET: ${RT_JWT_SECRET:?}
+      RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:?}
+      RT_INGEST_URL: https://${APP_DOMAIN}/rt/ingest
+      RT_INGEST_INTERNAL_URL: http://ingest:8081
+      RT_HUB_URL: wss://${APP_DOMAIN}/rt/hub
       RT_RECORD_URL: https://${APP_DOMAIN}/rt/record
       LIVEKIT_PUBLIC_URL: wss://lk.${APP_DOMAIN}
       LIVEKIT_API_KEY: foxy
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+    expose:
+      - "8000"
     volumes:
       - app_storage:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
 
-  # ---------------------------------------------------------------------------
-  # Realtime plane (Go) — images built from ./realtime, one target each
-  # ---------------------------------------------------------------------------
   ingest:
-    <<: *restart
     build: { context: ./realtime, target: ingest }
+    restart: unless-stopped
     environment:
       <<: *realtime-env
       INGEST_RATE_PER_SEC: ${INGEST_RATE_PER_SEC:-5}
       INGEST_BURST: ${INGEST_BURST:-20}
       INGEST_SHED_INFLIGHT: ${INGEST_SHED_INFLIGHT:-2000}
+    expose:
+      - "8081"
     depends_on:
       redis:
         condition: service_healthy
 
   hub:
-    <<: *restart
     build: { context: ./realtime, target: hub }
+    restart: unless-stopped
     environment:
       <<: *realtime-env
       ALLOWED_ORIGINS: ${APP_DOMAIN}
       HUB_TICK: 1s
       HUB_OFFLINE_AFTER: ${HUB_OFFLINE_AFTER:-20s}
+    expose:
+      - "8082"
     depends_on:
       redis:
         condition: service_healthy
 
   worker:
-    <<: *restart
     build: { context: ./realtime, target: worker }
+    restart: unless-stopped
     environment:
       <<: *realtime-env
       LARAVEL_BULK_URL: http://app:8000/api/internal/v1/events/bulk
       WORKER_BATCH: ${WORKER_BATCH:-500}
       S3_ENDPOINT: minio:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
     depends_on:
@@ -142,8 +117,8 @@ services:
         condition: service_started
 
   record:
-    <<: *restart
     build: { context: ./realtime, target: record }
+    restart: unless-stopped
     environment:
       <<: *realtime-env
       RECORD_DB_DRIVER: pgx
@@ -152,14 +127,16 @@ services:
       S3_ENDPOINT: minio:9000
       S3_PUBLIC_ENDPOINT: s3.${APP_DOMAIN}
       S3_PUBLIC_SSL: "true"
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
       EGRESS_S3_ENDPOINT: http://minio:9000
       LIVEKIT_URL: http://livekit:7880
       LIVEKIT_API_KEY: foxy
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+    expose:
+      - "8083"
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,18 +145,16 @@ services:
       livekit:
         condition: service_started
 
-  # ---------------------------------------------------------------------------
-  # Media: LiveKit SFU + egress (records published tracks into MinIO)
-  # ---------------------------------------------------------------------------
   livekit:
-    <<: *restart
     image: livekit/livekit-server:latest
+    restart: unless-stopped
     command: ["--config", "/etc/livekit.yaml"]
     environment:
-      LIVEKIT_KEYS: "foxy: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}"
-    ports:
-      - "7881:7881"       # TCP fallback
-      - "7882:7882/udp"   # media (single multiplexed UDP port)
+      LIVEKIT_KEYS: "foxy: ${LIVEKIT_API_SECRET:?}"
+    expose:
+      - "7880"
+      - "7881"
+      - "7882/udp"
     volumes:
       - ./deploy/server/livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
@@ -187,14 +162,14 @@ services:
         condition: service_healthy
 
   egress:
-    <<: *restart
     image: livekit/egress:latest
+    restart: unless-stopped
     cap_add:
       - SYS_ADMIN
     environment:
       EGRESS_CONFIG_BODY: |
         api_key: foxy
-        api_secret: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+        api_secret: ${LIVEKIT_API_SECRET:?}
         ws_url: ws://livekit:7880
         redis:
           address: redis:6379
@@ -204,19 +179,16 @@ services:
       - livekit
       - minio
 
-  # ---------------------------------------------------------------------------
-  # Data
-  # ---------------------------------------------------------------------------
   postgres:
-    <<: *restart
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-foxy_core}
       POSTGRES_USER: ${DB_USERNAME:-foxy}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./deploy/server/initdb:/docker-entrypoint-initdb.d:ro   # creates the foxy_record database
+      - ./deploy/server/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -224,9 +196,8 @@ services:
       retries: 20
 
   redis:
-    <<: *restart
     image: redis:7-alpine
-    # the event stream lives here: AOF so a restart does not drop events that were not drained yet
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
     volumes:
       - redisdata:/data
@@ -237,12 +208,14 @@ services:
       retries: 20
 
   minio:
-    <<: *restart
     image: minio/minio:latest
+    restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?}
+    expose:
+      - "9000"
     volumes:
       - miniodata:/data
 
