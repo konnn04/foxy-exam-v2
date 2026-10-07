@@ -108,11 +108,6 @@ php artisan test
 ```
 *(8/8 bài test đều pass 100%).*
 
-### Triển khai lên VPS Linux (Production):
-File cấu hình trong `deploy/vps/`:
-* [Caddyfile](file:///c:/Users/Administrator/Desktop/project-foxy/deploy/vps/Caddyfile): Reverse proxy, tự cấp SSL, wildcard subdomain.
-* [docker-compose.yml](file:///c:/Users/Administrator/Desktop/project-foxy/deploy/vps/docker-compose.yml): Caddy + FrankenPHP + PostgreSQL 16 + Redis 7.
-Lệnh chạy trên VPS:
-```bash
-docker compose -f deploy/vps/docker-compose.yml up -d
-```
+### Triển khai lên VPS Linux (Production, Coolify):
+Toàn bộ server (không gồm client) nằm trong **`docker.compose.server.yml`** ở gốc repo; biến môi trường mẫu: `.env.server.example`.
+Cấu hình đi kèm: `deploy/server/` (LiveKit, khởi tạo DB `foxy_record`). Chi tiết kiến trúc realtime, API và cách deploy: **[docs/REALTIME.md](REALTIME.md)**.
