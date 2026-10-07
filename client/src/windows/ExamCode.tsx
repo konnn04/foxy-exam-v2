@@ -11,7 +11,7 @@ import { getSession, clearSession, type Session } from "../lib/session";
 import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
 import { listToolchains, useRunnerSession, type Toolchain } from "../lib/runner";
-import Editor from "react-simple-code-editor";
+import * as EditorModule from "react-simple-code-editor";
 import { highlight } from "../lib/highlight";
 import { Markdown } from "../components/Markdown";
 import { Terminal } from "../components/Terminal";
@@ -29,6 +29,12 @@ import {
   type Problem,
   type Submission,
 } from "../lib/api";
+
+// the package is CommonJS: depending on the bundler the component is the module, its default, or default.default
+type EditorComponent = typeof import("react-simple-code-editor").default;
+const Editor = ((EditorModule as unknown as { default?: { default?: EditorComponent } & EditorComponent }).default?.default ??
+  (EditorModule as unknown as { default?: EditorComponent }).default ??
+  (EditorModule as unknown as EditorComponent)) as EditorComponent;
 
 const LANG_LABEL: Record<string, string> = { cpp: "C++17", python: "Python 3", java: "Java" };
 const LANG_FILE: Record<string, string> = { cpp: "solution.cpp", python: "solution.py", java: "Main.java" };
