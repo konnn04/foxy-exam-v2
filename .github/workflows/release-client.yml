@@ -1,0 +1,74 @@
+name: Release FoxyExam Client
+
+# Kích hoạt khi push tag dạng "client-v1.0.0", hoặc chạy tay từ tab Actions.
+on:
+  push:
+    tags:
+      - "client-v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    permissions:
+      contents: write # cần quyền ghi để tạo GitHub Release + upload file cài đặt
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          # Sinh viên hiện chỉ thi trên Windows nên mặc định chỉ build Windows.
+          # Cần thêm macOS / Linux thì bỏ comment 2 dòng dưới:
+          # - platform: macos-latest
+          # - platform: ubuntu-22.04
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cài pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Cài Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Cài dependency hệ thống cho Tauri trên Linux
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Cài dependency JS (client/)
+        working-directory: client
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & phát hành FoxyExam Client
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Bí mật ký gói cập nhật — lấy từ `src-tauri/foxyexam-updater.key`
+          # (đã gitignore) và file `.key.pub` cho public key trong tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: client
+          tagName: ${{ github.ref_name }}
+          releaseName: "FoxyExam Client ${{ github.ref_name }}"
+          releaseBody: |
+            Xem chi tiết thay đổi trong CHANGELOG.
+            Ứng dụng đang chạy sẽ tự phát hiện và cài bản này qua menu khay hệ
+            thống "Kiểm tra cập nhật" (hoặc tự kiểm tra định kỳ nếu đã cấu hình).
+          releaseDraft: true # để review trước khi bấm publish — xem ghi chú bên dưới
+          prerelease: false
+          includeUpdaterJson: true
