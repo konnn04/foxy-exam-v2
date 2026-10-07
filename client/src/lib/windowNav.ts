@@ -44,8 +44,21 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
   await target.setFocus();
   await target.emit(SHOWN_EVENT);
 
-  if (current.label !== toLabel) {
-    await current.hide();
+  // Only one app window is visible at a time: hide every other one, not just the current, so a window that
+  // was opened as a popup (update) or left behind can never float over the exam window.
+  const others = Object.values(AppWindow).filter((label) => label !== toLabel);
+  await Promise.all(
+    others.map(async (label) => {
+      const w = label === current.label ? current : await WebviewWindow.getByLabel(label);
+      await w?.setAlwaysOnTop(false).catch(() => {});
+      await w?.hide().catch(() => {});
+    }),
+  );
+
+  // Windows sometimes leaves a window behind another app's: a short always-on-top pulse raises it for real.
+  if (toLabel === AppWindow.ExamClassic || toLabel === AppWindow.ExamCode) {
+    await target.setAlwaysOnTop(true).catch(() => {});
+    if (!import.meta.env.PROD) await target.setAlwaysOnTop(false).catch(() => {});
   }
 }
 

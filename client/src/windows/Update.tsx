@@ -35,6 +35,7 @@ export default function Update() {
       const delay = outcome === "error" ? 1800 : 700;
       setTimeout(() => {
         setBooting(false);
+        void getCurrentWindow().setAlwaysOnTop(false); // it stays on top only while it is the start-up splash
         void switchWindow(AppWindow.Auth);
       }, delay);
     });
