@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 mod monitor;
+mod runner;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -56,6 +57,8 @@ pub fn run() {
             monitor::monitor_start,
             monitor::monitor_stop,
             monitor::monitor_keylog_drain,
+            runner::runner_toolchains,
+            runner::runner_run,
         ])
         .setup(|app| {
             // Menu chuột phải trên icon khay hệ thống (system tray).
@@ -117,8 +120,14 @@ pub fn run() {
             // Bấm nút đóng (X) trên bất kỳ cửa sổ nào chỉ ẩn cửa sổ đó — app vẫn
             // chạy ngầm ở khay hệ thống. Thoát hẳn chỉ qua menu tray "Thoát".
             if let WindowEvent::CloseRequested { api, .. } = event {
-                window.hide().ok();
                 api.prevent_close();
+                if window.label().starts_with("exam-") {
+                    // Alt+F4 / the X of an exam window must never just vanish (the camera and the monitoring
+                    // would keep running unseen): ask the page to show its confirmation instead.
+                    let _ = window.emit("exam://close-requested", ());
+                } else {
+                    window.hide().ok();
+                }
             }
         })
         .run(tauri::generate_context!())
