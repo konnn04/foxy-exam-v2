@@ -47,7 +47,7 @@ const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
  * nhập nên không thể tải lúc mount). Đáp án tự lưu lên server sau 400ms.
  */
 export default function ExamClassic() {
-  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam());
+  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam("classic"));
   const [session, setSession] = useState<Session | null>(() => getSession());
   const [questions, setQuestions] = useState<ClassicalQuestionItem[]>([]);
   const [monitoring, setMonitoring] = useState<Session["exam"]["monitoring_config"] | null>(null);
@@ -120,7 +120,7 @@ export default function ExamClassic() {
   // The window is shown either to run the lobby (a pending exam, no attempt yet) or to resume a running attempt.
   useEffect(() => {
     const shown = () => {
-      const p = getPendingExam();
+      const p = getPendingExam("classic");
       setPending(p);
       if (!p) load();
     };
@@ -199,7 +199,7 @@ export default function ExamClassic() {
   async function leave() {
     diag("leave()");
     await runtime.end();
-    await switchWindow(AppWindow.Main);
+    if (await getCurrentWindow().isVisible().catch(() => false)) await switchWindow(AppWindow.Main);
     window.location.reload();
   }
 

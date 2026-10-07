@@ -35,9 +35,12 @@ const PENDING_KEY = "foxyexam:pending-exam";
 
 export const savePendingExam = (p: PendingExam) => localStorage.setItem(PENDING_KEY, JSON.stringify(p));
 export const clearPendingExam = () => localStorage.removeItem(PENDING_KEY);
-export function getPendingExam(): PendingExam | null {
+/** The pending exam, but only for the window that runs its type: every window shares this storage. */
+export function getPendingExam(window?: "classic" | "code"): PendingExam | null {
   try {
-    return JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as PendingExam | null;
+    const p = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as PendingExam | null;
+    if (!p || !window) return p;
+    return (p.type === "QUIZ") === (window === "classic") ? p : null;
   } catch {
     return null;
   }

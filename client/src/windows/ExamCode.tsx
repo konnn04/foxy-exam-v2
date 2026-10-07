@@ -1,7 +1,7 @@
 import { diag } from "../lib/diag";
 import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState } from "react";
-import { listen, TauriEvent } from "@tauri-apps/api/event";
+import { TauriEvent } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { CheckCircle2, Clock, FileCode2, History, Loader2, Play, Send, XCircle } from "lucide-react";
 import { ConfirmModal, ExamShell } from "../components/ExamShell";
@@ -43,7 +43,7 @@ function starterCode(problem: Problem, language: string): string {
  *
  */
 export default function ExamCode() {
-  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam());
+  const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam("code"));
   const [session, setSession] = useState<Session | null>(() => getSession());
   const loadRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -93,7 +93,8 @@ export default function ExamCode() {
   async function leave() {
     diag("leave()");
     await runtime.end();
-    await switchWindow(AppWindow.Main);
+    // a window nobody can see must never drag the dashboard to the front (and hide the window that is in use)
+    if (await getCurrentWindow().isVisible().catch(() => false)) await switchWindow(AppWindow.Main);
     window.location.reload();
   }
 
@@ -147,7 +148,7 @@ export default function ExamCode() {
 
     loadRef.current = loadPaper;
     const shown = () => {
-      const p = getPendingExam();
+      const p = getPendingExam("code");
       setPending(p); // a pending exam means: show the lobby first, the attempt does not exist yet
       if (!p) void loadPaper();
     };
@@ -181,6 +182,7 @@ export default function ExamCode() {
 
     function start() {
       stop();
+      if (!getSession() || !loadedAttemptRef.current) return; // lobby / idle window: no attempt to keep alive
       void runHeartbeat();
       heartbeatTimer = window.setInterval(runHeartbeat, 8000);
       tickTimer = window.setInterval(() => {
@@ -195,8 +197,8 @@ export default function ExamCode() {
       tickTimer = undefined;
     }
 
-    const unlistenFocus = listen(TauriEvent.WINDOW_FOCUS, start);
-    const unlistenBlur = listen(TauriEvent.WINDOW_BLUR, stop);
+    const unlistenFocus = getCurrentWindow().listen(TauriEvent.WINDOW_FOCUS, start);
+    const unlistenBlur = getCurrentWindow().listen(TauriEvent.WINDOW_BLUR, stop);
     return () => {
       stop();
       void unlistenFocus.then((fn) => fn());
