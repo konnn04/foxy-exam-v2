@@ -112,7 +112,7 @@ export const KIND_META: Record<ExamKind, { label: string; desc: string; icon: ty
 export type MonLevel = 'none' | 'standard' | 'strict' | 'custom';
 type MonKey = 'prevent_tab_switch' | 'ai_face_check' | 'prevent_paste' | 'track_keystroke' | 'require_mic';
 const MON_KEYS: Record<ExamKind, MonKey[]> = {
-  general: ['prevent_tab_switch', 'ai_face_check', 'require_mic'],
+  general: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'require_mic'],
   programming: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'track_keystroke'],
 };
 const PRESET: Record<Exclude<MonLevel, 'custom'>, MonKey[]> = {
@@ -530,9 +530,9 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                 checked: form.ai_face_check,
                 onChange: (v) => flipMon('ai_face_check', v),
               },
+              { key: 'paste', label: 'Chặn sao chép / dán', desc: 'Chặn copy, cut, paste, kéo thả văn bản — kể cả 1 ký tự · BULK_PASTE', checked: form.prevent_paste, onChange: (v: boolean) => flipMon('prevent_paste', v) },
               ...(isCode
                 ? [
-                    { key: 'paste', label: 'Chặn dán code', desc: 'BULK_PASTE', checked: form.prevent_paste, onChange: (v: boolean) => flipMon('prevent_paste', v) },
                     { key: 'ks', label: 'Ghi Op-Log từng phím', desc: 'Phát lại quá trình gõ', checked: form.track_keystroke, onChange: (v: boolean) => flipMon('track_keystroke', v) },
                   ]
                 : [{ key: 'mic', label: 'Bật micro', desc: 'Phát hiện tiếng nói · bắt buộc cho phần Nói', checked: form.require_mic, onChange: (v: boolean) => flipMon('require_mic', v) }]),

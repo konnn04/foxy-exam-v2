@@ -59,6 +59,8 @@ const INITIAL: ExamGuardState = {
   allowedForeground: false,
 };
 
+const DEDUPE_MS = 2000;
+
 const procName = (n: string) => n.toLowerCase().replace(/\.exe$/, "");
 
 const externalKeyboards = (devices: Device[]) =>
@@ -76,11 +78,21 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const opLogSeq = useRef(0);
   const pasteCount = useRef(0);
   const cleanup = useRef<(() => void)[]>([]);
+  const clipboardHandled = useRef<WeakSet<Event> | null>(null);
   const allowedApps = useRef<string[]>([]);
+  const lastSeen = useRef(new Map<string, number>());
+  const blockClipboard = useRef(true);
+  blockClipboard.current = config?.prevent_paste !== false;
   allowedApps.current = (config?.allowed_apps ?? []).map(procName);
 
   const record = useCallback(
     (type: ViolationType, severity: ViolationSeverity, message: string, details?: Record<string, unknown>) => {
+      // one physical action often raises several identical events (Alt+Tab, a focus flicker): report it once
+      const subject = type === "WINDOW_LOST_FOCUS" || type === "APP_NOT_ALLOWED" ? String(details?.process ?? message) : message;
+      const key = `${type}|${subject}`;
+      const now = Date.now();
+      if (now - (lastSeen.current.get(key) ?? 0) < DEDUPE_MS) return;
+      lastSeen.current.set(key, now);
       const v: GuardViolation = { id: ++seq.current, type, severity, message, t: Date.now() };
       setState((s) => ({ ...s, violations: [v, ...s.violations].slice(0, 100) }));
       if (rt?.enabled) {
@@ -148,7 +160,10 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     if (activeRef.current) return;
     activeRef.current = true;
     // the exam paper (and so its config) usually arrives in the same tick that starts the guard: read it from here, not from a stale render
-    if (cfg) allowedApps.current = (cfg.allowed_apps ?? []).map(procName);
+    if (cfg) {
+      allowedApps.current = (cfg.allowed_apps ?? []).map(procName);
+      blockClipboard.current = cfg.prevent_paste !== false;
+    }
     pasteCount.current = 0;
     setState({ ...INITIAL, active: true });
 
@@ -212,6 +227,24 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
         }
       }),
     );
+
+    // Clipboard lockdown: paste, copy, cut and dropped text are refused everywhere in the window unless the exam allows them
+    const handled = new WeakSet<Event>();
+    const refuse = (e: Event) => {
+      if (!blockClipboard.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handled.add(e);
+      if (e.type === "paste") {
+        const text = (e as unknown as { clipboardData?: DataTransfer }).clipboardData?.getData("text") ?? "";
+        pasteCount.current += 1;
+        record("BULK_PASTE", text.length > 100 ? "CRITICAL" : "HIGH", `Cố dán ${text.length} ký tự — đã chặn`, { pasted_chars: text.length });
+      }
+    };
+    const events = ["paste", "copy", "cut", "drop"] as const;
+    events.forEach((n) => document.addEventListener(n, refuse, true));
+    on(() => events.forEach((n) => document.removeEventListener(n, refuse, true)));
+    clipboardHandled.current = handled;
 
     const flushTimer = window.setInterval(() => void flushKeylog(), KEYLOG_FLUSH_MS);
     on(() => window.clearInterval(flushTimer));
@@ -301,21 +334,13 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   }, [record, flushKeylog, rt]);
 
   // Chặn dán (nếu cấu hình yêu cầu) — mọi lần dán đều được đếm vào op-log.
-  const onPaste = useCallback(
-    (e: ClipboardEvent, extra?: { problemId?: number }) => {
-      pasteCount.current += 1;
-      const text = e.clipboardData.getData("text");
-      const max = config?.max_paste_chars ?? 80;
-      if (config?.prevent_paste && text.length > max) {
-        e.preventDefault();
-        record("BULK_PASTE", "HIGH", `Dán ${text.length} ký tự (vượt ngưỡng ${max}) — đã chặn`, {
-          pasted_chars: text.length,
-          programming_problem_id: extra?.problemId,
-        });
-      }
-    },
-    [config, record],
-  );
+  // Kept for the input elements: the document-level listener already refused and reported the paste
+  const onPaste = useCallback((e: ClipboardEvent | React.ClipboardEvent, extra?: { problemId?: number }) => {
+    const native = "nativeEvent" in e ? e.nativeEvent : e;
+    if (clipboardHandled.current?.has(native) || !blockClipboard.current) return;
+    e.preventDefault();
+    record("BULK_PASTE", "HIGH", "Cố dán nội dung — đã chặn", { programming_problem_id: extra?.problemId });
+  }, [record]);
 
   useEffect(() => () => void stop(), [stop]);
 

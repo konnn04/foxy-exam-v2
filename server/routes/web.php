@@ -1085,10 +1085,10 @@ Route::middleware(['auth'])->group(function () {
             $monitoringConfig['number_questions_per_page'] = $validated['number_questions_per_page'] ?? 1;
             $monitoringConfig['require_mic'] = $validated['require_mic'] ?? false;
         } else {
-            $monitoringConfig['prevent_paste'] = $validated['prevent_paste'] ?? true;
             $monitoringConfig['max_paste_chars'] = $validated['max_paste_chars'] ?? 80;
             $monitoringConfig['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
+        $monitoringConfig['prevent_paste'] = $validated['prevent_paste'] ?? true;
         $monitoringConfig['require_screen'] = (bool) ($validated['require_screen'] ?? false);
         $monitoringConfig['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $questionSet->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
@@ -1308,10 +1308,10 @@ Route::middleware(['auth'])->group(function () {
             $config['number_questions_per_page'] = $validated['number_questions_per_page'] ?? 1;
             $config['require_mic'] = $validated['require_mic'] ?? false;
         } else {
-            $config['prevent_paste'] = $validated['prevent_paste'] ?? true;
             $config['max_paste_chars'] = $validated['max_paste_chars'] ?? 80;
             $config['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
+        $config['prevent_paste'] = $validated['prevent_paste'] ?? true;
         $config['require_screen'] = (bool) ($validated['require_screen'] ?? false);
         $config['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $qs && $qs->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
