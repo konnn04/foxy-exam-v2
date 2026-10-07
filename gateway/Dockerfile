@@ -17,6 +17,10 @@ ENV APP_DOMAIN=foxyexam.com \
     REVERB_HOST=app:8080 \
     AI_HOST=ai-worker:8000 \
     LIVEKIT_HOST=livekit:7880 \
+    INGEST_HOST=ingest:8081 \
+    HUB_HOST=hub:8082 \
+    RECORD_HOST=record:8083 \
+    GATEWAY_TLS=on \
     SSL_CERT_PATH=/etc/nginx/certs/fullchain.pem \
     SSL_KEY_PATH=/etc/nginx/certs/privkey.pem \
     CLIENT_MAX_BODY_SIZE=100M
@@ -26,7 +30,7 @@ RUN mkdir -p /etc/nginx/templates /etc/nginx/certs /var/www/certbot
 
 # Copy core Nginx config and service routing templates
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY templates/foxy-gateway.conf.template /etc/nginx/templates/foxy-gateway.conf.template
+COPY templates/ /etc/nginx/templates/
 
 # Copy custom entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh

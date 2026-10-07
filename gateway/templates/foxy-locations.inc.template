@@ -1,0 +1,125 @@
+# Shared routing, included by both the TLS and the plain-HTTP server block.
+    # --------------------------------------------------------------------------
+    # R. Realtime plane (Go services): telemetry ingest, proctor hub (WebSocket), recordings
+    #    No nginx rate limit here on purpose: a whole classroom shares one NAT IP; ingest limits per attempt.
+    # --------------------------------------------------------------------------
+    # never expose metrics or service-to-service endpoints through the public gateway
+    location ~ ^/rt/[a-z]+/(metrics|internal)(/|$) {
+        return 404;
+    }
+
+    location /rt/ingest/ {
+        proxy_pass http://ingest_upstream/;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_request_buffering off;
+        client_max_body_size 2m;
+    }
+
+    location /rt/hub/ {
+        proxy_pass http://hub_upstream/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_buffering off;
+    }
+
+    location /rt/record/ {
+        proxy_pass http://record_upstream/;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        client_max_body_size 2m;
+    }
+
+    # --------------------------------------------------------------------------
+    # A. WebSocket Real-time Push (Laravel Reverb)
+    # --------------------------------------------------------------------------
+    location /app/ {
+        proxy_pass http://reverb_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # --------------------------------------------------------------------------
+    # B. LiveKit WebRTC Signaling
+    # --------------------------------------------------------------------------
+    location /livekit/ {
+        proxy_pass http://livekit_upstream/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_read_timeout 86400s;
+    }
+
+    # --------------------------------------------------------------------------
+    # C. AI Proctoring Services (Internal & External Workers)
+    # --------------------------------------------------------------------------
+    location ~* ^/(ai|face|object|media)/ {
+        proxy_pass http://ai_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+    }
+
+    # --------------------------------------------------------------------------
+    # D. Strict Rate-Limiting for Sensitive Authentication Endpoints
+    # --------------------------------------------------------------------------
+    location ~* ^/api/v1/(auth/login|student/login) {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass http://core_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    # --------------------------------------------------------------------------
+    # E. Foxy Core Server (Web Portal, Inertia SSR & REST APIs)
+    # --------------------------------------------------------------------------
+    location / {
+        limit_req zone=api_limit burst=20 nodelay;
+        proxy_pass http://core_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        # Disable buffering for SSE / streaming responses
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+    }
