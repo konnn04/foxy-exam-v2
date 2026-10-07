@@ -23,10 +23,7 @@ class TelemetryController extends Controller
     {
         $validated = $request->validated();
 
-        $attempt = ExamAttempt::where('user_id', $request->user()->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([
@@ -88,10 +85,7 @@ class TelemetryController extends Controller
     {
         $validated = $request->validated();
 
-        $attempt = ExamAttempt::where('user_id', $request->user()->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([

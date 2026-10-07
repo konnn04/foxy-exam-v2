@@ -13,6 +13,8 @@ interface LiveAttempt {
   id: number;
   name: string;
   username: string;
+  attempt_number?: number;
+  ended_reason?: string | null;
   status: string;
   is_flagged: boolean;
   risk_score: number;
@@ -273,7 +275,10 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                     </FeedPlaceholder>
                     <div className="flex flex-col gap-1.5 px-3 py-2.5">
                       <div className="flex justify-between gap-2">
-                        <span className="truncate text-[13px] font-semibold">{s.name}</span>
+                        <span className="truncate text-[13px] font-semibold">
+                          {s.name}
+                          {(s.attempt_number ?? 1) > 1 && <span className="ml-1.5 rounded bg-muted px-1 font-mono text-[10px] font-normal text-muted-foreground">lần {s.attempt_number}</span>}
+                        </span>
                         <span className="font-mono text-[11px] text-muted-foreground">{s.username}</span>
                       </div>
                       {s.progress.length > 0 && (
@@ -320,7 +325,10 @@ export default function LiveShow({ user, teams, exam, attempts, feed }: Props) {
                     className="flex w-full cursor-pointer items-center gap-3 border-b border-border px-4 py-2.5 text-left last:border-b-0 hover:bg-surface"
                   >
                     <Dot tone={st.tone} />
-                    <span className="flex-1 truncate text-[13px] font-medium">{s.name}</span>
+                    <span className="flex-1 truncate text-[13px] font-medium">
+                      {s.name}
+                      <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">lần {s.attempt_number ?? 1}</span>
+                    </span>
                     <span className="font-mono text-xs text-muted-foreground">{s.username}</span>
                     <Pill tone={st.tone} size="sm">
                       {st.label}

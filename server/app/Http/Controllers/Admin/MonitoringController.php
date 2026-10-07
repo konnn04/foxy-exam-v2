@@ -148,6 +148,8 @@ class MonitoringController extends Controller
                     'id' => $a->id,
                     'name' => $a->user?->name ?? 'Thí sinh',
                     'username' => $a->user?->username ?? '',
+                    'attempt_number' => $a->attempt_number,
+                    'ended_reason' => $a->ended_reason,
                     'status' => $a->status,
                     'is_flagged' => (bool) $a->is_flagged,
                     'risk_score' => (int) $a->risk_score,

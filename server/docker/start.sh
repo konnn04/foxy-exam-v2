@@ -33,5 +33,10 @@ fi
 
 php artisan view:cache
 
+# a candidate gone for more than 5 minutes is closed as absent (no cron in the container)
+if [ "${RUN_SCHEDULER:-true}" = "true" ]; then
+  ( while true; do php artisan attempts:expire-offline >/dev/null 2>&1; sleep 60; done ) &
+fi
+
 echo ">> starting FrankenPHP on ${SERVER_NAME}"
 exec frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile

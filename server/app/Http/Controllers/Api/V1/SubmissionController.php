@@ -21,10 +21,7 @@ class SubmissionController extends Controller
     {
         $validated = $request->validated();
 
-        $attempt = ExamAttempt::where('user_id', $request->user()->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([
@@ -75,9 +72,7 @@ class SubmissionController extends Controller
      */
     public function getHistory(Request $request): JsonResponse
     {
-        $attempt = ExamAttempt::where('user_id', $request->user()->id)
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request, false);
 
         if (!$attempt) {
             return response()->json([

@@ -436,38 +436,8 @@ class ExamController extends Controller
             return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp trước đó.'], 400);
         }
 
-        // Tự động chấm điểm các câu hỏi cổ điển (Single Choice & Multiple Choice)
-        $savedAnswers = ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)
-            ->with(['question.answers'])
-            ->get();
-
-        $totalScore = 0.0;
-
-        foreach ($savedAnswers as $saved) {
-            $q = $saved->question;
-            if (!$q) continue;
-
-            // Per-type scoring (choice, true/false, fill-in-blank, short answer). Essays stay pending for a teacher.
-            $result = \App\Support\QuestionSettings::grade($q, $saved);
-
-            $saved->update([
-                'score' => $result['score'],
-                'is_correct' => $result['is_correct'],
-            ]);
-
-            $totalScore += $result['score'];
-        }
-
-        // Cộng thêm điểm từ các bài lập trình (nếu có)
-        $progScore = (float) Submission::where('exam_attempt_id', $attempt->id)->sum('score');
-        $finalScore = round($totalScore + $progScore, 2);
-
-        $attempt->update([
-            'status' => 'SUBMITTED',
-            'submitted_at' => now(),
-            'score' => $finalScore,
-        ]);
-        app(\App\Services\Realtime::class)->lifecycle($attempt, 'ended');
+        $attempt = app(\App\Services\AttemptFinisher::class)->submit($attempt);
+        $finalScore = $attempt->score;
 
         return response()->json([
             'success' => true,

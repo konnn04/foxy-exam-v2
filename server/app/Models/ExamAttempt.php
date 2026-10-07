@@ -24,6 +24,7 @@ class ExamAttempt extends Model
         'device_info',
         'session_token',
         'last_seen_at',
+        'ended_reason',
     ];
 
     protected function casts(): array

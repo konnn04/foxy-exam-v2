@@ -736,6 +736,8 @@ Route::middleware(['auth'])->group(function () {
                 'user_name' => $att->user?->name ?? 'Thí sinh',
                 'user_username' => $att->user?->username ?? 'student',
                 'avatar' => $att->user?->avatar,
+                'attempt_number' => $att->attempt_number,
+                'ended_reason' => $att->ended_reason,
                 'status' => $att->status,
                 'score' => $att->score,
                 'started_at' => $att->started_at?->format('d/m/Y H:i:s'),

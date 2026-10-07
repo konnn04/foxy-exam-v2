@@ -19,10 +19,7 @@ class ExamController extends Controller
         $user = $request->user();
 
         // Get the student's active attempt
-        $attempt = ExamAttempt::where('user_id', $user->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([
@@ -84,10 +81,7 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        $attempt = ExamAttempt::where('user_id', $user->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([
@@ -120,10 +114,7 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        $attempt = ExamAttempt::where('user_id', $user->id)
-            ->where('status', 'IN_PROGRESS')
-            ->latest()
-            ->first();
+        $attempt = \App\Support\AttemptResolver::for($request);
 
         if (!$attempt) {
             return response()->json([

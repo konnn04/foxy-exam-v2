@@ -31,6 +31,8 @@ interface Props {
     user_name: string;
     user_username: string;
     avatar?: string;
+    attempt_number?: number;
+    ended_reason?: string | null;
     status: string;
     score?: number;
     started_at?: string;
@@ -155,6 +157,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
               </div>
             ),
           },
+          { key: 'no', label: 'Lần', width: '56px', render: (a) => <span className="font-mono text-xs">#{a.attempt_number ?? 1}</span> },
           { key: 'start', label: 'Bắt đầu', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{a.started_at ?? '—'}</span> },
           { key: 'sub', label: 'Nộp bài', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{a.submitted_at ?? '—'}</span> },
           {
@@ -167,6 +170,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
                 const hs = HUB_STATUS[h?.status ?? 'offline'];
                 return <Pill tone={hs.tone}>{hs.label}</Pill>;
               }
+              if (a.status === 'SUBMITTED' && a.ended_reason === 'ABSENT') return <Pill tone="warning">Vắng thi</Pill>;
               const s = ATTEMPT_STATUS[a.status] ?? { label: a.status, tone: 'neutral' as const };
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
