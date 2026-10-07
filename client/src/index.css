@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* Dark mode theo class `.dark` trên <html> (xem src/lib/theme.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Màu dùng qua token ngữ nghĩa (bg-surface, text-muted, border-line, ...),
+ * KHÔNG dùng màu cứng — để 1 bộ class chạy được cả sáng lẫn tối.
+ */
+@theme {
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+  --color-app: var(--app);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+}
+
+:root {
+  color-scheme: light;
+  --app: #f4f3f1;
+  --surface: #ffffff;
+  --surface-2: #faf9f7;
+  --surface-3: #f1efec;
+  --line: #e7e4df;
+  --line-strong: #d6d2cb;
+  --fg: #1c1a17;
+  --muted: #6b6760;
+  --subtle: #9c978f;
+
+  --accent: #d9550f;
+  --accent-hover: #c24a0b;
+  --accent-soft: #fdeee4;
+  --accent-fg: #b4460c;
+
+  --danger: #c63a2b;
+  --danger-soft: #fdecea;
+  --success: #2f8a4c;
+  --success-soft: #e8f5ec;
+  --warning: #b7791f;
+  --warning-soft: #fdf3e1;
+  --info: #3367c4;
+  --info-soft: #e9f0fc;
+}
+
+.dark {
+  color-scheme: dark;
+  --app: #0f0f10;
+  --surface: #171718;
+  --surface-2: #1c1c1e;
+  --surface-3: #242427;
+  --line: #2a2a2d;
+  --line-strong: #3a3a3e;
+  --fg: #ecebe8;
+  --muted: #a3a09a;
+  --subtle: #6f6c67;
+
+  --accent: #f26b1d;
+  --accent-hover: #ff7d33;
+  --accent-soft: #3a2214;
+  --accent-fg: #ff9a5c;
+
+  --danger: #ef5a4a;
+  --danger-soft: #3a1915;
+  --success: #4cc06f;
+  --success-soft: #142a1b;
+  --warning: #e3a33d;
+  --warning-soft: #33260f;
+  --info: #6c9cf0;
+  --info-soft: #172338;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Ứng dụng desktop: không cho kéo-chọn văn bản, trừ vùng nhập liệu / nội dung đề */
+* {
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"],
+.selectable {
+  user-select: text;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  background-clip: padding-box;
+}
+
+/* Sọc chéo cho ô placeholder (ảnh minh hoạ, webcam chưa có dữ liệu) */
+.stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 8px,
+    color-mix(in srgb, var(--muted) 10%, transparent) 8px 16px
+  );
+}
+
+@keyframes foxy-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.live-dot {
+  animation: foxy-pulse 1.6s ease-in-out infinite;
+}
