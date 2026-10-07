@@ -63,6 +63,10 @@ export default function ExamLobby({
   const needCamera = Boolean(cfg?.ai_face_check) && !bypass("camera");
   const needMic = Boolean(cfg?.require_mic);
   const needScreen = Boolean(cfg?.require_screen) && !bypass("screen");
+  // what the exam asks for decides what the student sees: nothing optional is offered
+  const wantCamera = Boolean(cfg?.ai_face_check);
+  const wantMic = Boolean(cfg?.require_mic);
+  const wantScreen = Boolean(cfg?.require_screen);
 
   const attachPreview = useCallback((s: MediaStream | null) => {
     if (video.current) video.current.srcObject = s;
@@ -291,9 +295,9 @@ export default function ExamLobby({
             <Row c={checks.exam} icon={<ShieldAlert size={14} />} />
             <Row c={checks.display} icon={<Monitor size={14} />} />
             <Row c={checks.apps} icon={<Cpu size={14} />} />
-            <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? "Bật camera" : "Thử lại"}</Button> : undefined} />
-            <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />
-            <Row
+            {wantCamera && <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? "Bật camera" : "Thử lại"}</Button> : undefined} />}
+            {wantMic && <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />}
+            {wantScreen && <Row
               c={{ ...checks.screen, required: needScreen }}
               icon={<MonitorUp size={14} />}
               action={
@@ -303,7 +307,7 @@ export default function ExamLobby({
                   </Button>
                 )
               }
-            />
+            />}
           </ul>
 
           <div className="mt-5 flex items-center gap-2">
@@ -317,19 +321,21 @@ export default function ExamLobby({
         </section>
 
         <aside className="w-[300px] shrink-0 space-y-3">
-          <div className="overflow-hidden rounded-xl border border-line bg-black">
-            <video ref={video} autoPlay muted playsInline className="aspect-[4/3] w-full object-cover" />
-          </div>
-          <div className="rounded-xl border border-line bg-surface p-3">
+          {wantCamera && (
+            <div className="overflow-hidden rounded-xl border border-line bg-black">
+              <video ref={video} autoPlay muted playsInline className="aspect-[4/3] w-full object-cover" />
+            </div>
+          )}
+          {wantMic && <div className="rounded-xl border border-line bg-surface p-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted">
               <Mic size={12} /> Mức âm thanh
             </p>
             <div className="h-2 overflow-hidden rounded-full bg-surface-3">
               <div className="h-full rounded-full bg-success transition-[width] duration-75" style={{ width: `${Math.round(level * 100)}%` }} />
             </div>
-          </div>
+          </div>}
           <ul className="space-y-1 rounded-xl border border-line bg-surface p-3 text-[11px] leading-relaxed text-muted">
-            <li>• Ngồi nơi đủ sáng, thấy rõ mặt.</li>
+            {wantCamera && <li>• Ngồi nơi đủ sáng, thấy rõ mặt.</li>}
             <li>• Đóng mọi ứng dụng khác (chat, quay màn hình, điều khiển từ xa).</li>
             <li>• Chỉ dùng một màn hình, không cắm thêm bàn phím.</li>
             <li>• Trong giờ thi mọi thao tác rời cửa sổ đều được ghi nhận.</li>

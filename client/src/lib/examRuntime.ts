@@ -287,6 +287,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     sample,
     visionError,
     blurred,
+    needs: { camera: Boolean(config?.ai_face_check), mic: Boolean(config?.require_mic), screen: Boolean(config?.require_screen) },
     blocker,
     restoreCamera,
     restoreScreen,

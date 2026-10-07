@@ -63,8 +63,8 @@ export function ExamShell({
         <span className="text-white/70">| Không thu nhỏ, đổi cửa sổ hoặc chụp màn hình</span>
         <span className="ml-auto flex items-center gap-3 font-mono text-[10px]">
           <Chip ok={guard.active} label={guard.active ? "giám sát" : "chưa giám sát"} />
-          <Chip ok={runtime.camera !== "lost"} off={runtime.camera === "none"} label="camera" />
-          <Chip ok={runtime.screen !== "lost"} off={runtime.screen === "none"} label="màn hình" />
+          {runtime.needs.camera && <Chip ok={runtime.camera !== "lost"} off={runtime.camera === "none"} label="camera" />}
+          {runtime.needs.screen && <Chip ok={runtime.screen !== "lost"} off={runtime.screen === "none"} label="chia sẻ màn hình" />}
           <Chip ok={status === "live" || status === "off"} warn={status === "degraded"} label={status === "live" ? "realtime" : status === "degraded" ? "mạng chập chờn" : status === "connecting" ? "đang kết nối" : "REST"} />
           {mediaState === "connected" && <Chip ok label="đang phát" />}
           {activeBypasses().length > 0 && <span className="text-[#ffd479]">DEV bypass: {activeBypasses().join(",")}</span>}
@@ -156,12 +156,16 @@ export function ExamShell({
         <span className={cx("flex items-center gap-1", guard.displays > 1 && "text-danger")}>
           <Monitor size={12} /> {guard.displays} màn hình
         </span>
-        <span className="flex items-center gap-1">
-          <Camera size={12} /> {guard.cameras} camera
-        </span>
-        <span className="flex items-center gap-1">
-          <Mic size={12} /> {guard.microphones} micro
-        </span>
+        {runtime.needs.camera && (
+          <span className="flex items-center gap-1">
+            <Camera size={12} /> {guard.cameras} camera
+          </span>
+        )}
+        {runtime.needs.mic && (
+          <span className="flex items-center gap-1">
+            <Mic size={12} /> {guard.microphones} micro
+          </span>
+        )}
         <span className={cx("flex items-center gap-1", guard.bannedRunning.length > 0 && "text-danger")}>
           <Cpu size={12} /> Theo dõi tiến trình
         </span>
@@ -243,9 +247,7 @@ function CameraPreview({ runtime }: { runtime: Runtime }) {
     if (ref.current) ref.current.srcObject = cameraStream;
   }, [cameraStream]);
 
-  if (camera === "none" && !cameraStream) {
-    return <div className="mx-3 mt-3 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] text-subtle">Không dùng camera trong kỳ thi này</div>;
-  }
+  if (!runtime.needs.camera) return null;
   const att = sample?.attention;
   return (
     <div className="mx-3 mt-3 overflow-hidden rounded-lg border border-line bg-black">
@@ -302,8 +304,8 @@ function GuardPanel({ runtime, children }: { runtime: Runtime; children?: ReactN
       <CameraPreview runtime={runtime} />
       <div className="space-y-1.5 p-3">
         {row(guard.displays <= 1, <Monitor size={13} />, "Màn hình", `${guard.displays}`)}
-        {row(guard.cameras > 0 || runtime.camera !== "none", <Camera size={13} />, "Camera", runtime.camera === "lost" ? "mất" : `${Math.max(guard.cameras, runtime.camera === "ok" ? 1 : 0)}`)}
-        {row(guard.microphones > 0, <Mic size={13} />, "Micro", `${guard.microphones}`)}
+        {runtime.needs.camera && row(guard.cameras > 0 || runtime.camera !== "none", <Camera size={13} />, "Camera", runtime.camera === "lost" ? "mất" : `${Math.max(guard.cameras, runtime.camera === "ok" ? 1 : 0)}`)}
+        {runtime.needs.mic && row(guard.microphones > 0, <Mic size={13} />, "Micro", `${guard.microphones}`)}
         {row(guard.bannedRunning.length === 0, <Cpu size={13} />, "Ứng dụng bị cấm", `${guard.bannedRunning.length}`)}
       </div>
       {children}

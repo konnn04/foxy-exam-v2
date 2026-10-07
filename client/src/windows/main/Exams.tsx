@@ -72,16 +72,14 @@ export default function Exams(props: PageProps) {
           <CardHeader icon={<ShieldCheck size={15} />} title="Yêu cầu giám sát của bài thi kế tiếp" right={next && <span className="text-[11px] text-muted">{next.title}</span>} />
           {next ? (
             <div className="flex flex-wrap items-center gap-2 p-3">
-              {MONITOR_FLAGS.map(({ key, label, icon: Icon }) => {
-                const on = !!next.monitoring_config?.[key];
-                return (
-                  <Tip key={key} label={`${label}: ${on ? "có" : "không yêu cầu"}`}>
-                    <span className={cx("flex h-8 w-8 items-center justify-center rounded-lg border", on ? "border-accent/40 bg-accent-soft text-accent" : "border-line text-subtle opacity-60")}>
-                      <Icon size={15} />
-                    </span>
-                  </Tip>
-                );
-              })}
+              {MONITOR_FLAGS.filter(({ key }) => !!next.monitoring_config?.[key]).map(({ key, label, icon: Icon }) => (
+                <Tip key={key} label={label}>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/40 bg-accent-soft text-accent">
+                    <Icon size={15} />
+                  </span>
+                </Tip>
+              ))}
+              {!MONITOR_FLAGS.some(({ key }) => next.monitoring_config?.[key]) && <span className="text-xs text-muted">Không có yêu cầu đặc biệt.</span>}
             </div>
           ) : (
             <Empty text="Chưa có bài thi kế tiếp." />
