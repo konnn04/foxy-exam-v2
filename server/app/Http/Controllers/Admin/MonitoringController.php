@@ -8,6 +8,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\Submission;
 use App\Models\Violation;
+use App\Services\Realtime;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -204,13 +205,58 @@ class MonitoringController extends Controller
         $exam = Exam::findOrFail($examId);
         $this->tenant->enforceOwnership($exam);
 
+        $running = ExamAttempt::where('exam_id', $exam->id)->where('status', 'IN_PROGRESS')->get();
         ExamAttempt::where('exam_id', $exam->id)->where('status', 'IN_PROGRESS')->update([
             'status' => 'FORCE_ENDED',
             'submitted_at' => now(),
         ]);
+        foreach ($running as $a) {
+            app(Realtime::class)->lifecycle($a, 'force_ended');
+        }
         $exam->update(['status' => 'ENDED', 'end_time' => $exam->end_time && $exam->end_time->isPast() ? $exam->end_time : now()]);
 
         return back()->with('success', 'Đã kết thúc ca thi.');
+    }
+
+    /** POST /admin/attempts/{id}/force-end — a proctor ends one candidate's session. */
+    public function forceEndAttempt(int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+        if ($attempt->status !== 'IN_PROGRESS') {
+            return back()->with('error', 'Phiên thi này đã kết thúc.');
+        }
+        $attempt->update(['status' => 'FORCE_ENDED', 'submitted_at' => now()]);
+        app(Realtime::class)->lifecycle($attempt, 'force_ended'); // the client is told to stop with its next batch
+
+        return back()->with('success', 'Đã đình chỉ phiên thi của thí sinh.');
+    }
+
+    /**
+     * GET /admin/exams/{id}/realtime — connection info for the proctor UI: a 1-hour token scoped to THIS exam
+     * and the hub / recording service URLs. 503 when the realtime plane is not configured.
+     */
+    public function realtime(int $examId)
+    {
+        $this->guardStaff();
+        $exam = Exam::findOrFail($examId);
+        $this->tenant->enforceOwnership($exam);
+
+        $rt = app(Realtime::class);
+        if (!$rt->enabled()) {
+            return response()->json(['enabled' => false], 503);
+        }
+        $ttl = 3600;
+
+        return response()->json([
+            'enabled' => true,
+            'exam_id' => $exam->id,
+            'token' => $rt->proctorToken(Auth::user(), (int) $exam->organization_id, [$exam->id], $ttl),
+            'expires_at' => now()->addSeconds($ttl)->toIso8601String(),
+            'hub_ws_url' => rtrim((string) config('services.realtime.hub_url'), '/') . "/v1/rooms/{$exam->id}/ws",
+            'hub_http_url' => rtrim((string) config('services.realtime.hub_url'), '/'),
+            'record_url' => rtrim((string) config('services.realtime.record_url'), '/'),
+        ]);
     }
 
     /** /admin/attempts/{id} — one candidate's session, violation timeline & review. */

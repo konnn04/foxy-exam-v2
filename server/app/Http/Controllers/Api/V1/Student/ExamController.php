@@ -126,6 +126,7 @@ class ExamController extends Controller
             ->first();
 
         if ($activeAttempt) {
+            app(\App\Services\Realtime::class)->lifecycle($activeAttempt, 'active');
             $elapsedSeconds = now()->diffInSeconds($activeAttempt->started_at);
             $totalSeconds = $exam->duration_minutes * 60;
             $timeRemaining = max(0, $totalSeconds - $elapsedSeconds);
@@ -183,6 +184,7 @@ class ExamController extends Controller
             'session_token' => Str::random(40),
             'device_info' => $request->input('device_info'),
         ]);
+        app(\App\Services\Realtime::class)->lifecycle($attempt, 'active');
 
         return response()->json([
             'success' => true,
@@ -465,6 +467,7 @@ class ExamController extends Controller
             'submitted_at' => now(),
             'score' => $finalScore,
         ]);
+        app(\App\Services\Realtime::class)->lifecycle($attempt, 'ended');
 
         return response()->json([
             'success' => true,

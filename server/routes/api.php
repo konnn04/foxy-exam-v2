@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\V1\ExamController;
 use App\Http\Controllers\Api\V1\SubmissionController;
 use App\Http\Controllers\Api\V1\TelemetryController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Internal\EventsController as InternalEventsController;
+use App\Http\Controllers\Api\V1\Student\RealtimeController;
+use App\Http\Middleware\VerifyInternalSignature;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +55,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/heartbeat', [ExamController::class, 'heartbeat']);
             Route::post('/finish', [ExamController::class, 'finishExam']);
 
+            // Realtime plane: tokens + URLs for batched telemetry, evidence upload and LiveKit
+            Route::post('/realtime/session', [RealtimeController::class, 'session']);
+
             // Anti-Cheat Telemetry & Keystroke Op-Log
             Route::post('/op-log', [TelemetryController::class, 'recordOpLog']);
             Route::post('/violation', [TelemetryController::class, 'recordViolation']);
@@ -70,3 +76,7 @@ Route::prefix('v1')->group(function () {
     });
 });
 
+// Service-to-service (realtime worker -> core), HMAC-signed, no user session
+Route::prefix('internal/v1')->middleware(VerifyInternalSignature::class)->group(function () {
+    Route::post('/events/bulk', [InternalEventsController::class, 'bulk']);
+});

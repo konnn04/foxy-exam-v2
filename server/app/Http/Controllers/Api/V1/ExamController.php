@@ -136,6 +136,7 @@ class ExamController extends Controller
             'status' => 'SUBMITTED',
             'submitted_at' => now(),
         ]);
+        app(\App\Services\Realtime::class)->lifecycle($attempt, 'ended');
 
         return response()->json([
             'success' => true,

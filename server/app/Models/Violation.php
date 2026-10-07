@@ -19,6 +19,8 @@ class Violation extends Model
         'is_reviewed',
         'is_false_positive',
         'timestamp',
+        'client_event_id',
+        'evidence_id',
     ];
 
     protected $casts = [

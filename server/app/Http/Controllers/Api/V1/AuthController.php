@@ -147,6 +147,9 @@ class AuthController extends Controller
         // 5. Generate Sanctum token
         $token = $user->createToken('foxy-exam-client', ['exam:take'])->plainTextToken;
 
+        // realtime plane: the hub/ingest learn that this attempt is live (best effort, never blocks the login)
+        app(\App\Services\Realtime::class)->lifecycle($attempt, 'active');
+
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập phòng thi thành công.',

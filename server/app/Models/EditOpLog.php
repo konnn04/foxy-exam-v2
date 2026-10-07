@@ -20,6 +20,8 @@ class EditOpLog extends Model
         'paste_event_count',
         'synthetic_flags',
         'raw_ops_payload',
+        'payload_ref',
+        'client_event_id',
         'created_at',
     ];
 

@@ -99,6 +99,16 @@ class AiService
      */
     public static function checkExamRequirement(Exam $exam): array
     {
+        // AI_ENFORCE=false: the AI worker is not deployed (yet) - never block candidates because of it
+        if (!config('services.ai_worker.enforce', true)) {
+            return [
+                'required' => false,
+                'available' => true,
+                'status' => 'DISABLED',
+                'message' => 'Giám sát AI đang tắt trên máy chủ này.',
+            ];
+        }
+
         $monitoringConfig = $exam->monitoring_config ?? [];
         $aiFaceRequired = !empty($monitoringConfig['ai_face_check']);
 

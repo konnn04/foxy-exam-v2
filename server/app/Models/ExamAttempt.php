@@ -23,12 +23,14 @@ class ExamAttempt extends Model
         'is_flagged',
         'device_info',
         'session_token',
+        'last_seen_at',
     ];
 
     protected function casts(): array
     {
         return [
             'attempt_number' => 'integer',
+            'last_seen_at' => 'datetime',
             'started_at' => 'datetime',
             'submitted_at' => 'datetime',
             'score' => 'float',

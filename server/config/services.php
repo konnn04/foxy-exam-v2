@@ -38,6 +38,23 @@ return [
     'ai_worker' => [
         'url' => env('AI_WORKER_URL'),
         'timeout' => (float) env('AI_WORKER_TIMEOUT', 2.0),
+        // false = candidates may start exams that ask for face monitoring even when the AI worker is offline / absent
+        'enforce' => (bool) env('AI_ENFORCE', true),
+    ],
+
+    // Realtime plane (Go services in /realtime). Leave RT_JWT_SECRET empty to run without it.
+    'realtime' => [
+        'jwt_secret' => env('RT_JWT_SECRET'),
+        'internal_secret' => env('RT_INTERNAL_SECRET'),
+        'ingest_url' => env('RT_INGEST_URL', 'http://localhost:8081'),                    // what FoxyClient calls
+        'ingest_internal_url' => env('RT_INGEST_INTERNAL_URL', 'http://localhost:8081'),  // what the core calls
+        'hub_url' => env('RT_HUB_URL', 'ws://localhost:8082'),                            // what the proctor UI connects to
+        'record_url' => env('RT_RECORD_URL', 'http://localhost:8083'),
+        'livekit' => [
+            'url' => env('LIVEKIT_PUBLIC_URL'),       // wss://... reachable by the client
+            'api_key' => env('LIVEKIT_API_KEY'),
+            'api_secret' => env('LIVEKIT_API_SECRET'),
+        ],
     ],
 
 ];

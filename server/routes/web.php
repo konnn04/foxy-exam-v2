@@ -1984,6 +1984,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'index']);
     Route::get('/exams/{id}/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'show'])->whereNumber('id');
     Route::post('/exams/{id}/end', [\App\Http\Controllers\Admin\MonitoringController::class, 'end'])->whereNumber('id');
+    Route::get('/exams/{id}/realtime', [\App\Http\Controllers\Admin\MonitoringController::class, 'realtime'])->whereNumber('id');
+    Route::post('/attempts/{id}/force-end', [\App\Http\Controllers\Admin\MonitoringController::class, 'forceEndAttempt'])->whereNumber('id');
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
     Route::get('/attempts/{id}/submissions', [\App\Http\Controllers\Admin\MonitoringController::class, 'submissions'])->whereNumber('id');
     Route::post('/violations/{id}/review', [\App\Http\Controllers\Admin\MonitoringController::class, 'review'])->whereNumber('id');

@@ -110,18 +110,7 @@ class TelemetryController extends Controller
         ]);
 
         // Accumulate risk score based on severity
-        $scoreWeight = match ($validated['severity']) {
-            'LOW' => 5,
-            'MEDIUM' => 15,
-            'HIGH' => 30,
-            'CRITICAL' => 60,
-            default => 10,
-        };
-
-        $attempt->increment('risk_score', $scoreWeight);
-        if ($attempt->risk_score >= 40) {
-            $attempt->update(['is_flagged' => true]);
-        }
+        \App\Support\Risk::apply($attempt, \App\Support\Risk::weight($validated['severity']));
 
         return response()->json([
             'success' => true,
