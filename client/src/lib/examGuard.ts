@@ -144,9 +144,11 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     setState(INITIAL);
   }, [flushKeylog]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (cfg?: Partial<MonitoringConfig> | null) => {
     if (activeRef.current) return;
     activeRef.current = true;
+    // the exam paper (and so its config) usually arrives in the same tick that starts the guard: read it from here, not from a stale render
+    if (cfg) allowedApps.current = (cfg.allowed_apps ?? []).map(procName);
     pasteCount.current = 0;
     setState({ ...INITIAL, active: true });
 
@@ -226,13 +228,24 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     // Lockdown: keep the exam window fullscreen, on top and focused. Re-asserted every 1.5 s because another
     // always-on-top window (or Alt+Tab) can take the top spot at any time. With an allow-list the candidate
     // must be able to open the allowed software, so the window is not forced and the app is only watched.
-    if (lockdownOn() && allowedApps.current.length === 0) {
+    if (allowedApps.current.length === 0) {
       const win = getCurrentWindow();
       let busy = false;
+      let locked = false;
       const enforce = async () => {
         if (busy || !activeRef.current) return;
         busy = true;
         try {
+          if (!lockdownOn()) {
+            // a dev bypass switched on mid-exam: let go of the window right away
+            if (locked) {
+              locked = false;
+              await win.setAlwaysOnTop(false).catch(() => {});
+              await win.setFullscreen(false).catch(() => {});
+            }
+            return;
+          }
+          locked = true;
           if (await win.isMinimized()) {
             await win.unminimize();
             record("WINDOW_LOST_FOCUS", "MEDIUM", "Thu nhỏ cửa sổ thi");
@@ -267,7 +280,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       const kb = externalKeyboards(snap.devices);
       setState((s) => ({
         ...s,
-        displays: screenCount(snap.displays, snap.devices),
+        displays: bypass("devices") ? Math.min(1, screenCount(snap.displays, snap.devices)) : screenCount(snap.displays, snap.devices),
         cameras: snap.devices.filter((d) => d.kind === "camera").length,
         microphones: snap.microphones.length,
         externalKeyboards: kb,

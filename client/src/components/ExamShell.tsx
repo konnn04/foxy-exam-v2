@@ -114,7 +114,14 @@ export function ExamShell({
 
       <div className="flex min-h-0 flex-1">
         <div className="relative flex min-w-0 flex-1 flex-col">
-          {children}
+          <div className={cx("flex min-h-0 flex-1 flex-col transition-[filter] duration-200", runtime.blurred && "pointer-events-none select-none blur-xl")}>{children}</div>
+          {runtime.blurred && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div className="flex items-center gap-2 rounded-xl bg-fg/85 px-4 py-2.5 text-sm font-medium text-app shadow-lg">
+                <Eye size={16} /> Hãy nhìn thẳng vào màn hình để tiếp tục làm bài
+              </div>
+            </div>
+          )}
           {paused && (
             <Overlay z={30} icon={<Clock size={28} className="text-warning" />} title="Giám thị đã tạm dừng bài thi của bạn">
               Vui lòng chờ — bài làm sẽ tự mở lại khi giám thị cho phép tiếp tục.
@@ -265,7 +272,7 @@ function CameraPreview({ runtime }: { runtime: Runtime }) {
             <span className="font-mono text-subtle">{sample?.delegate}</span>
           </>
         ) : (
-          <span>{visionError ? "Phân tích khuôn mặt tắt" : "Đang khởi động phân tích…"}</span>
+          <span title={visionError ?? undefined}>{visionError ? `Phân tích khuôn mặt tắt: ${visionError.slice(0, 60)}` : "Đang khởi động phân tích…"}</span>
         )}
       </div>
     </div>

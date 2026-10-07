@@ -105,7 +105,7 @@ export default function ExamClassic() {
           }
           setAnswers(initial);
           setTimeRemaining(typeof res.data.time_remaining_seconds === "number" ? res.data.time_remaining_seconds : null);
-          void runtime.begin(s.attemptId);
+          void runtime.begin(s.attemptId, s.exam.monitoring_config);
         })
         .catch((err) => {
           loadedAttempt.current = null;

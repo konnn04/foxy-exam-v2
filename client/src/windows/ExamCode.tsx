@@ -136,7 +136,7 @@ export default function ExamCode() {
         }
         setLanguageByProblem(langInit);
         setCodeByKey(codeInit);
-        void runtime.begin(current.attemptId);
+        void runtime.begin(current.attemptId, current.exam.monitoring_config);
         await refreshSubmissions();
       } catch (err) {
         setLoadError(err instanceof ApiError ? err.message : "Không tải được đề thi.");

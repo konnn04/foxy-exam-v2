@@ -7,6 +7,7 @@ import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { FaceMonitor, type VisionSample } from "./vision";
+import { isLookingAway } from "./vision-core";
 
 export interface ExamWarning {
   id: string;
@@ -17,6 +18,10 @@ export type CaptureState = "none" | "ok" | "lost";
 
 /** Offline longer than this and the attempt counts as absent (the server enforces the same limit). */
 export const OFFLINE_LIMIT_S = 5 * 60;
+
+/** Looking away this long blurs the exam; facing the screen again for the second value clears it. */
+const BLUR_AFTER_MS = 1500;
+const UNBLUR_AFTER_MS = 600;
 
 /**
  * Everything an exam window needs besides its own questions:
@@ -50,6 +55,11 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const vision = useRef<FaceMonitor | null>(null);
   const offTracks = useRef<(() => void)[]>([]);
   const active = useRef(false);
+  const cfgRef = useRef(config);
+  cfgRef.current = config ?? cfgRef.current;
+  const [blurred, setBlurred] = useState(false);
+  const badSince = useRef<number | null>(null);
+  const goodSince = useRef<number | null>(null);
 
   const client = useMemo(
     () =>
@@ -97,7 +107,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     async (stream: MediaStream) => {
       vision.current?.stop();
       vision.current = null;
-      if (!config?.ai_face_check || bypass("camera")) return;
+      // the config may still be the previous render's: read the latest one. A dev camera bypass only means "not required" - a camera that is open is still analysed
+      if (!cfgRef.current?.ai_face_check) return;
       const m = new FaceMonitor(
         (s) => {
           setSample(s);
@@ -106,20 +117,23 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         (e) => guard.report(e.kind, e.severity, e.message, { seconds: e.seconds }),
       );
       try {
-        await m.start(stream);
+        const delegate = await m.start(stream);
+        console.info(`[vision] MediaPipe chạy bằng ${delegate}`);
         vision.current = m;
         setVisionError(null);
       } catch (err) {
         // the exam goes on; the proctor still sees the camera, only the on-device analysis is off
         m.stop();
+        console.error("[vision] MediaPipe không chạy:", err);
         setVisionError(err instanceof Error ? err.message : "Không bật được phân tích khuôn mặt");
       }
     },
-    [client, config?.ai_face_check, guard],
+    [client, guard],
   );
 
   const begin = useCallback(
-    async (attemptId: number) => {
+    async (attemptId: number, cfg?: Partial<MonitoringConfig> | null) => {
+      if (cfg) cfgRef.current = cfg;
       setEnded(null);
       setPaused(false);
       setWarning(null);
@@ -148,7 +162,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         }
       }
       if (media.camera) void startVision(media.camera);
-      await guard.start();
+      await guard.start(cfgRef.current);
     },
     [client, guard, startVision, watchTracks],
   );
@@ -159,6 +173,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     offTracks.current = [];
     vision.current?.stop();
     vision.current = null;
+    setBlurred(false);
+    badSince.current = goodSince.current = null;
     await guard.stop();
     await client.stop();
     await publisher.current?.disconnect();
@@ -201,6 +217,22 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       setRestoreError(FAILURE_TEXT[explain(e)]);
     }
   }, [client, watchTracks]);
+
+  // --- the exam content blurs while the candidate is not facing the screen (no violation: the tracker reports separately) ---
+  useEffect(() => {
+    if (!sample || !active.current) return;
+    const now = Date.now();
+    const away = sample.faces === 0 || (sample.faces === 1 && isLookingAway(sample));
+    if (away) {
+      goodSince.current = null;
+      badSince.current ??= now;
+      if (now - badSince.current >= BLUR_AFTER_MS) setBlurred(true);
+    } else {
+      badSince.current = null;
+      goodSince.current ??= now;
+      if (now - goodSince.current >= UNBLUR_AFTER_MS) setBlurred(false);
+    }
+  }, [sample]);
 
   // --- connection loss: after 5 minutes the candidate is absent (the server closes the attempt as well) ------
   useEffect(() => {
@@ -254,6 +286,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     cameraStream,
     sample,
     visionError,
+    blurred,
     blocker,
     restoreCamera,
     restoreScreen,
