@@ -1,0 +1,7 @@
+.agent
+.old-code
+.env
+.env.local
+.env.production
+# build artefacts
+*.tsbuildinfo
