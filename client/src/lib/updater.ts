@@ -29,6 +29,11 @@ export async function checkForUpdateAndInstall(
   onStatus: (status: UpdateStatus) => void,
   { silent = false }: { silent?: boolean } = {},
 ): Promise<UpdateOutcome> {
+  // the dev build is not a release: there is nothing to compare against and the check only hits the network
+  if (import.meta.env.DEV) {
+    if (!silent) onStatus({ state: "up-to-date" });
+    return "up-to-date";
+  }
   if (!silent) onStatus({ state: "checking" });
 
   let update: Update | null;

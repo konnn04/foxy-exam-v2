@@ -3,7 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { Camera, Cpu, Download, Keyboard, LogOut, Mic, Monitor, MonitorSmartphone, Mouse, Palette, RefreshCw, Usb } from "lucide-react";
 import { Badge, Button, Card, CardHeader, cx } from "../../components/ui";
 import { useTheme, type ThemePref } from "../../lib/theme";
-import { AppWindow, openPopup } from "../../lib/windowNav";
+import { checkForUpdateAndInstall, type UpdateStatus } from "../../lib/updater";
 import { getAuth } from "../../lib/authStore";
 import { getFaceDelegate, setFaceDelegate, type FaceDelegate } from "../../lib/vision";
 import type { Device, DeviceKind } from "../../lib/monitor";
@@ -14,11 +14,15 @@ const KIND_META: Record<DeviceKind, { label: string; icon: typeof Camera }> = {
   keyboard: { label: "Bàn phím", icon: Keyboard },
   mouse: { label: "Chuột", icon: Mouse },
   usb: { label: "Thiết bị USB khác", icon: Usb },
+  display: { label: "Màn hình & driver màn ảo", icon: Monitor },
+  capture: { label: "Capture card / video-in", icon: Camera },
 };
 
 export default function Settings({ device, onLogout }: PageProps & { onLogout: () => void }) {
   const { pref, setPref } = useTheme();
   const [version, setVersion] = useState("");
+  const [update, setUpdate] = useState<UpdateStatus>({ state: "idle" });
+  const updating = update.state === "checking" || update.state === "downloading" || update.state === "installing";
   const [delegate, setDelegate] = useState<FaceDelegate>(getFaceDelegate);
   useEffect(() => void getVersion().then(setVersion).catch(() => {}), []);
 
@@ -86,12 +90,12 @@ export default function Settings({ device, onLogout }: PageProps & { onLogout: (
 
         <Card>
           <CardHeader icon={<Download size={15} />} title="Ứng dụng" />
-          <div className="flex items-center justify-between p-4 text-xs">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-4 text-xs">
+            <div className="min-w-0">
               <p className="font-medium text-fg">Foxy Exam Client {version && `v${version}`}</p>
-              <p className="text-muted">Tự kiểm tra cập nhật mỗi lần mở ứng dụng.</p>
+              <p className={update.state === "error" ? "text-danger" : "text-muted"}>{updateText(update)}</p>
             </div>
-            <Button icon={<RefreshCw size={13} />} onClick={() => void openPopup(AppWindow.Update)}>
+            <Button icon={<RefreshCw size={13} className={updating ? "animate-spin" : ""} />} disabled={updating} onClick={() => void checkForUpdateAndInstall(setUpdate)}>
               Kiểm tra cập nhật
             </Button>
           </div>
@@ -188,4 +192,23 @@ function Row({ name, detail, badge }: { name: string; detail?: string; badge?: s
       {badge && <Badge>{badge}</Badge>}
     </div>
   );
+}
+
+function updateText(s: UpdateStatus): string {
+  switch (s.state) {
+    case "checking":
+      return "Đang kiểm tra…";
+    case "up-to-date":
+      return import.meta.env.DEV ? "Bạn đang dùng phiên bản mới nhất (bản dev)." : "Bạn đang dùng phiên bản mới nhất.";
+    case "available":
+      return `Có bản mới ${s.version} — đang tải…`;
+    case "downloading":
+      return `Đang tải bản cập nhật ${s.percent}%`;
+    case "installing":
+      return "Đang cài đặt, ứng dụng sẽ khởi động lại…";
+    case "error":
+      return `Không cập nhật được: ${s.message}`;
+    default:
+      return "Tự kiểm tra cập nhật mỗi lần mở ứng dụng.";
+  }
 }

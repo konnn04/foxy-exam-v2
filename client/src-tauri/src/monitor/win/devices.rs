@@ -34,13 +34,12 @@ pub fn devices() -> Vec<Device> {
 
             let class = registry_string(set, &data, SPDRP_CLASS).unwrap_or_default();
             let id = instance_id(set, &data).unwrap_or_default();
-            let Some(kind) = classify(&class, &id) else { continue };
-
             let Some(name) = registry_string(set, &data, SPDRP_FRIENDLYNAME)
                 .or_else(|| registry_string(set, &data, SPDRP_DEVICEDESC))
             else {
                 continue;
             };
+            let Some(kind) = classify(&class, &id, &name) else { continue };
 
             let hardware_id = vid_pid(&id);
             out.push(Device { id, name, class, kind, hardware_id });
@@ -52,8 +51,20 @@ pub fn devices() -> Vec<Device> {
     out
 }
 
-fn classify(class: &str, instance_id: &str) -> Option<DeviceKind> {
+const CAPTURE_WORDS: [&str; 12] = [
+    "capture", "elgato", "avermedia", "cam link", "magewell", "hdmi", "blackmagic", "decklink", "game link", "obs virtual", "epoccam", "droidcam",
+];
+const VIRTUAL_DISPLAY_WORDS: [&str; 9] = ["virtual", "idd", "spacedesk", "duet", "usbmmidd", "dummy", "parsec", "indirect display", "displaylink"];
+
+fn classify(class: &str, instance_id: &str, name: &str) -> Option<DeviceKind> {
+    let lower = name.to_ascii_lowercase();
+    let is_video_in = matches!(class, "Camera" | "Image" | "USB" | "MEDIA" | "Media" | "Unknown" | "System" | "") || instance_id.to_ascii_uppercase().starts_with("USB\\");
+    if is_video_in && CAPTURE_WORDS.iter().any(|w| lower.contains(w)) {
+        return Some(DeviceKind::Capture);
+    }
     match class {
+        "Monitor" => return Some(DeviceKind::Display),
+        "Display" if VIRTUAL_DISPLAY_WORDS.iter().any(|w| lower.contains(w)) => return Some(DeviceKind::Display),
         "Keyboard" => return Some(DeviceKind::Keyboard),
         "Mouse" => return Some(DeviceKind::Mouse),
         "Camera" | "Image" => return Some(DeviceKind::Camera),

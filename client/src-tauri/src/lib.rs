@@ -124,7 +124,7 @@ pub fn run() {
                 if window.label().starts_with("exam-") {
                     // Alt+F4 / the X of an exam window must never just vanish (the camera and the monitoring
                     // would keep running unseen): ask the page to show its confirmation instead.
-                    let _ = window.emit("exam://close-requested", ());
+                    let _ = window.emit_to(window.label(), "exam://close-requested", ());
                 } else {
                     window.hide().ok();
                 }

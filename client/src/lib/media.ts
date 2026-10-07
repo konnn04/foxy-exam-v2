@@ -2,9 +2,10 @@ import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 
 /** Camera / microphone / screen helpers shared by the pre-exam setup and the exam windows. */
 
-export type MediaFailure = "denied" | "notfound" | "busy" | "unsupported" | "unknown";
+export type MediaFailure = "denied" | "notfound" | "busy" | "unsupported" | "surface" | "unknown";
 
 export function explain(err: unknown): MediaFailure {
+  if (err instanceof WrongSurfaceError) return "surface";
   const name = (err as { name?: string } | null)?.name;
   switch (name) {
     case "NotAllowedError":
@@ -28,6 +29,7 @@ export const FAILURE_TEXT: Record<MediaFailure, string> = {
   notfound: "Không tìm thấy thiết bị.",
   busy: "Thiết bị đang được ứng dụng khác sử dụng.",
   unsupported: "Trình hiển thị không hỗ trợ tính năng này.",
+  surface: "Hãy chọn “Toàn màn hình” (Entire screen), không chia sẻ một cửa sổ hay tab.",
   unknown: "Không mở được thiết bị.",
 };
 
@@ -36,9 +38,34 @@ export const openCamera = () =>
 
 export const openMic = () => navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
 
-/** Needs a user gesture (the student clicks a button) and shows the OS screen picker. */
-export const openScreen = () =>
-  navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 5, max: 10 } }, audio: false });
+/** Thrown when the student picked a window or a browser tab instead of the whole screen. */
+export class WrongSurfaceError extends Error {
+  constructor() {
+    super("Hãy chọn “Toàn màn hình” (Entire screen), không chia sẻ một cửa sổ hay tab.");
+    this.name = "WrongSurfaceError";
+  }
+}
+
+/**
+ * Needs a user gesture (the student clicks a button) and shows the OS screen picker. Only a whole monitor is
+ * accepted - a window or tab would let the candidate hide everything else - and system audio is captured too.
+ */
+export async function openScreen(): Promise<MediaStream> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: { ideal: 5, max: 10 }, displaySurface: "monitor" },
+    audio: true,
+    selfBrowserSurface: "exclude",
+    monitorTypeSurfaces: "include",
+    surfaceSwitching: "exclude",
+    systemAudio: "include",
+  } as DisplayMediaStreamOptions);
+  const surface = (stream.getVideoTracks()[0]?.getSettings() as { displaySurface?: string } | undefined)?.displaySurface;
+  if (surface && surface !== "monitor") {
+    stopStream(stream);
+    throw new WrongSurfaceError();
+  }
+  return stream;
+}
 
 export function stopStream(s: MediaStream | null | undefined) {
   s?.getTracks().forEach((t) => t.stop());
@@ -110,6 +137,13 @@ export class LiveKitPublisher {
   }
 
   /** Publish a captured stream's video track; a new track of the same kind replaces the old one (camera plugged back in). */
+  async publishAudio(stream: MediaStream): Promise<void> {
+    const track = stream.getAudioTracks()[0];
+    if (!this.room || !track || this.tracks.get("screen-audio") === track) return;
+    await this.room.localParticipant.publishTrack(track, { source: Track.Source.ScreenShareAudio }).catch(() => {});
+    this.tracks.set("screen-audio", track);
+  }
+
   async publish(kind: "camera" | "screen", stream: MediaStream): Promise<void> {
     const track = stream.getVideoTracks()[0];
     if (!this.room || !track) return;

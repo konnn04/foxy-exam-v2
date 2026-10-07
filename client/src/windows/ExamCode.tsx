@@ -1,3 +1,4 @@
+import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState } from "react";
 import { listen, TauriEvent } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -545,7 +546,7 @@ function SubmissionRow({ s, n }: { s: Submission; n: number }) {
         <span className="text-xs font-medium text-fg">
           #{n} · {LANG_LABEL[s.language] ?? s.language}
         </span>
-        <span className="font-mono text-[10px] text-subtle">{new Date(s.submitted_at ?? s.created_at).toLocaleTimeString("vi-VN")}</span>
+        <span className="font-mono text-[10px] text-subtle">{formatTime(s.submitted_at ?? s.created_at, true)}</span>
       </div>
       <div className="mt-1">
         <SubmissionSummary s={s} />

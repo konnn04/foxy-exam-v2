@@ -7,7 +7,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
  * (theo sự kiện, không cần polling phía JS).
  */
 
-export type DeviceKind = "keyboard" | "mouse" | "camera" | "usb";
+export type DeviceKind = "keyboard" | "mouse" | "camera" | "usb" | "display" | "capture";
 
 export interface Device {
   id: string;
@@ -112,6 +112,13 @@ export function countPhysical(devices: Device[], kind: DeviceKind): number {
   );
   return keys.size;
 }
+
+/** Screens in use: active desktops, or monitors / virtual display drivers the OS still reports (mirrored or cloned). */
+export const screenCount = (displays: DisplayInfo[], devices: Device[]) =>
+  Math.max(displays.length, devices.filter((d) => d.kind === "display").length);
+
+/** HDMI / USB capture cards and similar video-in hardware. */
+export const captureDevices = (devices: Device[]) => devices.filter((d) => d.kind === "capture");
 
 /** Ứng dụng cấm mặc định (quay/chia sẻ màn hình, điều khiển từ xa, chat). */
 export const DEFAULT_BANNED_APPS = [

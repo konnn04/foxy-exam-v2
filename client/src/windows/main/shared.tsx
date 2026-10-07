@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { ClipboardX, Code2, Keyboard, Layers, ListChecks, ScanFace, AppWindow as AppWindowIcon } from "lucide-react";
 import type { Course, CourseExam, DashboardData, ExamKind, MeDto } from "../../lib/api";
-import { getSnapshot, type SystemSnapshot } from "../../lib/monitor";
-import { Badge } from "../../components/ui";
+import { captureDevices, getSnapshot, screenCount, type SystemSnapshot } from "../../lib/monitor";
+import { Badge, Tip } from "../../components/ui";
+import { formatDate, formatDateTime, formatTime } from "../../lib/datetime";
 
 export type Page = "dashboard" | "courses" | "exams" | "history" | "profile" | "settings";
 
@@ -109,9 +110,9 @@ export function MonitorIcons({ config }: { config: CourseExam["monitoring_config
   return (
     <span className="flex items-center gap-1.5 text-muted">
       {active.map(({ key, label, icon: Icon }) => (
-        <span key={key} title={label}>
+        <Tip key={key} label={label}>
           <Icon size={14} />
-        </span>
+        </Tip>
       ))}
     </span>
   );
@@ -126,17 +127,17 @@ export const fmtScore = (n: number) => (Math.round(n * 10) / 10).toString();
 
 export function fmtDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  return formatDate(iso).slice(0, 5);
 }
 
 export function fmtTime(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  return formatTime(iso);
 }
 
 export function fmtDateTime(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+  return formatDateTime(iso);
 }
 
 /** "4 giờ nữa", "2 ngày trước"... */
@@ -168,6 +169,7 @@ export interface DeviceCheck {
   cameras: number;
   microphones: number;
   displays: number;
+  captureCards: number;
   /** Bàn phím NGOÀI (USB/Bluetooth có VID:PID) — bàn phím tích hợp laptop không tính. */
   keyboards: number;
 }
@@ -196,7 +198,8 @@ export function useDeviceCheck(): DeviceCheck {
     refresh,
     cameras: devices.filter((d) => d.kind === "camera").length,
     microphones: snapshot?.microphones.length ?? 0,
-    displays: snapshot?.displays.length ?? 0,
+    displays: snapshot ? screenCount(snapshot.displays, devices) : 0,
+    captureCards: captureDevices(devices).length,
     keyboards: new Set(devices.filter((d) => d.kind === "keyboard" && d.hardwareId).map((d) => d.hardwareId)).size,
   };
 }

@@ -1,3 +1,4 @@
+import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, WifiOff } from "lucide-react";
 import { Button, cx } from "./ui";
@@ -313,7 +314,7 @@ function GuardPanel({ runtime, children }: { runtime: Runtime; children?: ReactN
                 <li key={v.id} className="rounded-lg border border-line bg-surface-2 px-2.5 py-1.5">
                   <p className="text-[11px] leading-snug text-fg">{v.message}</p>
                   <p className="mt-0.5 font-mono text-[10px] text-subtle">
-                    {new Date(v.t).toLocaleTimeString("vi-VN")} · {v.type}
+                    {formatTime(v.t, true)} · {v.type}
                   </p>
                 </li>
               ))}

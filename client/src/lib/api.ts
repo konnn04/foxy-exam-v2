@@ -575,6 +575,7 @@ export type ViolationType =
   // Phát hiện bởi module giám sát Rust (server nhận chuỗi tự do, tối đa 50 ký tự).
   | "BANNED_APP"
   | "MULTIPLE_MONITORS"
+  | "CAPTURE_DEVICE"
   | "SYSTEM_SHORTCUT"
   | "DEVICE_CHANGED"
   | "APP_NOT_ALLOWED"

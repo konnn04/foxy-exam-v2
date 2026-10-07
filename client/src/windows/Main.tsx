@@ -3,7 +3,6 @@ import {
   BookOpen,
   Camera,
   ChevronUp,
-  Download,
   FileText,
   History as HistoryIcon,
   LayoutGrid,
@@ -18,8 +17,9 @@ import {
   User,
 } from "lucide-react";
 import TitleBar from "../components/TitleBar";
-import { BrandMark, Button, cx } from "../components/ui";
-import { AppWindow, onWindowShown, openPopup, switchWindow } from "../lib/windowNav";
+import { BrandMark, Button, Tip, cx } from "../components/ui";
+import { dialog, toast } from "../lib/dialog";
+import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
 import { clearAuth, getAuth, saveAuth, type AuthData } from "../lib/authStore";
 import { clearSession } from "../lib/session";
@@ -118,7 +118,7 @@ export default function Main() {
     void load();
     return onWindowShown(() => {
       const notice = takeNotice();
-      if (notice) setError(notice);
+      if (notice) void dialog.alert({ title: "Phòng thi đã đóng", text: notice, tone: "warning" });
       void load();
       device.refresh();
     });
@@ -151,13 +151,19 @@ export default function Main() {
    */
   async function handleStart(exam: { id: number; title: string; code: string; type: "QUIZ" | "PROGRAMMING" | "HYBRID" }) {
     if (!auth) return;
+    const ok = await dialog.confirm({
+      title: `Vào phòng thi “${exam.title}”?`,
+      text: "Ứng dụng sẽ chuyển sang chế độ thi: toàn màn hình, bật camera và giám sát. Đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu” ở bước kiểm tra thiết bị.",
+      confirmLabel: "Vào phòng thi",
+    });
+    if (!ok) return;
     setStartingId(exam.id);
     setError(null);
     try {
       savePendingExam({ id: exam.id, title: exam.title, code: exam.code, type: exam.type });
       await switchWindow(exam.type === "QUIZ" ? AppWindow.ExamClassic : AppWindow.ExamCode);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không vào được phòng thi.");
+      toast.error(err instanceof ApiError ? err.message : "Không vào được phòng thi.");
     } finally {
       setStartingId(null);
     }
@@ -218,23 +224,22 @@ export default function Main() {
         {/* Nội dung */}
         <div className="flex min-w-0 flex-1 flex-col bg-surface">
           <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
-            <button
-              type="button"
-              onClick={() => setCollapsed((v) => !v)}
-              className="rounded-md p-1 text-muted hover:bg-surface-3 hover:text-fg"
-              aria-label="Thu gọn menu"
-            >
-              <PanelLeft size={16} />
-            </button>
+            <Tip label="Thu gọn / mở rộng menu" side="bottom">
+              <button
+                type="button"
+                onClick={() => setCollapsed((v) => !v)}
+                className="rounded-md p-1 text-muted hover:bg-surface-3 hover:text-fg"
+                aria-label="Thu gọn menu"
+              >
+                <PanelLeft size={16} />
+              </button>
+            </Tip>
             <span className="h-4 w-px bg-line" />
             <h1 className="text-[13px] font-semibold text-fg">{PAGE_TITLE[page]}</h1>
             <div className="ml-auto flex items-center gap-2">
-              <Button size="sm" variant="ghost" icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading}>
-                Làm mới
-              </Button>
-              <Button size="sm" icon={<Download size={13} />} onClick={() => void openPopup(AppWindow.Update)}>
-                Cập nhật
-              </Button>
+              <Tip label="Làm mới dữ liệu">
+                <Button size="sm" variant="ghost" icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading} aria-label="Làm mới" />
+              </Tip>
               <ThemeToggle />
             </div>
           </header>

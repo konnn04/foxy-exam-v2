@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Monitor, MonitorCheck, RefreshCw, RotateCcw, ShieldCheck, X } from "lucide-react";
-import { Button, Card, CardHeader, Empty, cx } from "../../components/ui";
+import { Button, Card, CardHeader, Empty, Tip, cx } from "../../components/ui";
 import {
   ExamStateBadge,
   attemptsLeft,
@@ -71,19 +71,15 @@ export default function Exams(props: PageProps) {
         <Card>
           <CardHeader icon={<ShieldCheck size={15} />} title="Yêu cầu giám sát của bài thi kế tiếp" right={next && <span className="text-[11px] text-muted">{next.title}</span>} />
           {next ? (
-            <div className="grid grid-cols-2 gap-2 p-3">
+            <div className="flex flex-wrap items-center gap-2 p-3">
               {MONITOR_FLAGS.map(({ key, label, icon: Icon }) => {
                 const on = !!next.monitoring_config?.[key];
                 return (
-                  <div
-                    key={key}
-                    className={cx(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-xs",
-                      on ? "bg-surface-2 text-fg" : "text-subtle line-through",
-                    )}
-                  >
-                    <Icon size={14} className={on ? "text-accent" : ""} /> {label}
-                  </div>
+                  <Tip key={key} label={`${label}: ${on ? "có" : "không yêu cầu"}`}>
+                    <span className={cx("flex h-8 w-8 items-center justify-center rounded-lg border", on ? "border-accent/40 bg-accent-soft text-accent" : "border-line text-subtle opacity-60")}>
+                      <Icon size={15} />
+                    </span>
+                  </Tip>
                 );
               })}
             </div>
@@ -219,6 +215,7 @@ export function DeviceCheckCard({ device }: { device: DeviceCheck }) {
             {row(cams.length > 0, cams.length > 0 ? `Webcam: ${cams[0].name}` : "Không tìm thấy webcam")}
             {row(!!mic, mic ? `Micro: ${mic.name}` : "Không tìm thấy micro")}
             {row(device.displays === 1, device.displays === 1 ? "1 màn hình" : `Phát hiện ${device.displays} màn hình`)}
+            {row(device.captureCards === 0, device.captureCards === 0 ? "Không có capture card" : `Có ${device.captureCards} capture card / video-in`)}
             {row(device.keyboards <= 1, `${device.keyboards} bàn phím ngoài`)}
           </ul>
         ) : (

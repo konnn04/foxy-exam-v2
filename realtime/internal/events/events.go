@@ -28,7 +28,7 @@ var ViolationTypes = map[string]bool{
 	"BULK_PASTE": true, "SYNTHETIC_INPUT": true, "TAB_SWITCH": true, "WINDOW_LOST_FOCUS": true, "DEVTOOLS_OPENED": true,
 	"MULTIPLE_KEYBOARDS": true, "FACE_MISMATCH": true, "MULTIPLE_PEOPLE": true, "NO_FACE_DETECTED": true, "PROHIBITED_DEVICE": true,
 	// detected by FoxyClient itself
-	"BANNED_APP": true, "MULTIPLE_MONITORS": true, "DEVICE_CHANGED": true, "SYSTEM_SHORTCUT": true, "APP_NOT_ALLOWED": true,
+	"BANNED_APP": true, "MULTIPLE_MONITORS": true, "CAPTURE_DEVICE": true, "DEVICE_CHANGED": true, "SYSTEM_SHORTCUT": true, "APP_NOT_ALLOWED": true,
 	"LOOKING_AWAY": true, "FACE_TOO_FAR": true, "CAMERA_LOST": true, "SCREEN_SHARE_STOPPED": true, "OFFLINE_TOO_LONG": true,
 }
 

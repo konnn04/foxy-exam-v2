@@ -6,6 +6,7 @@ import Main from "./windows/Main";
 import ExamClassic from "./windows/ExamClassic";
 import ExamCode from "./windows/ExamCode";
 import { AppWindow } from "./lib/windowNav";
+import DialogHost from "./components/Dialogs";
 
 /**
  * Mỗi cửa sổ Tauri load chung một bundle React duy nhất, nên ở đây ta chỉ cần
@@ -19,21 +20,30 @@ function App() {
     setLabel(getCurrentWindow().label);
   }, []);
 
-  switch (label) {
-    case AppWindow.Auth:
-      return <Auth />;
-    case AppWindow.Update:
-      return <Update />;
-    case AppWindow.Main:
-      return <Main />;
-    case AppWindow.ExamClassic:
-      return <ExamClassic />;
-    case AppWindow.ExamCode:
-      return <ExamCode />;
-    default:
-      // Đang xác định label, hoặc chạy trong trình duyệt thường (pnpm dev ngoài Tauri).
-      return null;
-  }
+  const screen = (() => {
+    switch (label) {
+      case AppWindow.Auth:
+        return <Auth />;
+      case AppWindow.Update:
+        return <Update />;
+      case AppWindow.Main:
+        return <Main />;
+      case AppWindow.ExamClassic:
+        return <ExamClassic />;
+      case AppWindow.ExamCode:
+        return <ExamCode />;
+      default:
+        // Đang xác định label, hoặc chạy trong trình duyệt thường (pnpm dev ngoài Tauri).
+        return null;
+    }
+  })();
+
+  return (
+    <>
+      {screen}
+      <DialogHost />
+    </>
+  );
 }
 
 export default App;

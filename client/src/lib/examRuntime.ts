@@ -137,7 +137,10 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           const pub = new LiveKitPublisher(setMediaState);
           await pub.connect(lk);
           if (media.camera) await pub.publish("camera", media.camera);
-          if (media.screen) await pub.publish("screen", media.screen);
+          if (media.screen) {
+            await pub.publish("screen", media.screen);
+            await pub.publishAudio(media.screen);
+          }
           publisher.current = pub;
         } catch (err) {
           console.warn("[runtime] LiveKit publish failed (exam continues, telemetry still flows):", err);
@@ -191,6 +194,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       const s = await openScreen();
       setLobbyMedia({ screen: s });
       await publisher.current?.publish("screen", s).catch(() => {});
+      await publisher.current?.publishAudio(s);
       client.setState({ screen: true });
       watchTracks();
     } catch (e) {

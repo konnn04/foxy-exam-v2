@@ -15,6 +15,26 @@ const VARIANT: Record<Variant, string> = {
   dark: "bg-fg text-app hover:opacity-90",
 };
 
+/** Hover tooltip for icon-only controls; `side` picks where the bubble opens. */
+export function Tip({ label, children, side = "bottom", className }: { label: ReactNode; children: ReactNode; side?: "top" | "bottom" | "left"; className?: string }) {
+  return (
+    <span className={cx("group/tip relative inline-flex", className)}>
+      {children}
+      <span
+        role="tooltip"
+        className={cx(
+          "pointer-events-none absolute z-[90] w-max max-w-[240px] rounded-md bg-fg px-2 py-1 text-[11px] font-normal leading-snug text-app opacity-0 shadow-lg transition-opacity delay-150 group-hover/tip:opacity-100",
+          side === "bottom" && "left-1/2 top-full mt-1.5 -translate-x-1/2",
+          side === "top" && "bottom-full left-1/2 mb-1.5 -translate-x-1/2",
+          side === "left" && "right-full top-1/2 mr-1.5 -translate-y-1/2",
+        )}
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
+
 export function Button({
   variant = "secondary",
   size = "md",

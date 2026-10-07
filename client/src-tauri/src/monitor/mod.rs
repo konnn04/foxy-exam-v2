@@ -43,6 +43,10 @@ pub enum DeviceKind {
     Mouse,
     Camera,
     Usb,
+    /// A monitor the OS reports as present, or a virtual display adapter (counts even when mirrored).
+    Display,
+    /// HDMI / USB capture cards and other video-in devices that can feed a second screen.
+    Capture,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq, Hash)]

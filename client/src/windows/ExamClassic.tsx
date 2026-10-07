@@ -1,3 +1,4 @@
+import { formatTime } from "../lib/datetime";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpenText, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, Loader2, Save, X } from "lucide-react";
 import { ConfirmModal, ExamShell } from "../components/ExamShell";
@@ -177,7 +178,7 @@ export default function ExamClassic() {
       })
         .then(() => {
           setSaveState("idle");
-          setSavedAt(new Date().toLocaleTimeString("vi-VN"));
+          setSavedAt(formatTime(new Date(), true));
         })
         .catch(() => setSaveState("error"));
     }, 400);

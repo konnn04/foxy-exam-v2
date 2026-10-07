@@ -6,9 +6,12 @@ import { ApiError, getExam, getHealth, startExam, type ExamDetail } from "../lib
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, FAILURE_TEXT, micMeter, openCamera, openMic, openScreen, stopStream } from "../lib/media";
-import { DEFAULT_BANNED_APPS, getProcesses, getSnapshot, type SystemSnapshot } from "../lib/monitor";
+import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
+import { formatDateTime } from "../lib/datetime";
 import { saveSession } from "../lib/session";
+import { dialog, errorText } from "../lib/dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
@@ -46,17 +49,19 @@ export default function ExamLobby({
   const [checks, setChecks] = useState<Record<Check["id"], Check>>(() => initial());
   const [level, setLevel] = useState(0);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [screenBusy, setScreenBusy] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const stopMeter = useRef<(() => void) | null>(null);
   const micStream = useRef<MediaStream | null>(null);
+  const startedRef = useRef(false);
 
   const set = useCallback((id: Check["id"], patch: Partial<Check>) => setChecks((c) => ({ ...c, [id]: { ...c[id], ...patch } })), []);
 
   const cfg = detail?.monitoring_config ?? null;
   const needCamera = Boolean(cfg?.ai_face_check) && !bypass("camera");
   const needMic = Boolean(cfg?.require_mic);
+  const needScreen = Boolean(cfg?.require_screen) && !bypass("screen");
 
   const attachPreview = useCallback((s: MediaStream | null) => {
     if (video.current) video.current.srcObject = s;
@@ -102,14 +107,14 @@ export default function ExamLobby({
       stopStream(getLobbyMedia().screen);
       const s = await openScreen();
       setLobbyMedia({ screen: s });
-      set("screen", { level: "ok", detail: "Đã chia sẻ màn hình", required: false });
-      s.getVideoTracks()[0]?.addEventListener("ended", () => set("screen", { level: "warn", detail: "Đã dừng chia sẻ màn hình", required: false }));
+      set("screen", { level: "ok", detail: s.getAudioTracks().length > 0 ? "Đã chia sẻ toàn màn hình (có âm thanh)" : "Đã chia sẻ toàn màn hình", required: needScreen });
+      s.getVideoTracks()[0]?.addEventListener("ended", () => set("screen", { level: needScreen ? "fail" : "warn", detail: "Đã dừng chia sẻ màn hình", required: needScreen }));
     } catch (e) {
-      set("screen", { level: "warn", detail: `${FAILURE_TEXT[explain(e)]} (không bắt buộc)`, required: false });
+      set("screen", { level: needScreen ? "fail" : "warn", detail: `${FAILURE_TEXT[explain(e)]}${needScreen ? "" : " (không bắt buộc)"}`, required: needScreen });
     } finally {
       setScreenBusy(false);
     }
-  }, [set]);
+  }, [set, needScreen]);
 
   const runAll = useCallback(async () => {
     setError(null);
@@ -134,7 +139,7 @@ export default function ExamLobby({
       d = (await getExam(pending.id)).data;
       setDetail(d);
       const now = Date.now();
-      if (d.start_time && now < new Date(d.start_time).getTime()) set("exam", { level: "fail", detail: `Kỳ thi chưa mở (bắt đầu ${new Date(d.start_time).toLocaleString("vi-VN")})` });
+      if (d.start_time && now < new Date(d.start_time).getTime()) set("exam", { level: "fail", detail: `Kỳ thi chưa mở (bắt đầu ${formatDateTime(d.start_time)})` });
       else if (d.end_time && now > new Date(d.end_time).getTime()) set("exam", { level: "fail", detail: "Kỳ thi đã đóng" });
       else if (!d.can_start) set("exam", { level: "fail", detail: d.ai_service?.message || "Chưa thể bắt đầu kỳ thi này" });
       else set("exam", { level: "ok", detail: `${d.duration_minutes} phút · mã ${d.code}` });
@@ -155,8 +160,18 @@ export default function ExamLobby({
       set("display", { level: "warn", detail: "Không đọc được thông tin màn hình (ngoài Tauri)", required: false });
       set("apps", { level: "warn", detail: "Không đọc được danh sách tiến trình (ngoài Tauri)", required: false });
     } else {
-      const n = snap.displays.length;
-      set("display", n <= 1 || bypass("devices") ? { level: n <= 1 ? "ok" : "warn", detail: n <= 1 ? "1 màn hình" : `Dev: bỏ qua ${n} màn hình` } : { level: "fail", detail: `Đang có ${n} màn hình — hãy rút màn hình phụ` });
+      const n = screenCount(snap.displays, snap.devices);
+      const cards = captureDevices(snap.devices);
+      set(
+        "display",
+        bypass("devices")
+          ? { level: n <= 1 && cards.length === 0 ? "ok" : "warn", detail: n <= 1 && cards.length === 0 ? "1 màn hình" : `Dev: bỏ qua ${n} màn hình / ${cards.length} capture` }
+          : cards.length > 0
+            ? { level: "fail", detail: `Có thiết bị capture/video-in: ${cards.map((c) => c.name).join(", ")} — hãy rút ra` }
+            : n > 1
+              ? { level: "fail", detail: `Đang có ${n} màn hình (kể cả màn nhân bản / màn ảo) — hãy rút màn hình phụ` }
+              : { level: "ok", detail: "1 màn hình" },
+      );
       try {
         const bad = [...new Set((await getProcesses()).map((p) => p.name).filter(matchesBanned))];
         set("apps", bad.length === 0 ? { level: "ok", detail: "Không có ứng dụng bị cấm" } : bypass("devices") ? { level: "warn", detail: `Dev: bỏ qua ${bad.join(", ")}` } : { level: "fail", detail: `Hãy đóng: ${bad.join(", ")}` });
@@ -170,14 +185,25 @@ export default function ExamLobby({
     await runCamera(reqCam);
     await runMic(Boolean(d?.monitoring_config?.require_mic));
     if (bypass("screen")) set("screen", { level: "warn", detail: "Dev: bỏ qua chia sẻ màn hình", required: false });
+    else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: "Bắt buộc chia sẻ TOÀN MÀN HÌNH — nhấn “Chia sẻ màn hình”", required: true });
     else set("screen", { level: "idle", detail: "Nhấn “Chia sẻ màn hình” để giám thị theo dõi bài làm (khuyến nghị)", required: false });
   }, [pending.id, runCamera, runMic, set]);
 
   useEffect(() => {
     void runAll();
+    // the lobby holds the camera: let go of it whenever the window is hidden or the lobby ends without an exam
+    const onHide = () => document.visibilityState === "hidden" && !startedRef.current && releaseLobbyMedia();
+    document.addEventListener("visibilitychange", onHide);
+    const closing = getCurrentWindow().listen("exam://close-requested", async () => {
+      const leave = await dialog.confirm({ title: "Rời phòng chờ?", text: "Bạn chưa bắt đầu làm bài. Camera và chia sẻ màn hình sẽ được tắt.", confirmLabel: "Rời đi", tone: "warning" });
+      if (leave) cancelRef.current();
+    });
     return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      void closing.then((off) => off());
       stopMeter.current?.();
       stopStream(micStream.current); // the lobby mic is only a test; the exam does not record audio
+      if (!startedRef.current) releaseLobbyMedia();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -191,10 +217,15 @@ export default function ExamLobby({
 
   const start = useCallback(async () => {
     const auth = getAuth();
-    if (!auth) return setError("Phiên đăng nhập đã hết hạn — hãy đăng nhập lại.");
+    if (!auth) return void dialog.alert({ title: "Phiên đăng nhập đã hết hạn", text: "Hãy đăng nhập lại để vào thi.", tone: "warning" });
     setStarting(true);
     setError(null);
     try {
+      if (needScreen && !getLobbyMedia().screen?.active) await shareScreen();
+      if (needScreen && !getLobbyMedia().screen?.active) {
+        setStarting(false);
+        return void dialog.alert({ title: "Chưa chia sẻ màn hình", text: "Kỳ thi này bắt buộc chia sẻ toàn màn hình. Nhấn “Bắt đầu” lần nữa và chọn Toàn màn hình (Entire screen).", tone: "warning" });
+      }
       const res = (await startExam(pending.id)).data;
       saveSession({
         token: auth.token,
@@ -205,13 +236,16 @@ export default function ExamLobby({
         exam: { id: res.exam.id, title: res.exam.title, code: res.exam.code, duration_minutes: res.duration_minutes, monitoring_config: res.exam.monitoring_config },
       });
       clearPendingExam();
+      startedRef.current = true;
       onStarted();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Không vào được phòng thi.");
+      const text = e instanceof ApiError ? e.message : errorText(e, "Không vào được phòng thi.");
+      setError(text);
+      void dialog.alert({ title: "Không vào được phòng thi", text, tone: "danger" });
     } finally {
       setStarting(false);
     }
-  }, [onStarted, pending.id]);
+  }, [onStarted, pending.id, needScreen, shareScreen]);
 
   // dev: "setup" bypass goes straight in as soon as the exam detail is known
   const auto = useRef(false);
@@ -227,6 +261,8 @@ export default function ExamLobby({
     clearPendingExam();
     onCancel();
   };
+  const cancelRef = useRef(cancel);
+  cancelRef.current = cancel;
 
   return (
     <div className="flex h-screen flex-col bg-app text-fg">
@@ -253,7 +289,7 @@ export default function ExamLobby({
             <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level === "fail" || checks.camera.level === "warn" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>Thử lại</Button> : undefined} />
             <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" ? <Button size="sm" onClick={() => void runMic(needMic)}>Thử lại</Button> : undefined} />
             <Row
-              c={checks.screen}
+              c={{ ...checks.screen, required: needScreen }}
               icon={<MonitorUp size={14} />}
               action={
                 !bypass("screen") && (
@@ -294,7 +330,6 @@ export default function ExamLobby({
             <li>• Trong giờ thi mọi thao tác rời cửa sổ đều được ghi nhận.</li>
           </ul>
 
-          {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
           <Button variant="primary" size="lg" className="w-full" disabled={!ready} loading={starting} onClick={() => void start()}>
             Bắt đầu làm bài
           </Button>

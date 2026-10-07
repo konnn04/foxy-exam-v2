@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/datetime";
 import { BarChart3, Laptop, Lock, User } from "lucide-react";
 import { Badge, Card, CardHeader } from "../../components/ui";
 import { fmtScore, initials, type PageProps } from "./shared";
@@ -34,7 +35,7 @@ export default function Profile({ data, device }: PageProps) {
             <Field label="Tên" value={me?.first_name} />
             <Field label="Email tổ chức" value={me?.email} locked />
             <Field label="Tên đăng nhập / MSSV" value={me?.username} locked />
-            <Field label="Ngày sinh" value={me?.date_of_birth ? new Date(me.date_of_birth).toLocaleDateString("vi-VN") : null} />
+            <Field label="Ngày sinh" value={me?.date_of_birth ? formatDate(me.date_of_birth) : null} />
             <Field label="Địa chỉ" value={me?.address} />
           </div>
         </Card>

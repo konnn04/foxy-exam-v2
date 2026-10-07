@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { emitTo } from "@tauri-apps/api/event";
 
 /**
  * Nhãn (label) các cửa sổ khai báo sẵn trong `tauri.conf.json`. Thứ tự khởi động:
@@ -21,7 +22,9 @@ export const SHOWN_EVENT = "foxy://shown";
 
 /** Đăng ký chạy `fn` mỗi khi cửa sổ hiện tại được hiện bởi `switchWindow`. */
 export function onWindowShown(fn: () => void): () => void {
-  const unlisten = getCurrentWindow().listen(SHOWN_EVENT, fn);
+  const self = getCurrentWindow().label;
+  // the payload names the window that was shown: a broadcast must never wake the other windows
+  const unlisten = getCurrentWindow().listen<string>(SHOWN_EVENT, (e) => e.payload === self && fn());
   return () => void unlisten.then((off) => off());
 }
 
@@ -42,7 +45,7 @@ export async function switchWindow(toLabel: AppWindowLabel): Promise<void> {
 
   await target.show();
   await target.setFocus();
-  await target.emit(SHOWN_EVENT);
+  await emitTo(toLabel, SHOWN_EVENT, toLabel);
 
   // Only one app window is visible at a time: hide every other one, not just the current, so a window that
   // was opened as a popup (update) or left behind can never float over the exam window.

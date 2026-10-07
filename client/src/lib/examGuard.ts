@@ -5,6 +5,8 @@ import { bypass } from "./dev";
 import { type RealtimeClient } from "./realtime";
 import {
   DEFAULT_BANNED_APPS,
+  captureDevices,
+  screenCount,
   drainKeylog,
   getSnapshot,
   onMonitor,
@@ -187,9 +189,13 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       onMonitor("monitor://devices", (p) => {
         setState((s) => ({ ...s, displays: bypass("devices") ? Math.min(1, p.displays.length) : p.displays.length, microphones: p.microphones.length }));
         if (bypass("devices")) return;
-        if (p.displays.length > 1) {
-          record("MULTIPLE_MONITORS", "HIGH", `Phát hiện ${p.displays.length} màn hình`, { displays: p.displays });
-        }
+        void getSnapshot().then((snap) => {
+          const screens = screenCount(snap.displays, snap.devices);
+          const cards = captureDevices(snap.devices);
+          setState((st) => ({ ...st, displays: screens }));
+          if (screens > 1) record("MULTIPLE_MONITORS", "HIGH", `Phát hiện ${screens} màn hình`, { displays: snap.displays });
+          if (cards.length > 0) record("CAPTURE_DEVICE", "HIGH", `Có thiết bị capture: ${cards.map((c) => c.name).join(", ")}`, { devices: cards.map((c) => c.name) });
+        });
         const changed = [...p.added.map((d) => ({ ...d, action: "cắm" })), ...p.removed.map((d) => ({ ...d, action: "rút" }))];
         if (changed.length > 0) {
           void getSnapshot().then((snap) =>
@@ -261,15 +267,18 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       const kb = externalKeyboards(snap.devices);
       setState((s) => ({
         ...s,
-        displays: snap.displays.length,
+        displays: screenCount(snap.displays, snap.devices),
         cameras: snap.devices.filter((d) => d.kind === "camera").length,
         microphones: snap.microphones.length,
         externalKeyboards: kb,
       }));
       if (!bypass("devices")) {
-        if (snap.displays.length > 1) {
-          record("MULTIPLE_MONITORS", "HIGH", `Vào phòng thi khi đang có ${snap.displays.length} màn hình`, { displays: snap.displays });
+        const screens = screenCount(snap.displays, snap.devices);
+        if (screens > 1) {
+          record("MULTIPLE_MONITORS", "HIGH", `Vào phòng thi khi đang có ${screens} màn hình`, { displays: snap.displays });
         }
+        const cards = captureDevices(snap.devices);
+        if (cards.length > 0) record("CAPTURE_DEVICE", "HIGH", `Có thiết bị capture: ${cards.map((c) => c.name).join(", ")}`, { devices: cards.map((c) => c.name) });
         if (kb > 1) record("MULTIPLE_KEYBOARDS", "MEDIUM", `Phát hiện ${kb} bàn phím ngoài`);
       }
     } catch (err) {
