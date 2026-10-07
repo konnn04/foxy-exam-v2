@@ -54,7 +54,9 @@ type Heartbeat struct {
 	Camera     *bool `json:"camera,omitempty"`
 	Screen     *bool `json:"screen,omitempty"`
 	LatencyMS  *int  `json:"latency_ms,omitempty"`
-	Question   *int  `json:"question,omitempty"` // question / problem the candidate is looking at
+	Question   *int  `json:"question,omitempty"`  // question / problem the candidate is looking at
+	Attention  *int  `json:"attention,omitempty"` // 0..100 from the on-device face analysis
+	Faces      *int  `json:"faces,omitempty"`
 }
 
 // Violation is the Data of a TypeViolation event.

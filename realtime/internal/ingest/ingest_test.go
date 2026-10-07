@@ -88,7 +88,7 @@ func TestBatchIsStoredOnceAndRetriesAreIdempotent(t *testing.T) {
 	e := setup(t, nil)
 	tok := candidate(5, 2)
 	body := map[string]any{"events": []any{
-		ev(1, "hb", map[string]any{"focus": true, "fullscreen": true, "camera": true, "latency_ms": 42}),
+		ev(1, "hb", map[string]any{"focus": true, "fullscreen": true, "camera": true, "latency_ms": 42, "attention": 77, "faces": 1}),
 		ev(2, "violation", map[string]any{"violation_type": "TAB_SWITCH", "severity": "MEDIUM", "details": map[string]any{"to": "chrome"}}),
 		ev(3, "oplog", map[string]any{"batch_seq": 1, "keystroke_count": 30, "paste_event_count": 0}),
 	}}
@@ -112,7 +112,7 @@ func TestBatchIsStoredOnceAndRetriesAreIdempotent(t *testing.T) {
 
 	// live state is what the proctor will see: merged heartbeat + violation counters
 	att, _ := e.st.R.HGetAll(t.Context(), store.KeyAttempt(5)).Result()
-	if att["f"] != "0" || att["fs"] != "1" || att["cam"] != "1" || att["lat"] != "42" || att["v"] != "1" || att["lv"] != "TAB_SWITCH" || att["eid"] != "2" {
+	if att["f"] != "0" || att["fs"] != "1" || att["cam"] != "1" || att["lat"] != "42" || att["v"] != "1" || att["att"] != "77" || att["fc"] != "1" || att["lv"] != "TAB_SWITCH" || att["eid"] != "2" {
 		t.Fatalf("live state wrong: %v", att)
 	}
 }

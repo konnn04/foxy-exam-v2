@@ -279,6 +279,12 @@ func (s *Server) fold(p *store.AcceptParams, e events.Event) {
 		if h.Question != nil {
 			p.Fields["q"] = *h.Question
 		}
+		if h.Attention != nil {
+			p.Fields["att"] = *h.Attention
+		}
+		if h.Faces != nil {
+			p.Fields["fc"] = *h.Faces
+		}
 	case events.TypeViolation:
 		var v events.Violation
 		if json.Unmarshal(e.Data, &v) == nil {

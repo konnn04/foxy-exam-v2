@@ -82,6 +82,8 @@ type View struct {
 	Screen        *bool  `json:"screen,omitempty"`
 	LatencyMS     int    `json:"latency_ms,omitempty"`
 	Question      int    `json:"question,omitempty"`
+	Attention     *int   `json:"attention,omitempty"` // 0..100, from the candidate's on-device face analysis
+	Faces         *int   `json:"faces,omitempty"`
 	LastSeenMS    int64  `json:"last_seen_ms"`
 	Violations    int    `json:"violations"`
 	LastViolation *Brief `json:"last_violation,omitempty"`
@@ -152,6 +154,12 @@ func (a *attState) apply(f map[string]string) {
 			a.LatencyMS = int(atoi(v))
 		case "q":
 			a.Question = int(atoi(v))
+		case "att":
+			n := int(atoi(v))
+			a.Attention = &n
+		case "fc":
+			n := int(atoi(v))
+			a.Faces = &n
 		case "v":
 			a.Violations = int(atoi(v))
 		case "lv":
