@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #0B0B0C; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #FF5D23; text-decoration: none; }
+  a:hover { color: #FF8154; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary { list-style: none; cursor: pointer; }
+  @keyframes fxTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes fxBlink { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+  .fxScroll::-webkit-scrollbar { height: 6px; }
+  .fxScroll::-webkit-scrollbar-thumb { background: rgba(242,239,233,.25); border-radius: 99px; }
+</style>
+</helmet>
+
+<div style="font-family: Archivo, system-ui, sans-serif; background: #0B0B0C; color: #F2EFE9; overflow-x: hidden">
+
+  <header style="position: sticky; top: 0; z-index: 60; background: rgba(11,11,12,.9); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(242,239,233,.14)">
+    <div style="display: flex; flex-wrap: wrap; align-items: stretch; justify-content: space-between; gap: 0">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-right: 1px solid rgba(242,239,233,.14); flex-shrink: 0">
+        <image-slot id="fx2-logo" shape="rect" style="width: 30px; height: 30px" placeholder="logo"></image-slot>
+        <span style="font-size: 17px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap">FOXY EXAM</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; color: #FF5D23; border: 1px solid rgba(255,93,35,.5); padding: 3px 6px; white-space: nowrap">PROCTORING</span>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 22px; padding: 16px 24px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #8E8B85; white-space: nowrap; flex-shrink: 0">
+        <a href="#nang-luc" style="color: #8E8B85" style-hover="color: #F2EFE9">01 Năng lực</a>
+        <a href="#van-hanh" style="color: #8E8B85" style-hover="color: #F2EFE9">02 Vận hành</a>
+        <a href="#demo" style="color: #8E8B85" style-hover="color: #F2EFE9">03 Demo</a>
+        <a href="#gia" style="color: #8E8B85" style-hover="color: #F2EFE9">04 Giá</a>
+      </nav>
+      <div style="display: flex; align-items: stretch; flex-shrink: 0">
+        <a href="#lien-he" style="display: flex; align-items: center; padding: 16px 22px; border-left: 1px solid rgba(242,239,233,.14); font-size: 14px; font-weight: 600; color: #F2EFE9; white-space: nowrap" style-hover="background: rgba(242,239,233,.07)">Đăng nhập</a>
+        <a href="#tai-app" style="display: flex; align-items: center; gap: 10px; padding: 16px 26px; background: #FF5D23; color: #0B0B0C; font-size: 14px; font-weight: 700; white-space: nowrap" style-hover="background: #F2EFE9">Tải app Windows</a>
+      </div>
+    </div>
+  </header>
+
+  <section style="border-bottom: 1px solid rgba(242,239,233,.14)">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr))">
+      <div style="padding: 72px 24px 56px 24px; border-right: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="display: flex; align-items: center; gap: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #8E8B85">
+          <span style="width: 6px; height: 6px; background: #FF5D23; animation: fxBlink 1.6s steps(1) infinite"></span>
+          Khởi nghiệp Sinh viên 2026 · Bản demo đang chạy
+        </div>
+        <h1 style="margin: 28px 0 0; font-size: clamp(42px, 7.2vw, 96px); line-height: .94; font-weight: 800; letter-spacing: -.045em; text-wrap: balance">
+          Gian lận<br />
+          <span style="color: #FF5D23">không còn</span><br />
+          chỗ trốn.
+        </h1>
+        <p style="margin: 30px 0 0; max-width: 470px; font-size: 17.5px; line-height: 1.6; color: #B5B2AB; text-wrap: pretty">
+          Foxy Exam là phòng thi số có AI canh 24/7: nhận diện khuôn mặt, khóa máy tính bằng Lockdown và đọc tín hiệu hệ thống. Một giám thị coi được 200 thí sinh — và mọi vi phạm đều có bằng chứng kèm mốc thời gian.
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 0; margin-top: 38px; border: 1px solid rgba(242,239,233,.2); width: fit-content">
+          <a href="#tai-app" style="padding: 18px 28px; background: #FF5D23; color: #0B0B0C; font-size: 15.5px; font-weight: 700; white-space: nowrap" style-hover="background: #F2EFE9">Dùng thử miễn phí</a>
+          <a href="#lien-he" style="padding: 18px 28px; color: #F2EFE9; font-size: 15.5px; font-weight: 600; border-left: 1px solid rgba(242,239,233,.2); white-space: nowrap" style-hover="background: rgba(242,239,233,.07)">Đặt demo 15 phút →</a>
+        </div>
+        <div style="margin-top: 26px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #9A968F">Không cần thẻ · Cài trong 2 phút · Windows 10/11</div>
+      </div>
+
+      <div style="min-width: 0; background: #101012; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 14px 20px; border-bottom: 1px solid rgba(242,239,233,.14); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8E8B85">
+          <span style="min-width: 0">Bảng điều khiển giám thị · KỲ THI #2431</span>
+          <span style="color: #FF5D23">● LIVE</span>
+        </div>
+        <div style="position: relative; min-width: 0; min-height: 300px; overflow: hidden">
+          <image-slot id="fx2-hero" shape="rect" fit="cover" placeholder="Ảnh chụp dashboard giám thị"></image-slot>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; border-top: 1px solid rgba(242,239,233,.14)">
+          <div style="flex: 1 1 150px; min-width: 0; padding: 16px 20px; border-right: 1px solid rgba(242,239,233,.14)">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; color: #9A968F">CẢNH BÁO</div>
+            <div style="margin-top: 6px; font-size: 15px; font-weight: 600">Rời khỏi khung hình</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #FF5D23">TS-0142 · 00:12:40</div>
+          </div>
+          <div style="flex: 1 1 150px; min-width: 0; padding: 16px 20px; border-right: 1px solid rgba(242,239,233,.14)">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; color: #9A968F">CẢNH BÁO</div>
+            <div style="margin-top: 6px; font-size: 15px; font-weight: 600">Phát hiện máy ảo</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #FF5D23">TS-0088 · 00:31:05</div>
+          </div>
+          <div style="flex: 1 1 150px; min-width: 0; padding: 16px 20px">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; color: #9A968F">ĐANG THI</div>
+            <div style="margin-top: 6px; font-size: 15px; font-weight: 600">198 / 200 bình thường</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #8E8B85">Điểm rủi ro TB 0.07</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="overflow: hidden; border-bottom: 1px solid rgba(242,239,233,.14); background: #0B0B0C">
+    <div style="display: flex; width: max-content; animation: fxTicker 38s linear infinite; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: #8E8B85">
+      <div style="display: flex; gap: 40px; padding: 13px 20px">
+        <span>Nhận diện khuôn mặt</span><span style="color: #FF5D23">✳</span>
+        <span>Lockdown Browser</span><span style="color: #FF5D23">✳</span>
+        <span>Chống máy ảo</span><span style="color: #FF5D23">✳</span>
+        <span>Camera phụ qua QR</span><span style="color: #FF5D23">✳</span>
+        <span>Điểm rủi ro theo thời gian thực</span><span style="color: #FF5D23">✳</span>
+        <span>Hồ sơ bằng chứng</span><span style="color: #FF5D23">✳</span>
+        <span>Trộn đề tự động</span><span style="color: #FF5D23">✳</span>
+      </div>
+      <div style="display: flex; gap: 40px; padding: 13px 20px">
+        <span>Nhận diện khuôn mặt</span><span style="color: #FF5D23">✳</span>
+        <span>Lockdown Browser</span><span style="color: #FF5D23">✳</span>
+        <span>Chống máy ảo</span><span style="color: #FF5D23">✳</span>
+        <span>Camera phụ qua QR</span><span style="color: #FF5D23">✳</span>
+        <span>Điểm rủi ro theo thời gian thực</span><span style="color: #FF5D23">✳</span>
+        <span>Hồ sơ bằng chứng</span><span style="color: #FF5D23">✳</span>
+        <span>Trộn đề tự động</span><span style="color: #FF5D23">✳</span>
+      </div>
+    </div>
+  </div>
+
+  <section style="background: #F2EFE9; color: #0B0B0C">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+      <div style="padding: 64px 24px; border-right: 1px solid rgba(11,11,12,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #7A5240">Thực tế hiện nay</div>
+        <h2 style="margin: 20px 0 0; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.035em; max-width: 460px">Zoom cộng Google Form không phải một kỳ thi.</h2>
+        <p style="margin: 20px 0 0; max-width: 430px; font-size: 16.5px; line-height: 1.65; color: #4A463F">Giám thị nhìn 40 khung hình tí xíu, máy thí sinh là vùng tối hoàn toàn, và khi có khiếu nại thì không ai giữ được bằng chứng nào.</p>
+      </div>
+      <div style="min-width: 0">
+        <div style="padding: 32px 24px; border-bottom: 1px solid rgba(11,11,12,.14); display: grid; grid-template-columns: 54px 1fr; gap: 16px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #7A5240">01</span>
+          <div>
+            <div style="font-size: 19px; font-weight: 700; letter-spacing: -.015em">Một người, hai trăm webcam</div>
+            <p style="margin: 7px 0 0; font-size: 15.5px; line-height: 1.6; color: #4A463F">Bỏ lọt vi phạm là mặc định, không phải ngoại lệ.</p>
+          </div>
+        </div>
+        <div style="padding: 32px 24px; border-bottom: 1px solid rgba(11,11,12,.14); display: grid; grid-template-columns: 54px 1fr; gap: 16px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #7A5240">02</span>
+          <div>
+            <div style="font-size: 19px; font-weight: 700; letter-spacing: -.015em">Trình duyệt không thấy gì</div>
+            <p style="margin: 7px 0 0; font-size: 15.5px; line-height: 1.6; color: #4A463F">Máy ảo, phần mềm điều khiển từ xa, tab tài liệu mở sẵn — đều vô hình.</p>
+          </div>
+        </div>
+        <div style="padding: 32px 24px; display: grid; grid-template-columns: 54px 1fr; gap: 16px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #7A5240">03</span>
+          <div>
+            <div style="font-size: 19px; font-weight: 700; letter-spacing: -.015em">Kết luận dựa vào cảm tính</div>
+            <p style="margin: 7px 0 0; font-size: 15.5px; line-height: 1.6; color: #4A463F">Không log, không ảnh, không video — uy tín kỳ thi bị đặt dấu hỏi.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="nang-luc" style="border-top: 1px solid rgba(242,239,233,.14)">
+    <div style="padding: 64px 24px 40px; display: flex; flex-wrap: wrap; gap: 24px; align-items: end; justify-content: space-between; border-bottom: 1px solid rgba(242,239,233,.14)">
+      <div style="min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #FF5D23">01 — Năng lực</div>
+        <h2 style="margin: 18px 0 0; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.035em; max-width: 560px">Sáu tín hiệu, một điểm rủi ro</h2>
+      </div>
+      <p style="margin: 0; max-width: 380px; font-size: 16px; line-height: 1.65; color: #8E8B85">Mọi lớp giám sát chạy song song và cùng đổ về một con số, nên giám thị chỉ xem những gì đáng xem.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
+      <div style="padding: 34px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.01</span><span style="color: #FF5D23">CAMERA</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Nhận diện khuôn mặt liên tục</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Đối chiếu ảnh định danh, phát hiện vắng mặt, thay người, nhiều người trong khung hình hoặc mắt rời màn hình quá lâu.</p>
+      </div>
+      <div style="padding: 34px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.02</span><span style="color: #FF5D23">HỆ ĐIỀU HÀNH</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Lockdown Browser</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Khóa toàn màn hình, vô hiệu hóa phím tắt hệ thống, chặn copy/paste và không cho mở ứng dụng khác trong lúc thi.</p>
+      </div>
+      <div style="padding: 34px 24px; border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.03</span><span style="color: #FF5D23">TELEMETRY</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Chống máy ảo &amp; remote</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Đọc dấu vết phần cứng, IP/VPN, tiến trình đang chạy để phát hiện VMware, VirtualBox hay phần mềm điều khiển từ xa.</p>
+      </div>
+      <div style="padding: 34px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.04</span><span style="color: #FF5D23">GÓC QUAY 2</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Camera phụ qua điện thoại</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Quét QR để biến điện thoại thành góc quay thứ hai: thấy tay, mặt bàn và toàn bộ không gian phòng thi.</p>
+      </div>
+      <div style="padding: 34px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.05</span><span style="color: #FF5D23">BẰNG CHỨNG</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Dòng thời gian vi phạm</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Mỗi thí sinh có timeline kèm ảnh chụp và video tại đúng thời điểm, xuất PDF/CSV cho hội đồng xử lý.</p>
+      </div>
+      <div style="padding: 34px 24px; border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0" style-hover="background: #101012">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; color: #9A968F">
+          <span>F.06</span><span style="color: #FF5D23">QUẢN TRỊ</span>
+        </div>
+        <h3 style="margin: 22px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em">Tạo &amp; trộn đề trên web</h3>
+        <p style="margin: 10px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Nhập câu hỏi từ Excel, trộn đề theo từng thí sinh, chọn mức giám sát Web hoặc Strict cho từng kỳ thi.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="van-hanh">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+      <div style="padding: 64px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #FF5D23">02 — Vận hành</div>
+        <h2 style="margin: 18px 0 0; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.035em; max-width: 420px">Từ tạo đề đến báo cáo: bốn bước</h2>
+        <p style="margin: 20px 0 0; max-width: 400px; font-size: 16px; line-height: 1.65; color: #8E8B85">Giám thị không cần cài gì cả — mọi thứ diễn ra trên web. Thí sinh chỉ cài app một lần.</p>
+      </div>
+      <div style="min-width: 0; border-bottom: 1px solid rgba(242,239,233,.14); position: relative; min-height: 260px; overflow: hidden; background: #101012">
+        <image-slot id="fx2-flow" shape="rect" fit="cover" placeholder="Ảnh: tổng quan quy trình / màn hình quản trị"></image-slot>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))">
+      <div style="padding: 30px 24px 34px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-size: 44px; font-weight: 800; letter-spacing: -.05em; color: #FF5D23; line-height: 1">01</div>
+        <h3 style="margin: 14px 0 0; font-size: 18.5px; font-weight: 700">Tạo kỳ thi</h3>
+        <p style="margin: 8px 0 18px; font-size: 15px; line-height: 1.6; color: #A8A5A0">Nhập đề hoặc tải từ Excel, đặt thời lượng, trộn câu hỏi, chọn mức giám sát.</p>
+        <div style="aspect-ratio: 4 / 3; min-width: 0; overflow: hidden; background: #101012">
+          <image-slot id="fx2-step-1" shape="rect" placeholder="Ảnh bước 01"></image-slot>
+        </div>
+      </div>
+      <div style="padding: 30px 24px 34px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-size: 44px; font-weight: 800; letter-spacing: -.05em; color: #FF5D23; line-height: 1">02</div>
+        <h3 style="margin: 14px 0 0; font-size: 18.5px; font-weight: 700">Kiểm tra thiết bị</h3>
+        <p style="margin: 8px 0 18px; font-size: 15px; line-height: 1.6; color: #A8A5A0">App tự kiểm camera, mic, mạng, chụp ảnh định danh và quét QR cho camera phụ.</p>
+        <div style="aspect-ratio: 4 / 3; min-width: 0; overflow: hidden; background: #101012">
+          <image-slot id="fx2-step-2" shape="rect" placeholder="Ảnh bước 02"></image-slot>
+        </div>
+      </div>
+      <div style="padding: 30px 24px 34px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-size: 44px; font-weight: 800; letter-spacing: -.05em; color: #FF5D23; line-height: 1">03</div>
+        <h3 style="margin: 14px 0 0; font-size: 18.5px; font-weight: 700">AI canh, người quyết</h3>
+        <p style="margin: 8px 0 18px; font-size: 15px; line-height: 1.6; color: #A8A5A0">Danh sách tự sắp theo rủi ro. Giám thị nhắc nhở, chat riêng hoặc tạm dừng bài thi.</p>
+        <div style="aspect-ratio: 4 / 3; min-width: 0; overflow: hidden; background: #101012">
+          <image-slot id="fx2-step-3" shape="rect" placeholder="Ảnh bước 03"></image-slot>
+        </div>
+      </div>
+      <div style="padding: 30px 24px 34px; border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-size: 44px; font-weight: 800; letter-spacing: -.05em; color: #FF5D23; line-height: 1">04</div>
+        <h3 style="margin: 14px 0 0; font-size: 18.5px; font-weight: 700">Xuất hồ sơ</h3>
+        <p style="margin: 8px 0 18px; font-size: 15px; line-height: 1.6; color: #A8A5A0">Điểm, thống kê toàn kỳ thi và danh sách nghi vấn kèm bằng chứng — PDF hoặc CSV.</p>
+        <div style="aspect-ratio: 4 / 3; min-width: 0; overflow: hidden; background: #101012">
+          <image-slot id="fx2-step-4" shape="rect" placeholder="Ảnh bước 04"></image-slot>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" style="background: #F2EFE9; color: #0B0B0C">
+    <div style="padding: 60px 24px 34px; display: flex; flex-wrap: wrap; gap: 20px; align-items: end; justify-content: space-between; border-bottom: 1px solid rgba(11,11,12,.14)">
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #7A5240">03 — Demo</div>
+        <h2 style="margin: 18px 0 0; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.035em">Sản phẩm thật, chụp thật</h2>
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Kéo ngang để xem →</div>
+    </div>
+    <div class="fxScroll" style="display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; border-bottom: 1px solid rgba(11,11,12,.14)">
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start; border-right: 1px solid rgba(11,11,12,.14)">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-1" shape="rect" placeholder="Demo 01 — dashboard giám thị"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">01 / Dashboard giám thị</figcaption>
+      </figure>
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start; border-right: 1px solid rgba(11,11,12,.14)">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-2" shape="rect" placeholder="Demo 02 — cảnh báo AI"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">02 / Cảnh báo AI thời gian thực</figcaption>
+      </figure>
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start; border-right: 1px solid rgba(11,11,12,.14)">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-3" shape="rect" placeholder="Demo 03 — app thi Lockdown"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">03 / App thi chế độ Lockdown</figcaption>
+      </figure>
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start; border-right: 1px solid rgba(11,11,12,.14)">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-4" shape="rect" placeholder="Demo 04 — kiểm tra thiết bị"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">04 / Kiểm tra thiết bị &amp; định danh</figcaption>
+      </figure>
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start; border-right: 1px solid rgba(11,11,12,.14)">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-5" shape="rect" placeholder="Demo 05 — camera phụ qua QR"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">05 / Camera phụ qua QR</figcaption>
+      </figure>
+      <figure style="margin: 0; flex: 0 0 min(560px, 86vw); scroll-snap-align: start">
+        <div style="aspect-ratio: 16 / 10; min-width: 0; overflow: hidden; background: #E4E0D8">
+          <image-slot id="fx2-demo-6" shape="rect" placeholder="Demo 06 — báo cáo sau kỳ thi"></image-slot>
+        </div>
+        <figcaption style="padding: 14px 18px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #4A463F">06 / Báo cáo &amp; hồ sơ bằng chứng</figcaption>
+      </figure>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+      <div style="padding: 48px 24px; border-right: 1px solid rgba(11,11,12,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Chế độ Web · không cài đặt</div>
+        <h3 style="margin: 14px 0 0; font-size: 27px; font-weight: 800; letter-spacing: -.025em">Thi trên trình duyệt</h3>
+        <div style="margin-top: 22px; display: grid; gap: 0; font-size: 15.5px">
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(11,11,12,.12)"><span style="color: #7A5240; font-weight: 700">✓</span> Mở bằng link trên mọi trình duyệt</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(11,11,12,.12)"><span style="color: #7A5240; font-weight: 700">✓</span> AI nhận diện khuôn mặt qua webcam</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(11,11,12,.12)"><span style="color: #7A5240; font-weight: 700">✓</span> Ghi nhận chuyển tab, thoát toàn màn hình</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(11,11,12,.12); color: #8B877F"><span style="font-weight: 700">✕</span> Không khóa được hệ điều hành</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(11,11,12,.12); color: #8B877F"><span style="font-weight: 700">✕</span> Không phát hiện phần mềm cấm / máy ảo</div>
+        </div>
+        <a href="#lien-he" style="display: inline-flex; align-items: center; margin-top: 26px; padding: 15px 24px; border: 1px solid rgba(11,11,12,.3); color: #0B0B0C; font-size: 15px; font-weight: 600" style-hover="background: #0B0B0C; color: #F2EFE9">Mở trang thi Web →</a>
+      </div>
+      <div style="padding: 48px 24px; min-width: 0; background: #0B0B0C; color: #F2EFE9">
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #FF5D23">Chế độ Strict · khuyến nghị</div>
+        </div>
+        <h3 style="margin: 14px 0 0; font-size: 27px; font-weight: 800; letter-spacing: -.025em">Thi qua app desktop</h3>
+        <div style="margin-top: 22px; display: grid; gap: 0; font-size: 15.5px">
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(242,239,233,.14)"><span style="color: #FF5D23; font-weight: 700">✓</span> Lockdown khóa toàn bộ máy tính</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(242,239,233,.14)"><span style="color: #FF5D23; font-weight: 700">✓</span> Phát hiện phần mềm cấm, máy ảo, remote</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(242,239,233,.14)"><span style="color: #FF5D23; font-weight: 700">✓</span> Chặn phím tắt &amp; chia sẻ màn hình</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(242,239,233,.14)"><span style="color: #FF5D23; font-weight: 700">✓</span> Ghi hình liên tục + camera phụ QR</div>
+          <div style="display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid rgba(242,239,233,.14)"><span style="color: #FF5D23; font-weight: 700">✓</span> Hồ sơ bằng chứng đầy đủ cho hội đồng</div>
+        </div>
+        <a href="#tai-app" style="display: inline-flex; align-items: center; margin-top: 26px; padding: 15px 24px; background: #FF5D23; color: #0B0B0C; font-size: 15px; font-weight: 700" style-hover="background: #F2EFE9">Tải app desktop →</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="tai-app" style="border-bottom: 1px solid rgba(242,239,233,.14)">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+      <div style="padding: 60px 24px; border-right: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #FF5D23">Tải về</div>
+        <h2 style="margin: 18px 0 0; font-size: clamp(30px, 4.4vw, 48px); line-height: 1.04; font-weight: 800; letter-spacing: -.035em; max-width: 380px">Foxy Exam Client</h2>
+        <p style="margin: 18px 0 0; max-width: 380px; font-size: 16px; line-height: 1.65; color: #8E8B85">Cài một lần, dùng cho mọi kỳ thi chế độ Strict. Nhẹ, tự cập nhật, không cần quyền admin.</p>
+        <div style="margin-top: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 2; color: #9A968F">
+          <div>PHIÊN BẢN &nbsp;1.4.2</div>
+          <div>DUNG LƯỢNG &nbsp;86 MB</div>
+          <div>CẬP NHẬT &nbsp;09 / 2026</div>
+        </div>
+      </div>
+      <div style="min-width: 0">
+        <div style="padding: 36px 24px; border-bottom: 1px solid rgba(242,239,233,.14); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between">
+          <div style="min-width: 0">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.025em">Windows</h3>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; padding: 4px 8px; background: #FF5D23; color: #0B0B0C; font-weight: 600">CÓ SẴN</span>
+            </div>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #A8A5A0">Windows 10 &amp; 11 · 64-bit · khóa phím tắt OS, chống máy ảo</p>
+          </div>
+          <a href="#lien-he" style="padding: 15px 26px; background: #FF5D23; color: #0B0B0C; font-size: 15px; font-weight: 700; white-space: nowrap" style-hover="background: #F2EFE9">Tải .exe</a>
+        </div>
+        <div style="padding: 36px 24px; border-bottom: 1px solid rgba(242,239,233,.14); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: #101012">
+          <div style="min-width: 0">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.025em; color: #8E8B85">macOS</h3>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .1em; padding: 4px 8px; border: 1px solid rgba(242,239,233,.28); color: #A8A5A0; font-weight: 600">{{ macBadge }}</span>
+            </div>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #9A968F">Intel &amp; Apple Silicon · dự kiến Q4/2026 · hiện dùng chế độ Web</p>
+          </div>
+          <a href="#lien-he" style="padding: 15px 26px; border: 1px solid rgba(242,239,233,.28); color: #F2EFE9; font-size: 15px; font-weight: 600; white-space: nowrap" style-hover="background: rgba(242,239,233,.08)">Nhận thông báo</a>
+        </div>
+        <div style="padding: 24px; font-size: 14.5px; color: #8E8B85">Cần bản cài theo phòng máy (MSI) hoặc source zip? <a href="#lien-he" style="font-weight: 600">Liên hệ đội ngũ Foxy Exam</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gia">
+    <div style="padding: 64px 24px 36px; border-bottom: 1px solid rgba(242,239,233,.14); display: flex; flex-wrap: wrap; gap: 24px; align-items: end; justify-content: space-between">
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #FF5D23">04 — Giá</div>
+        <h2 style="margin: 18px 0 0; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.035em">Trả theo quy mô kỳ thi</h2>
+      </div>
+      <div style="display: flex; border: 1px solid rgba(242,239,233,.22)">
+        <button type="button" onClick="{{ pickMonthly }}" style="{{ monthlyBtnStyle }}">Theo tháng</button>
+        <button type="button" onClick="{{ pickYearly }}" style="{{ yearlyBtnStyle }}">Theo năm −17%</button>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr))">
+      <div style="padding: 40px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Gói 01 · Dùng thử</div>
+        <div style="margin: 20px 0 4px; font-size: 46px; font-weight: 800; letter-spacing: -.045em; line-height: 1">0đ</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8E8B85">Miễn phí vĩnh viễn</div>
+        <div style="margin-top: 26px; display: grid; font-size: 15px">
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> 1 kỳ thi, tối đa 30 thí sinh</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> Chế độ Web + AI khuôn mặt</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> Báo cáo cơ bản, lưu 7 ngày</div>
+        </div>
+        <a href="#lien-he" style="display: inline-flex; margin-top: 28px; padding: 14px 24px; border: 1px solid rgba(242,239,233,.28); color: #F2EFE9; font-size: 15px; font-weight: 600" style-hover="background: rgba(242,239,233,.08)">Bắt đầu miễn phí</a>
+      </div>
+      <div style="padding: 40px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0; background: #F2EFE9; color: #0B0B0C">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #7A5240">Gói 02 · Trường &amp; trung tâm</div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .08em; padding: 4px 8px; background: #FF5D23; color: #0B0B0C; font-weight: 600">PHỔ BIẾN</span>
+        </div>
+        <div style="margin: 20px 0 4px; font-size: 46px; font-weight: 800; letter-spacing: -.045em; line-height: 1">{{ proPrice }}</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #4A463F">{{ proPriceNote }}</div>
+        <div style="margin-top: 26px; display: grid; font-size: 15px">
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(11,11,12,.14)"><span style="color: #7A5240">✓</span> 1.000 lượt thi mỗi tháng</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(11,11,12,.14)"><span style="color: #7A5240">✓</span> App Lockdown + chống máy ảo</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(11,11,12,.14)"><span style="color: #7A5240">✓</span> Camera phụ QR, ghi hình toàn kỳ thi</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(11,11,12,.14)"><span style="color: #7A5240">✓</span> Hồ sơ bằng chứng, xuất PDF/CSV</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(11,11,12,.14)"><span style="color: #7A5240">✓</span> Giám thị không giới hạn · hỗ trợ 24h</div>
+        </div>
+        <a href="#lien-he" style="display: inline-flex; margin-top: 28px; padding: 14px 24px; background: #0B0B0C; color: #F2EFE9; font-size: 15px; font-weight: 700" style-hover="background: #FF5D23; color: #0B0B0C">Dùng thử 14 ngày</a>
+      </div>
+      <div style="padding: 40px 24px; border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Gói 03 · Đại học &amp; doanh nghiệp</div>
+        <div style="margin: 20px 0 4px; font-size: 46px; font-weight: 800; letter-spacing: -.045em; line-height: 1">Liên hệ</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8E8B85">Báo giá theo số lượt thi</div>
+        <div style="margin-top: 26px; display: grid; font-size: 15px">
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> Không giới hạn lượt thi &amp; kỳ thi song song</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> SSO, tích hợp LMS qua API</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> On-premise, dữ liệu lưu tại Việt Nam</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> Giao diện theo thương hiệu nhà trường</div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(242,239,233,.12)"><span style="color: #FF5D23">✓</span> SLA &amp; hỗ trợ kỹ thuật riêng</div>
+        </div>
+        <a href="#lien-he" style="display: inline-flex; margin-top: 28px; padding: 14px 24px; border: 1px solid rgba(242,239,233,.28); color: #F2EFE9; font-size: 15px; font-weight: 600" style-hover="background: rgba(242,239,233,.08)">Nhận báo giá</a>
+      </div>
+    </div>
+    <div style="padding: 20px 24px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: #9A968F; border-bottom: 1px solid rgba(242,239,233,.14)">Giá chưa gồm VAT · Ưu đãi 30% cho trường công lập và tổ chức phi lợi nhuận</div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))">
+    <div style="padding: 60px 24px; border-right: 1px solid rgba(242,239,233,.14); border-bottom: 1px solid rgba(242,239,233,.14); min-width: 0">
+      <h2 style="margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.04; font-weight: 800; letter-spacing: -.035em; max-width: 360px">Câu hỏi thường gặp</h2>
+      <p style="margin: 18px 0 0; max-width: 340px; font-size: 16px; line-height: 1.65; color: #8E8B85">Còn thắc mắc khác? Nhắn cho chúng tôi ở form bên dưới, trả lời trong 24 giờ.</p>
+    </div>
+    <div style="min-width: 0; border-bottom: 1px solid rgba(242,239,233,.14)">
+      <details style="padding: 24px; border-bottom: 1px solid rgba(242,239,233,.14)">
+        <summary style="font-size: 16.5px; font-weight: 600">Thí sinh có cần máy cấu hình cao?</summary>
+        <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.65; color: #A8A5A0">Không. Windows 10 trở lên, 4GB RAM và một webcam là đủ. Xử lý AI nặng chạy trên máy chủ.</p>
+      </details>
+      <details style="padding: 24px; border-bottom: 1px solid rgba(242,239,233,.14)">
+        <summary style="font-size: 16.5px; font-weight: 600">Mất mạng giữa bài thi thì sao?</summary>
+        <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.65; color: #A8A5A0">Câu trả lời lưu cục bộ và đồng bộ lại khi có mạng. Khoảng thời gian mất kết nối được ghi vào nhật ký.</p>
+      </details>
+      <details style="padding: 24px; border-bottom: 1px solid rgba(242,239,233,.14)">
+        <summary style="font-size: 16.5px; font-weight: 600">Dữ liệu camera lưu ở đâu, bao lâu?</summary>
+        <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.65; color: #A8A5A0">Hạ tầng tại Việt Nam, mã hóa khi truyền và khi lưu. Mặc định 90 ngày rồi xóa tự động, nhà trường tự cấu hình.</p>
+      </details>
+      <details style="padding: 24px; border-bottom: 1px solid rgba(242,239,233,.14)">
+        <summary style="font-size: 16.5px; font-weight: 600">AI có tự đánh trượt thí sinh?</summary>
+        <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.65; color: #A8A5A0">Không. AI chỉ gắn cờ và chấm rủi ro; quyết định cuối cùng thuộc về giám thị và hội đồng.</p>
+      </details>
+      <details style="padding: 24px">
+        <summary style="font-size: 16.5px; font-weight: 600">Tích hợp được với LMS của trường?</summary>
+        <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.65; color: #A8A5A0">Có, gói 03 cung cấp API và SSO để đồng bộ lớp, kỳ thi và điểm về hệ thống sẵn có.</p>
+      </details>
+    </div>
+  </section>
+
+  <section id="lien-he" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); background: #FF5D23; color: #0B0B0C">
+    <div style="padding: 68px 24px; min-width: 0">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase">Bắt đầu</div>
+      <h2 style="margin: 20px 0 0; font-size: clamp(32px, 5vw, 60px); line-height: .98; font-weight: 800; letter-spacing: -.045em; max-width: 440px">Chúng tôi dựng kỳ thi mẫu bằng đề của bạn.</h2>
+      <p style="margin: 22px 0 0; max-width: 420px; font-size: 17px; line-height: 1.6; color: rgba(11,11,12,.78)">Để lại thông tin, trong 15 phút demo bạn sẽ thấy đúng kỳ thi của trường mình chạy trên Foxy Exam.</p>
+      <div style="margin-top: 34px; display: grid; gap: 0; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px">
+        <div style="display: flex; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(11,11,12,.25)"><span style="min-width: 74px; opacity: .65">EMAIL</span> hello@foxyexam.vn</div>
+        <div style="display: flex; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(11,11,12,.25)"><span style="min-width: 74px; opacity: .65">HOTLINE</span> 0900 000 000</div>
+        <div style="display: flex; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(11,11,12,.25); border-bottom: 1px solid rgba(11,11,12,.25)"><span style="min-width: 74px; opacity: .65">ĐỊA CHỈ</span> TP. Hồ Chí Minh</div>
+      </div>
+    </div>
+    <div style="padding: 68px 24px; min-width: 0; background: #0B0B0C; color: #F2EFE9">
+      <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 40px 0">
+          <div style="font-size: 22px; font-weight: 700">Đã nhận thông tin của bạn.</div>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.6; color: #A8A5A0">Đội ngũ Foxy Exam sẽ liên hệ trong vòng một ngày làm việc.</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+        <div style="display: grid; gap: 18px">
+          <label style="display: grid; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8E8B85">Họ và tên
+            <input type="text" placeholder="Nguyễn Văn A" style="height: 48px; padding: 0 0 0 2px; border: none; border-bottom: 1px solid rgba(242,239,233,.28); background: transparent; color: #F2EFE9; font-size: 16px; font-family: Archivo, sans-serif" />
+          </label>
+          <label style="display: grid; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8E8B85">Email công việc
+            <input type="email" placeholder="ten@truong.edu.vn" style="height: 48px; padding: 0 0 0 2px; border: none; border-bottom: 1px solid rgba(242,239,233,.28); background: transparent; color: #F2EFE9; font-size: 16px; font-family: Archivo, sans-serif" />
+          </label>
+          <label style="display: grid; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8E8B85">Đơn vị
+            <input type="text" placeholder="Trường / trung tâm / doanh nghiệp" style="height: 48px; padding: 0 0 0 2px; border: none; border-bottom: 1px solid rgba(242,239,233,.28); background: transparent; color: #F2EFE9; font-size: 16px; font-family: Archivo, sans-serif" />
+          </label>
+          <label style="display: grid; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8E8B85">Quy mô kỳ thi
+            <input type="text" placeholder="Ví dụ: 600 thí sinh / học kỳ" style="height: 48px; padding: 0 0 0 2px; border: none; border-bottom: 1px solid rgba(242,239,233,.28); background: transparent; color: #F2EFE9; font-size: 16px; font-family: Archivo, sans-serif" />
+          </label>
+          <button type="button" onClick="{{ submit }}" style="margin-top: 8px; padding: 18px 24px; border: none; background: #FF5D23; color: #0B0B0C; font-size: 15.5px; font-weight: 700; font-family: Archivo, sans-serif; cursor: pointer" style-hover="background: #F2EFE9">Gửi yêu cầu demo</button>
+          <p style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .06em; color: #9A968F">Thông tin chỉ dùng để liên hệ về Foxy Exam.</p>
+        </div>
+      </sc-if>
+    </div>
+  </section>
+
+  <footer style="border-top: 1px solid rgba(242,239,233,.14)">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
+      <div style="padding: 40px 24px; border-right: 1px solid rgba(242,239,233,.14); min-width: 0">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <image-slot id="fx2-logo-footer" shape="rect" style="width: 30px; height: 30px" placeholder="logo"></image-slot>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: -.01em">FOXY EXAM</span>
+        </div>
+        <p style="margin: 16px 0 0; max-width: 320px; font-size: 14px; line-height: 1.7; color: #8E8B85">Nền tảng thi trực tuyến có giám sát AI, phát triển tại Việt Nam cho những kỳ thi cần tính toàn vẹn.</p>
+      </div>
+      <div style="padding: 40px 24px; border-right: 1px solid rgba(242,239,233,.14); min-width: 0; display: grid; gap: 9px; font-size: 14px">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Sản phẩm</div>
+        <a href="#nang-luc" style="color: #A8A5A0" style-hover="color: #F2EFE9">Năng lực giám sát</a>
+        <a href="#van-hanh" style="color: #A8A5A0" style-hover="color: #F2EFE9">Quy trình vận hành</a>
+        <a href="#tai-app" style="color: #A8A5A0" style-hover="color: #F2EFE9">Tải ứng dụng</a>
+        <a href="#gia" style="color: #A8A5A0" style-hover="color: #F2EFE9">Bảng giá</a>
+      </div>
+      <div style="padding: 40px 24px; min-width: 0; display: grid; gap: 9px; font-size: 14px">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #9A968F">Liên hệ</div>
+        <a href="#lien-he" style="color: #A8A5A0" style-hover="color: #F2EFE9">Đặt lịch demo</a>
+        <a href="#lien-he" style="color: #A8A5A0" style-hover="color: #F2EFE9">hello@foxyexam.vn</a>
+        <a href="#lien-he" style="color: #A8A5A0" style-hover="color: #F2EFE9">Hỗ trợ kỹ thuật</a>
+      </div>
+    </div>
+    <div style="padding: 20px 24px; border-top: 1px solid rgba(242,239,233,.14); display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .06em; color: #9A968F">
+      <span>© 2026 FOXY EXAM · ĐỒ ÁN KHÓA LUẬN TỐT NGHIỆP · BẢN DEMO HỌC THUẬT, CHƯA THƯƠNG MẠI</span>
+      <span>MADE IN VIETNAM</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;macStatus&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;coming-soon&quot;,&quot;available&quot;],&quot;default&quot;:&quot;coming-soon&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nội dung&quot;},&quot;defaultYearly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bảng giá&quot;}}">
+class Component extends DCLogic {
+  state = { yearly: null, sent: false };
+
+  renderVals() {
+    const yearly = this.state.yearly ?? (this.props.defaultYearly ?? false);
+    const on = "padding: 12px 20px; border: none; background: #FF5D23; color: #0B0B0C; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; cursor: pointer; white-space: nowrap";
+    const off = "padding: 12px 20px; border: none; background: transparent; color: #8E8B85; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; cursor: pointer; white-space: nowrap";
+    return {
+      macBadge: (this.props.macStatus ?? "coming-soon") === "available" ? "BETA" : "SẮP RA MẮT",
+      proPrice: yearly ? "24.900.000đ" : "2.490.000đ",
+      proPriceNote: yearly ? "mỗi năm — tiết kiệm 2 tháng" : "mỗi tháng, thanh toán hàng tháng",
+      monthlyBtnStyle: yearly ? off : on,
+      yearlyBtnStyle: yearly ? on : off,
+      pickMonthly: () => this.setState({ yearly: false }),
+      pickYearly: () => this.setState({ yearly: true }),
+      sent: this.state.sent,
+      notSent: !this.state.sent,
+      submit: () => this.setState({ sent: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>

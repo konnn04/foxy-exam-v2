@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #F5F5F3; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #4F46E5; text-decoration: none; }
+  a:hover { color: #3730A3; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary { list-style: none; cursor: pointer; }
+  @keyframes foxyPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+</style>
+</helmet>
+
+<div style="font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: #14161C; background: #F5F5F3; overflow-x: hidden">
+
+  <header style="position: sticky; top: 0; z-index: 50; background: rgba(245,245,243,.86); backdrop-filter: blur(12px); border-bottom: 1px solid #E3E3DE">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; min-height: 68px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding-top: 12px; padding-bottom: 12px">
+      <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0">
+        <image-slot id="fx-logo" shape="rounded" radius="10" style="width: 34px; height: 34px" placeholder="logo"></image-slot>
+        <span style="font-size: 19px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; flex-shrink: 0">Foxy Exam</span>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 20px; flex-shrink: 0; white-space: nowrap; font-size: 14.5px; font-weight: 500; color: #4A4E58">
+        <a href="#tinh-nang" style="color: #4A4E58" style-hover="color: #14161C">Tính năng</a>
+        <a href="#quy-trinh" style="color: #4A4E58" style-hover="color: #14161C">Quy trình</a>
+        <a href="#demo" style="color: #4A4E58" style-hover="color: #14161C">Demo</a>
+        <a href="#bang-gia" style="color: #4A4E58" style-hover="color: #14161C">Bảng giá</a>
+        <a href="#lien-he" style="color: #4A4E58" style-hover="color: #14161C">Liên hệ</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0">
+        <a href="#lien-he" style="display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; color: #14161C; border: 1px solid #D6D6D0; white-space: nowrap; flex-shrink: 0" style-hover="background: #EDEDE8">Đăng nhập</a>
+        <a href="#tai-ung-dung" style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 20px; border-radius: 999px; font-size: 14.5px; font-weight: 600; color: #FFFFFF; background: #4F46E5; white-space: nowrap; flex-shrink: 0" style-hover="background: #3F38C9">Tải ứng dụng
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: .8">↓</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section style="background: radial-gradient(ellipse 75% 70% at 50% -15%, rgba(99,91,255,.45), rgba(14,17,23,0) 70%), #0E1117; color: #FFFFFF; padding: 96px 24px 0">
+    <div style="max-width: 1060px; margin: 0 auto; text-align: center">
+      <sc-if value="{{ showPilotBadge }}" hint-placeholder-val="{{ true }}">
+        <div style="display: inline-flex; align-items: center; gap: 9px; padding: 7px 16px 7px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); font-size: 13.5px; font-weight: 500; color: #D8D9E4; margin-bottom: 28px">
+          <span style="width: 7px; height: 7px; border-radius: 999px; background: #F0803C; animation: foxyPulse 2s ease-in-out infinite"></span>
+          Sản phẩm dự thi Khởi nghiệp Sinh viên 2026
+        </div>
+      </sc-if>
+      <h1 style="margin: 0; font-size: clamp(38px, 6.2vw, 68px); line-height: 1.04; font-weight: 800; letter-spacing: -.035em; text-wrap: balance">
+        Kỳ thi trực tuyến<br />
+        <span style="color: #A9A3FF">sạch gian lận</span> — không cần phòng thi
+      </h1>
+      <p style="margin: 26px auto 0; max-width: 660px; font-size: 18px; line-height: 1.65; color: #B7BAC6; text-wrap: pretty">
+        Foxy Exam gộp AI nhận diện khuôn mặt, phân tích hành vi và trình duyệt cách ly (Lockdown) vào một nền tảng duy nhất. Giám thị theo dõi 200 thí sinh trên một màn hình, bằng chứng vi phạm được ghi lại tự động.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px">
+        <a href="#tai-ung-dung" style="display: inline-flex; align-items: center; height: 52px; padding: 0 30px; border-radius: 999px; font-size: 16px; font-weight: 700; color: #FFFFFF; background: #4F46E5" style-hover="background: #625BFF">Tải bản Windows miễn phí</a>
+        <a href="#lien-he" style="display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 30px; border-radius: 999px; font-size: 16px; font-weight: 600; color: #FFFFFF; border: 1px solid rgba(255,255,255,.22)" style-hover="background: rgba(255,255,255,.08)">Đặt lịch demo 15 phút</a>
+      </div>
+      <p style="margin: 20px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .04em; color: #7C808F; text-transform: uppercase">Không cần thẻ tín dụng · Dùng thử 1 kỳ thi · Cài trong 2 phút</p>
+    </div>
+
+    <div style="max-width: 1160px; margin: 60px auto 0; position: relative">
+      <div style="border-radius: 18px 18px 0 0; padding: 10px 10px 0; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-bottom: none">
+        <div style="position: relative; aspect-ratio: 16 / 9; border-radius: 12px 12px 0 0; overflow: hidden; background: #171A23">
+          <image-slot id="fx-hero-app" shape="rect" fit="cover" placeholder="Ảnh màn hình dashboard giám thị (16:9)"></image-slot>
+        </div>
+      </div>
+      <div style="position: absolute; left: -12px; bottom: 96px; display: none; gap: 8px"></div>
+    </div>
+  </section>
+
+  <section style="background: #0E1117; color: #FFFFFF; padding: 0 24px 0">
+    <div style="max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid rgba(255,255,255,.12)">
+      <div style="padding: 30px 24px; border-right: 1px solid rgba(255,255,255,.1)">
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: -.03em">3 lớp</div>
+        <div style="margin-top: 6px; font-size: 13.5px; color: #8E929F">Camera · Màn hình · Hệ điều hành</div>
+      </div>
+      <div style="padding: 30px 24px; border-right: 1px solid rgba(255,255,255,.1)">
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: -.03em">&lt; 2 giây</div>
+        <div style="margin-top: 6px; font-size: 13.5px; color: #8E929F">Từ hành vi lạ đến cảnh báo giám thị</div>
+      </div>
+      <div style="padding: 30px 24px; border-right: 1px solid rgba(255,255,255,.1)">
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: -.03em">2 camera</div>
+        <div style="margin-top: 6px; font-size: 13.5px; color: #8E929F">Webcam + điện thoại quét QR</div>
+      </div>
+      <div style="padding: 30px 24px">
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: -.03em">0 phút</div>
+        <div style="margin-top: 6px; font-size: 13.5px; color: #8E929F">Giám thị không cần cài đặt gì</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 96px 24px; background: #F5F5F3">
+    <div style="max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 56px; align-items: start">
+      <div>
+        <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #F0803C">Vấn đề</p>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Thi online hiện tại đang mất kiểm soát</h2>
+        <p style="margin: 18px 0 0; font-size: 16.5px; line-height: 1.7; color: #565A64; text-wrap: pretty">Zoom + Google Form không phải một hệ thống thi. Giám thị nhìn 40 khung hình nhỏ, thí sinh mở tab thứ hai, và khi có khiếu nại thì không ai có bằng chứng.</p>
+      </div>
+      <div style="display: grid; gap: 14px">
+        <div style="display: flex; gap: 16px; padding: 22px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #F0803C">01</span>
+          <div>
+            <div style="font-size: 16.5px; font-weight: 700">Giám thị quá tải</div>
+            <p style="margin: 6px 0 0; font-size: 15px; line-height: 1.6; color: #565A64">Một người không thể quan sát 200 webcam. Vi phạm bị bỏ lọt là chuyện mặc định.</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px; padding: 22px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #F0803C">02</span>
+          <div>
+            <div style="font-size: 16.5px; font-weight: 700">Máy thí sinh là vùng tối</div>
+            <p style="margin: 6px 0 0; font-size: 15px; line-height: 1.6; color: #565A64">Máy ảo, phần mềm điều khiển từ xa, tab tài liệu — trình duyệt thường không thấy gì.</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px; padding: 22px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #F0803C">03</span>
+          <div>
+            <div style="font-size: 16.5px; font-weight: 700">Không có bằng chứng để xử lý</div>
+            <p style="margin: 6px 0 0; font-size: 15px; line-height: 1.6; color: #565A64">Kết luận dựa vào cảm tính dẫn đến khiếu nại, và uy tín kỳ thi bị đặt dấu hỏi.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tinh-nang" style="padding: 96px 24px; background: #FFFFFF; border-top: 1px solid #E6E6E1; border-bottom: 1px solid #E6E6E1">
+    <div style="max-width: 1160px; margin: 0 auto">
+      <div style="max-width: 720px">
+        <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #4F46E5">Tính năng</p>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Sáu lớp giám sát chạy song song</h2>
+        <p style="margin: 18px 0 0; font-size: 16.5px; line-height: 1.7; color: #565A64; text-wrap: pretty">Mỗi tín hiệu đều được chấm điểm rủi ro và gắn mốc thời gian, nên giám thị chỉ cần xem những gì đáng xem.</p>
+      </div>
+      <div style="margin-top: 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px">
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #4F46E5; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">AI</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Nhận diện khuôn mặt liên tục</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Đối chiếu với ảnh định danh, phát hiện vắng mặt, thay người, nhiều người trong khung hình hoặc mắt rời màn hình quá lâu.</p>
+        </div>
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #14161C; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">LB</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Lockdown Browser</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Khóa toàn màn hình, vô hiệu hóa phím tắt hệ thống, chặn copy/paste và không cho mở ứng dụng khác trong lúc thi.</p>
+        </div>
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #F0803C; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">TM</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Telemetry &amp; chống máy ảo</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Đọc dấu vết phần cứng, IP/VPN, tiến trình đang chạy và phát hiện VMware, VirtualBox hay phần mềm điều khiển từ xa.</p>
+        </div>
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #4F46E5; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">QR</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Camera phụ qua điện thoại</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Quét QR để biến điện thoại thành góc quay thứ hai, thấy được tay, mặt bàn và toàn bộ không gian phòng thi.</p>
+        </div>
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #14161C; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">RS</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Điểm rủi ro &amp; hồ sơ bằng chứng</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Mỗi thí sinh có một dòng thời gian vi phạm kèm ảnh chụp và video, xuất PDF/CSV để phục vụ hội đồng xử lý.</p>
+        </div>
+        <div style="padding: 28px; background: #F5F5F3; border-radius: 16px; border: 1px solid #E6E6E1">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 11px; background: #F0803C; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">AD</span>
+          <h3 style="margin: 18px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em">Quản trị kỳ thi trên web</h3>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.65; color: #565A64">Tạo đề, trộn câu hỏi, nhập danh sách thí sinh bằng Excel, chọn mức giám sát Web hoặc Strict cho từng kỳ thi.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quy-trinh" style="padding: 96px 24px; background: #F5F5F3">
+    <div style="max-width: 1160px; margin: 0 auto">
+      <div style="max-width: 720px">
+        <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #4F46E5">Quy trình</p>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Từ tạo đề đến báo cáo vi phạm: 4 bước</h2>
+      </div>
+      <div style="margin-top: 48px; display: grid; gap: 20px">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: center; padding: 28px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 18px">
+          <div style="padding: 8px 4px">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: #4F46E5">BƯỚC 01</span>
+            <h3 style="margin: 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em">Tạo kỳ thi trên dashboard</h3>
+            <p style="margin: 10px 0 0; font-size: 16px; line-height: 1.65; color: #565A64">Nhập câu hỏi hoặc tải lên từ Excel, đặt thời lượng, trộn đề theo từng thí sinh và chọn mức giám sát.</p>
+          </div>
+          <div style="aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #EDEDE8">
+            <image-slot id="fx-step-1" shape="rect" placeholder="Ảnh: màn hình tạo kỳ thi"></image-slot>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: center; padding: 28px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 18px">
+          <div style="padding: 8px 4px">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: #4F46E5">BƯỚC 02</span>
+            <h3 style="margin: 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em">Thí sinh vào phòng thi &amp; kiểm tra thiết bị</h3>
+            <p style="margin: 10px 0 0; font-size: 16px; line-height: 1.65; color: #565A64">App tự kiểm tra camera, micro, mạng, chụp ảnh định danh và quét QR nếu kỳ thi yêu cầu camera phụ.</p>
+          </div>
+          <div style="aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #EDEDE8">
+            <image-slot id="fx-step-2" shape="rect" placeholder="Ảnh: bước kiểm tra thiết bị / định danh"></image-slot>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: center; padding: 28px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 18px">
+          <div style="padding: 8px 4px">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: #4F46E5">BƯỚC 03</span>
+            <h3 style="margin: 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em">AI giám sát, giám thị chỉ xử lý cảnh báo</h3>
+            <p style="margin: 10px 0 0; font-size: 16px; line-height: 1.65; color: #565A64">Danh sách thí sinh tự sắp theo điểm rủi ro. Giám thị nhắc nhở, chat riêng hoặc tạm dừng bài thi ngay trên màn hình.</p>
+          </div>
+          <div style="aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #EDEDE8">
+            <image-slot id="fx-step-3" shape="rect" placeholder="Ảnh: màn hình giám sát trực tiếp"></image-slot>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: center; padding: 28px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 18px">
+          <div style="padding: 8px 4px">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: #4F46E5">BƯỚC 04</span>
+            <h3 style="margin: 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em">Xuất báo cáo &amp; hồ sơ bằng chứng</h3>
+            <p style="margin: 10px 0 0; font-size: 16px; line-height: 1.65; color: #565A64">Điểm số, thống kê toàn kỳ thi và danh sách nghi vấn kèm ảnh chụp thời điểm vi phạm, xuất PDF hoặc CSV.</p>
+          </div>
+          <div style="aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #EDEDE8">
+            <image-slot id="fx-step-4" shape="rect" placeholder="Ảnh: báo cáo sau kỳ thi"></image-slot>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" style="padding: 96px 24px; background: #0E1117; color: #FFFFFF">
+    <div style="max-width: 1160px; margin: 0 auto">
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: end; justify-content: space-between">
+        <div style="max-width: 640px">
+          <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #F0803C">Thư viện demo</p>
+          <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Nhìn thử sản phẩm thật</h2>
+          <p style="margin: 16px 0 0; font-size: 16.5px; line-height: 1.7; color: #B7BAC6">Ảnh chụp từ bản demo đang chạy: dashboard giám thị, app thi cách ly, cảnh báo AI và báo cáo sau kỳ thi.</p>
+        </div>
+        <a href="#lien-he" style="display: inline-flex; align-items: center; height: 46px; padding: 0 22px; border-radius: 999px; font-size: 15px; font-weight: 600; color: #FFFFFF; border: 1px solid rgba(255,255,255,.22)" style-hover="background: rgba(255,255,255,.08)">Xem demo trực tiếp</a>
+      </div>
+      <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+        <div style="grid-column: span 2; min-width: 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-1" shape="rect" placeholder="Demo 01 — dashboard giám thị (ảnh lớn)"></image-slot>
+        </div>
+        <div style="min-width: 0; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-2" shape="rect" placeholder="Demo 02 — cảnh báo AI"></image-slot>
+        </div>
+        <div style="min-width: 0; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-3" shape="rect" placeholder="Demo 03 — app thi Lockdown"></image-slot>
+        </div>
+        <div style="min-width: 0; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-4" shape="rect" placeholder="Demo 04 — kiểm tra thiết bị"></image-slot>
+        </div>
+        <div style="min-width: 0; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-5" shape="rect" placeholder="Demo 05 — camera phụ qua QR"></image-slot>
+        </div>
+        <div style="grid-column: span 2; min-width: 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #171A23; border: 1px solid rgba(255,255,255,.1)">
+          <image-slot id="fx-demo-6" shape="rect" placeholder="Demo 06 — báo cáo &amp; hồ sơ bằng chứng (ảnh lớn)"></image-slot>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 96px 24px; background: #FFFFFF; border-bottom: 1px solid #E6E6E1">
+    <div style="max-width: 1000px; margin: 0 auto">
+      <div style="text-align: center; max-width: 640px; margin: 0 auto">
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Hai mức giám sát cho hai loại kỳ thi</h2>
+        <p style="margin: 16px 0 0; font-size: 16.5px; line-height: 1.7; color: #565A64">Kiểm tra nhẹ thì thi ngay trên trình duyệt. Thi cuối kỳ, tuyển dụng, chứng chỉ thì dùng app desktop.</p>
+      </div>
+      <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px">
+        <div style="padding: 32px; border: 1px solid #E0E0DA; border-radius: 18px; background: #FFFFFF">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: #6B6F79">Chế độ Web</div>
+          <h3 style="margin: 12px 0 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em">Thi trên trình duyệt</h3>
+          <p style="margin: 8px 0 24px; font-size: 15.5px; color: #565A64">Không cài đặt, vào bằng link. Phù hợp kiểm tra thường xuyên.</p>
+          <div style="display: grid; gap: 11px; font-size: 15px; color: #3C4048">
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Mở trên mọi trình duyệt, kể cả máy trường</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> AI nhận diện khuôn mặt qua webcam</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Ghi nhận chuyển tab, thoát toàn màn hình</div>
+            <div style="display: flex; gap: 10px; color: #9A9EA7"><span style="font-weight: 700">—</span> Không khóa được hệ điều hành</div>
+            <div style="display: flex; gap: 10px; color: #9A9EA7"><span style="font-weight: 700">—</span> Không phát hiện phần mềm cấm / máy ảo</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; margin-top: 28px; height: 48px; border-radius: 999px; font-size: 15.5px; font-weight: 600; color: #14161C; border: 1px solid #D6D6D0" style-hover="background: #F5F5F3">Mở trang thi Web</a>
+        </div>
+        <div style="padding: 32px; border: 2px solid #4F46E5; border-radius: 18px; background: #FFFFFF; box-shadow: 0 18px 40px -24px rgba(79,70,229,.5)">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: #4F46E5">Chế độ Strict</div>
+            <span style="padding: 5px 12px; border-radius: 999px; background: #EEEDFF; color: #3F38C9; font-size: 12.5px; font-weight: 700">Khuyến nghị</span>
+          </div>
+          <h3 style="margin: 12px 0 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em">Thi qua app desktop</h3>
+          <p style="margin: 8px 0 24px; font-size: 15.5px; color: #565A64">Môi trường cách ly hoàn toàn. Dành cho kỳ thi có giá trị pháp lý.</p>
+          <div style="display: grid; gap: 11px; font-size: 15px; color: #3C4048">
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Lockdown Browser khóa toàn bộ máy tính</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Phát hiện phần mềm cấm, máy ảo, remote</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Chặn phím tắt hệ thống &amp; chia sẻ màn hình</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Ghi hình liên tục + camera phụ qua QR</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Hồ sơ bằng chứng đầy đủ cho hội đồng</div>
+          </div>
+          <a href="#tai-ung-dung" style="display: flex; align-items: center; justify-content: center; margin-top: 28px; height: 48px; border-radius: 999px; font-size: 15.5px; font-weight: 700; color: #FFFFFF; background: #4F46E5" style-hover="background: #3F38C9">Tải app desktop</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tai-ung-dung" style="padding: 96px 24px; background: #F5F5F3">
+    <div style="max-width: 900px; margin: 0 auto">
+      <div style="text-align: center">
+        <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #4F46E5">Tải về</p>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Foxy Exam Client</h2>
+        <p style="margin: 16px auto 0; max-width: 560px; font-size: 16.5px; line-height: 1.7; color: #565A64">Cài một lần, dùng cho mọi kỳ thi chế độ Strict. Dung lượng nhẹ, tự cập nhật.</p>
+      </div>
+      <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px">
+        <div style="padding: 30px; background: #FFFFFF; border: 2px solid #4F46E5; border-radius: 18px; box-shadow: 0 18px 40px -26px rgba(79,70,229,.45)">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: #EEEDFF; color: #3F38C9; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">WIN</span>
+            <span style="padding: 5px 12px; border-radius: 999px; background: #EEEDFF; color: #3F38C9; font-size: 12.5px; font-weight: 700">Đang có sẵn</span>
+          </div>
+          <h3 style="margin: 20px 0 0; font-size: 21px; font-weight: 700">Windows</h3>
+          <p style="margin: 6px 0 20px; font-size: 14.5px; color: #6B6F79">Windows 10 &amp; 11 · 64-bit · ~86 MB</p>
+          <div style="display: grid; gap: 9px; font-size: 14.5px; color: #3C4048">
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Khóa phím tắt hệ điều hành</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Nhận diện máy ảo &amp; phần mềm cấm</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Hỗ trợ camera phụ qua QR</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 26px; height: 48px; border-radius: 999px; font-size: 15.5px; font-weight: 700; color: #FFFFFF; background: #4F46E5" style-hover="background: #3F38C9">Tải về (.exe)</a>
+        </div>
+        <div style="padding: 30px; background: #F0F0EC; border: 1px dashed #CFCFC8; border-radius: 18px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: #E2E2DC; color: #6B6F79; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700">MAC</span>
+            <span style="padding: 5px 12px; border-radius: 999px; background: #FFE8DA; color: #A5461A; font-size: 12.5px; font-weight: 700">{{ macBadge }}</span>
+          </div>
+          <h3 style="margin: 20px 0 0; font-size: 21px; font-weight: 700; color: #3C4048">macOS</h3>
+          <p style="margin: 6px 0 20px; font-size: 14.5px; color: #8A8E97">Intel &amp; Apple Silicon · dự kiến Q4/2026</p>
+          <div style="display: grid; gap: 9px; font-size: 14.5px; color: #8A8E97">
+            <div style="display: flex; gap: 10px"><span style="font-weight: 700">·</span> Bản dựng đang trong thử nghiệm nội bộ</div>
+            <div style="display: flex; gap: 10px"><span style="font-weight: 700">·</span> Trong thời gian này dùng chế độ Web</div>
+            <div style="display: flex; gap: 10px"><span style="font-weight: 700">·</span> Nhận email khi có bản chính thức</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; margin-top: 26px; height: 48px; border-radius: 999px; font-size: 15.5px; font-weight: 600; color: #3C4048; border: 1px solid #CFCFC8; background: #FFFFFF" style-hover="background: #F5F5F3">Đăng ký nhận thông báo</a>
+        </div>
+      </div>
+      <p style="margin: 22px 0 0; text-align: center; font-size: 14.5px; color: #6B6F79">Cần bản cài đặt theo phòng máy (MSI) hoặc source zip? <a href="#lien-he" style="font-weight: 600">Liên hệ đội ngũ Foxy Exam</a></p>
+    </div>
+  </section>
+
+  <section id="bang-gia" style="padding: 96px 24px; background: #FFFFFF; border-top: 1px solid #E6E6E1">
+    <div style="max-width: 1160px; margin: 0 auto">
+      <div style="text-align: center; max-width: 640px; margin: 0 auto">
+        <p style="margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: #4F46E5">Bảng giá</p>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Trả theo quy mô kỳ thi của bạn</h2>
+        <p style="margin: 16px 0 0; font-size: 16.5px; line-height: 1.7; color: #565A64">Không phí cài đặt, không ràng buộc hợp đồng dài hạn.</p>
+        <div style="display: inline-flex; margin-top: 26px; padding: 4px; border-radius: 999px; background: #F0F0EC; border: 1px solid #E0E0DA">
+          <button type="button" onClick="{{ pickMonthly }}" style="{{ monthlyBtnStyle }}">Theo tháng</button>
+          <button type="button" onClick="{{ pickYearly }}" style="{{ yearlyBtnStyle }}">Theo năm · tiết kiệm 17%</button>
+        </div>
+      </div>
+      <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; align-items: start">
+        <div style="padding: 32px; background: #F5F5F3; border: 1px solid #E0E0DA; border-radius: 18px">
+          <h3 style="margin: 0; font-size: 19px; font-weight: 700">Dùng thử</h3>
+          <p style="margin: 6px 0 0; font-size: 14.5px; color: #6B6F79">Cho giảng viên muốn thử trước</p>
+          <div style="margin: 22px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: -.03em">0đ</div>
+          <p style="margin: 0 0 24px; font-size: 14px; color: #8A8E97">Miễn phí vĩnh viễn</p>
+          <div style="display: grid; gap: 10px; font-size: 14.5px; color: #3C4048">
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> 1 kỳ thi cùng lúc, tối đa 30 thí sinh</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Giám sát chế độ Web + AI khuôn mặt</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Báo cáo cơ bản, lưu 7 ngày</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; margin-top: 28px; height: 46px; border-radius: 999px; font-size: 15px; font-weight: 600; color: #14161C; border: 1px solid #D6D6D0; background: #FFFFFF" style-hover="background: #EDEDE8">Bắt đầu miễn phí</a>
+        </div>
+        <div style="padding: 32px; background: #0E1117; color: #FFFFFF; border-radius: 18px; box-shadow: 0 24px 50px -28px rgba(14,17,23,.6)">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <h3 style="margin: 0; font-size: 19px; font-weight: 700">Trường &amp; Trung tâm</h3>
+            <span style="padding: 5px 12px; border-radius: 999px; background: #4F46E5; font-size: 12.5px; font-weight: 700">Phổ biến nhất</span>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 14.5px; color: #A6AAB6">Giám sát Strict cho toàn bộ khoa</p>
+          <div style="margin: 22px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: -.03em">{{ proPrice }}</div>
+          <p style="margin: 0 0 24px; font-size: 14px; color: #A6AAB6">{{ proPriceNote }}</p>
+          <div style="display: grid; gap: 10px; font-size: 14.5px; color: #E3E4EA">
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> 1.000 lượt thi mỗi tháng</div>
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> App desktop Lockdown + chống máy ảo</div>
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> Camera phụ qua QR, ghi hình toàn kỳ thi</div>
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> Hồ sơ bằng chứng, xuất PDF/CSV</div>
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> Tài khoản giám thị không giới hạn</div>
+            <div style="display: flex; gap: 10px"><span style="color: #A9A3FF; font-weight: 700">✓</span> Hỗ trợ email trong 24 giờ</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; margin-top: 28px; height: 46px; border-radius: 999px; font-size: 15px; font-weight: 700; color: #FFFFFF; background: #4F46E5" style-hover="background: #625BFF">Dùng thử 14 ngày</a>
+        </div>
+        <div style="padding: 32px; background: #F5F5F3; border: 1px solid #E0E0DA; border-radius: 18px">
+          <h3 style="margin: 0; font-size: 19px; font-weight: 700">Đại học &amp; Doanh nghiệp</h3>
+          <p style="margin: 6px 0 0; font-size: 14.5px; color: #6B6F79">Kỳ thi quy mô lớn, yêu cầu riêng</p>
+          <div style="margin: 22px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: -.03em">Liên hệ</div>
+          <p style="margin: 0 0 24px; font-size: 14px; color: #8A8E97">Báo giá theo số lượt thi</p>
+          <div style="display: grid; gap: 10px; font-size: 14.5px; color: #3C4048">
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Không giới hạn lượt thi &amp; kỳ thi song song</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> SSO, tích hợp LMS qua API</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Triển khai on-premise, dữ liệu tại Việt Nam</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> Giao diện theo thương hiệu nhà trường</div>
+            <div style="display: flex; gap: 10px"><span style="color: #4F46E5; font-weight: 700">✓</span> SLA &amp; hỗ trợ kỹ thuật riêng</div>
+          </div>
+          <a href="#lien-he" style="display: flex; align-items: center; justify-content: center; margin-top: 28px; height: 46px; border-radius: 999px; font-size: 15px; font-weight: 600; color: #14161C; border: 1px solid #D6D6D0; background: #FFFFFF" style-hover="background: #EDEDE8">Nhận báo giá</a>
+        </div>
+      </div>
+      <p style="margin: 24px 0 0; text-align: center; font-size: 14px; color: #8A8E97">Giá chưa bao gồm VAT · Ưu đãi 30% cho trường công lập và tổ chức phi lợi nhuận</p>
+    </div>
+  </section>
+
+  <section style="padding: 96px 24px; background: #F5F5F3">
+    <div style="max-width: 980px; margin: 0 auto">
+      <h2 style="margin: 0 0 40px; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em; text-align: center">Câu hỏi thường gặp</h2>
+      <div style="display: grid; gap: 12px">
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">Thí sinh có cần máy tính cấu hình cao không?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Không. App chạy được trên máy Windows 10 trở lên với 4GB RAM và webcam. Xử lý AI nặng được đẩy lên máy chủ, máy thí sinh chỉ gửi tín hiệu.</p>
+        </details>
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">Mất mạng giữa bài thi thì sao?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Câu trả lời được lưu cục bộ và đồng bộ lại khi có mạng. Thời gian mất kết nối được ghi vào nhật ký để giám thị xem xét.</p>
+        </details>
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">Dữ liệu camera được lưu ở đâu và bao lâu?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Lưu trên hạ tầng tại Việt Nam, mã hóa khi truyền và khi lưu. Thời hạn lưu do nhà trường cấu hình, mặc định 90 ngày rồi xóa tự động.</p>
+        </details>
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">AI có tự đánh trượt thí sinh không?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Không. AI chỉ gắn cờ và chấm điểm rủi ro; quyết định cuối cùng luôn thuộc về giám thị và hội đồng, dựa trên bằng chứng kèm theo.</p>
+        </details>
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">Có bản macOS chưa?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Bản macOS đang phát triển, dự kiến Q4/2026. Thí sinh dùng Mac hiện có thể thi bằng chế độ Web.</p>
+        </details>
+        <details style="padding: 22px 24px; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 14px">
+          <summary style="font-size: 16.5px; font-weight: 600">Có tích hợp được với LMS của trường không?</summary>
+          <p style="margin: 12px 0 0; font-size: 15.5px; line-height: 1.7; color: #565A64">Có. Gói Đại học &amp; Doanh nghiệp cung cấp API và SSO để đồng bộ danh sách lớp, kỳ thi và điểm số về hệ thống sẵn có.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="lien-he" style="padding: 96px 24px; background: #0E1117; color: #FFFFFF">
+    <div style="max-width: 1060px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 56px; align-items: start">
+      <div>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; font-weight: 800; letter-spacing: -.03em">Đặt lịch demo cho trường bạn</h2>
+        <p style="margin: 18px 0 0; font-size: 16.5px; line-height: 1.7; color: #B7BAC6; text-wrap: pretty">Để lại thông tin, chúng tôi sẽ dựng một kỳ thi mẫu với đề của bạn và trình diễn trực tiếp trong 15 phút.</p>
+        <div style="margin-top: 32px; display: grid; gap: 14px; font-size: 15.5px; color: #D8D9E4">
+          <div style="display: flex; gap: 12px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7C808F; min-width: 64px">EMAIL</span> hello@foxyexam.vn</div>
+          <div style="display: flex; gap: 12px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7C808F; min-width: 64px">HOTLINE</span> 0900 000 000</div>
+          <div style="display: flex; gap: 12px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #7C808F; min-width: 64px">ĐỊA CHỈ</span> TP. Hồ Chí Minh, Việt Nam</div>
+        </div>
+      </div>
+      <div style="padding: 28px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 18px">
+        <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 28px 8px; text-align: center">
+            <div style="font-size: 19px; font-weight: 700">Đã nhận thông tin của bạn</div>
+            <p style="margin: 10px 0 0; font-size: 15px; line-height: 1.65; color: #B7BAC6">Đội ngũ Foxy Exam sẽ liên hệ trong vòng một ngày làm việc.</p>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+          <div style="display: grid; gap: 14px">
+            <label style="display: grid; gap: 7px; font-size: 13.5px; font-weight: 500; color: #B7BAC6">Họ và tên
+              <input type="text" placeholder="Nguyễn Văn A" style="height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: #FFFFFF; font-size: 15px; font-family: inherit" />
+            </label>
+            <label style="display: grid; gap: 7px; font-size: 13.5px; font-weight: 500; color: #B7BAC6">Email công việc
+              <input type="email" placeholder="ten@truong.edu.vn" style="height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: #FFFFFF; font-size: 15px; font-family: inherit" />
+            </label>
+            <label style="display: grid; gap: 7px; font-size: 13.5px; font-weight: 500; color: #B7BAC6">Đơn vị
+              <input type="text" placeholder="Trường / trung tâm / doanh nghiệp" style="height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: #FFFFFF; font-size: 15px; font-family: inherit" />
+            </label>
+            <label style="display: grid; gap: 7px; font-size: 13.5px; font-weight: 500; color: #B7BAC6">Quy mô kỳ thi
+              <input type="text" placeholder="Ví dụ: 600 thí sinh / học kỳ" style="height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: #FFFFFF; font-size: 15px; font-family: inherit" />
+            </label>
+            <button type="button" onClick="{{ submit }}" style="margin-top: 6px; height: 50px; border: none; border-radius: 999px; background: #4F46E5; color: #FFFFFF; font-size: 15.5px; font-weight: 700; font-family: inherit; cursor: pointer" style-hover="background: #625BFF">Gửi yêu cầu demo</button>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7C808F; text-align: center">Chúng tôi chỉ dùng thông tin này để liên hệ về Foxy Exam.</p>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <footer style="background: #08090D; color: #8E929F; padding: 56px 24px">
+    <div style="max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; align-items: start">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <image-slot id="fx-logo-footer" shape="rounded" radius="10" style="width: 34px; height: 34px" placeholder="logo"></image-slot>
+          <span style="font-size: 17px; font-weight: 800; color: #FFFFFF">Foxy Exam</span>
+        </div>
+        <p style="margin: 16px 0 0; font-size: 14px; line-height: 1.7; max-width: 380px">Nền tảng tổ chức thi trực tuyến có giám sát AI, phát triển tại Việt Nam cho các kỳ thi cần tính toàn vẹn.</p>
+      </div>
+      <div style="display: grid; gap: 10px; font-size: 14px">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #5E626E">Sản phẩm</div>
+        <a href="#tinh-nang" style="color: #8E929F" style-hover="color: #FFFFFF">Tính năng</a>
+        <a href="#quy-trinh" style="color: #8E929F" style-hover="color: #FFFFFF">Quy trình</a>
+        <a href="#tai-ung-dung" style="color: #8E929F" style-hover="color: #FFFFFF">Tải ứng dụng</a>
+        <a href="#bang-gia" style="color: #8E929F" style-hover="color: #FFFFFF">Bảng giá</a>
+      </div>
+      <div style="display: grid; gap: 10px; font-size: 14px">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #5E626E">Liên hệ</div>
+        <a href="#lien-he" style="color: #8E929F" style-hover="color: #FFFFFF">Đặt lịch demo</a>
+        <a href="#lien-he" style="color: #8E929F" style-hover="color: #FFFFFF">hello@foxyexam.vn</a>
+        <a href="#lien-he" style="color: #8E929F" style-hover="color: #FFFFFF">Hỗ trợ kỹ thuật</a>
+      </div>
+    </div>
+    <div style="max-width: 1160px; margin: 40px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.08); display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; font-size: 13px">
+      <span>© 2026 Foxy Exam. Đồ án Khóa luận tốt nghiệp — sản phẩm demo phục vụ đánh giá học thuật và cuộc thi khởi nghiệp, chưa phải phiên bản thương mại.</span>
+      <span style="font-family: 'JetBrains Mono', monospace; color: #5E626E">Made in Vietnam</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;macStatus&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;coming-soon&quot;,&quot;available&quot;],&quot;default&quot;:&quot;coming-soon&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nội dung&quot;},&quot;showPilotBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nội dung&quot;},&quot;defaultYearly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bảng giá&quot;}}">
+class Component extends DCLogic {
+  state = { yearly: null, sent: false };
+
+  renderVals() {
+    const yearly = this.state.yearly ?? (this.props.defaultYearly ?? false);
+    const on = "padding: 9px 18px; border: none; border-radius: 999px; background: #14161C; color: #FFFFFF; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer";
+    const off = "padding: 9px 18px; border: none; border-radius: 999px; background: transparent; color: #565A64; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer";
+    return {
+      macBadge: (this.props.macStatus ?? "coming-soon") === "available" ? "Đã có bản beta" : "Sắp ra mắt",
+      showPilotBadge: this.props.showPilotBadge ?? true,
+      proPrice: yearly ? "24.900.000đ" : "2.490.000đ",
+      proPriceNote: yearly ? "mỗi năm — tiết kiệm 2 tháng" : "mỗi tháng, thanh toán hàng tháng",
+      monthlyBtnStyle: yearly ? off : on,
+      yearlyBtnStyle: yearly ? on : off,
+      pickMonthly: () => this.setState({ yearly: false }),
+      pickYearly: () => this.setState({ yearly: true }),
+      sent: this.state.sent,
+      notSent: !this.state.sent,
+      submit: () => this.setState({ sent: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>
