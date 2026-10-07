@@ -105,7 +105,7 @@ services:
       LARAVEL_BULK_URL: http://app:8000/api/internal/v1/events/bulk
       WORKER_BATCH: ${WORKER_BATCH:-500}
       S3_ENDPOINT: minio:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-foxyminio}
+      S3_ACCESS_KEY: ${SERVICE_USER_MINIO}
       S3_SECRET_KEY: ${SERVICE_PASSWORD_64_MINIO}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
@@ -128,7 +128,7 @@ services:
       S3_ENDPOINT: minio:9000
       S3_PUBLIC_ENDPOINT: ${SERVICE_FQDN_MINIO}
       S3_PUBLIC_SSL: "true"
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-foxyminio}
+      S3_ACCESS_KEY: ${SERVICE_USER_MINIO}
       S3_SECRET_KEY: ${SERVICE_PASSWORD_64_MINIO}
       S3_BUCKET: ${S3_BUCKET:-foxy-records}
       S3_SSL: "false"
@@ -215,7 +215,7 @@ services:
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       - SERVICE_FQDN_MINIO_9000
-      - MINIO_ROOT_USER=${S3_ACCESS_KEY:-foxyminio}
+      - MINIO_ROOT_USER=${SERVICE_USER_MINIO}
       - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
     expose:
       - "9000"
