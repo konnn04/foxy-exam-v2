@@ -20,9 +20,9 @@ import (
 
 // WebhookEvent is the subset of LiveKit's webhook payload the recorder cares about.
 type WebhookEvent struct {
-	Event     string `json:"event"`
-	ID        string `json:"id"`
-	CreatedAt int64  `json:"createdAt"`
+	Event     string  `json:"event"`
+	ID        string  `json:"id"`
+	CreatedAt flexInt `json:"createdAt"` // protojson renders int64 as a string
 	Room      struct {
 		Name string `json:"name"`
 	} `json:"room"`
@@ -69,7 +69,10 @@ func (f *flexInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-var ErrWebhookAuth = errors.New("livekit webhook: bad authorization")
+var (
+	ErrWebhookAuth = errors.New("livekit webhook: bad authorization")
+	ErrWebhookBody = errors.New("livekit webhook: unreadable body")
+)
 
 // ParseWebhook verifies the signature LiveKit puts in the Authorization header (HS256 JWT signed with the
 // API secret carrying the base64 sha256 of the body) and decodes the event.
@@ -105,7 +108,7 @@ func ParseWebhook(apiKey, apiSecret string, authHeader string, body []byte, now 
 		return ev, ErrWebhookAuth
 	}
 	if err := json.Unmarshal(body, &ev); err != nil {
-		return ev, fmt.Errorf("livekit webhook: %w", err)
+		return ev, fmt.Errorf("%w: %v", ErrWebhookBody, err)
 	}
 	return ev, nil
 }

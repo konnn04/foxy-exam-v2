@@ -112,6 +112,7 @@ func Until(ctx context.Context, log *slog.Logger, what string, fn func(context.C
 	for wait := time.Second; ; wait = min(wait*2, 15*time.Second) {
 		err := fn(ctx)
 		if err == nil {
+			log.Info("ready", "what", what)
 			return
 		}
 		log.Warn("not ready, retrying", "what", what, "err", err, "in", wait.String())

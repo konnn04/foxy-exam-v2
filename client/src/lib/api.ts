@@ -506,6 +506,7 @@ export function saveQuestionAnswer(input: {
     {
       method: "POST",
       body: JSON.stringify({
+        type: "CLASSICAL",
         question_id: input.questionId,
         answer_id: input.answerId ?? undefined,
         selected_answer_ids: input.selectedAnswerIds ?? undefined,

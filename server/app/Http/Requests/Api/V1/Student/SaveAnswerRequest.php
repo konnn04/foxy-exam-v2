@@ -11,6 +11,14 @@ class SaveAnswerRequest extends FormRequest
         return true;
     }
 
+    /** `type` is implied by which id is sent, so a client that omits it still validates. */
+    protected function prepareForValidation(): void
+    {
+        if (!$this->filled('type')) {
+            $this->merge(['type' => $this->has('problem_id') ? 'PROGRAMMING' : 'CLASSICAL']);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

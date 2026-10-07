@@ -264,4 +264,15 @@ class RealtimeIntegrationTest extends TestCase
         $this->postJson('/api/v1/student/login', $login)->assertOk();
         \App\Services\AiService::resetFake();
     }
+
+    public function test_save_answer_works_without_an_explicit_type(): void
+    {
+        $a = $this->attempt();
+        $student = User::where('username', 'student01')->first();
+        $q = \App\Models\ClassicalQuestion::where('type', 'SHORT_ANSWER')->first();
+
+        $this->actingAs($student, 'sanctum')
+            ->postJson("/api/v1/student/exams/{$a->exam_id}/take/{$a->id}/save-answer", ['question_id' => $q->id, 'answer_content' => 'delete'])
+            ->assertOk();
+    }
 }

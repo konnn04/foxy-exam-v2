@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -232,8 +233,13 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ev, err := ParseWebhook(s.cfg.LiveKitKey, s.cfg.LiveKitSecret, r.Header.Get("Authorization"), body, s.cfg.Now())
-	if err != nil {
+	if errors.Is(err, ErrWebhookAuth) {
 		writeJSON(w, 401, map[string]any{"ok": false, "error": "bad_webhook"})
+		return
+	}
+	if err != nil { // authentic but not understood: acknowledge so LiveKit does not retry it forever
+		s.log.Warn("unreadable livekit webhook", "err", err)
+		writeJSON(w, 200, map[string]any{"ok": true})
 		return
 	}
 	s.m.Inc("record_webhooks_total")
