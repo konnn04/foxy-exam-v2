@@ -10,7 +10,12 @@ import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { getSession, clearSession, type Session } from "../lib/session";
 import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
-import { listToolchains, runCode, type RunResult, type Toolchain } from "../lib/runner";
+import { listToolchains, useRunnerSession, type Toolchain } from "../lib/runner";
+import Editor from "react-simple-code-editor";
+import { highlight } from "../lib/highlight";
+import { Markdown } from "../components/Markdown";
+import { Terminal } from "../components/Terminal";
+import { ResizeHandle, useResizable } from "../components/Resizable";
 import ExamLobby from "../components/ExamLobby";
 import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
@@ -67,9 +72,9 @@ export default function ExamCode() {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [toolchains, setToolchains] = useState<Toolchain[]>([]);
   const [toolchainId, setToolchainId] = useState("");
-  const [stdin, setStdin] = useState("");
-  const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const term = useRunnerSession();
+  const left = useResizable("code-left", 460, 280, 900, "x");
+  const termHeight = useResizable("code-terminal", 220, 100, 520, "y", -1);
   const [finishing, setFinishing] = useState(false);
 
   const runtime = useExamRuntime(examInfo?.monitoring_config);
@@ -216,15 +221,7 @@ export default function ExamCode() {
 
   async function handleRun() {
     if (!activeToolchain || !currentProblem) return;
-    setRunning(true);
-    setRunResult(null);
-    try {
-      setRunResult(await runCode(activeToolchain.id, currentCode, stdin, Math.max(currentProblem.time_limit_ms, 2000) + 1000));
-    } catch (err) {
-      setRunResult({ phase: "toolchain", ok: false, exit_code: null, stdout: "", stderr: String(err), timed_out: false, millis: 0 });
-    } finally {
-      setRunning(false);
-    }
+    await term.start(activeToolchain.id, currentCode, `${activeToolchain.label} · ${LANG_FILE[currentLanguage] ?? "solution"}`);
   }
 
   function handleLanguageChange(lang: string) {
@@ -232,17 +229,6 @@ export default function ExamCode() {
     const key = `${currentProblem.id}:${lang}`;
     setLanguageByProblem((prev) => ({ ...prev, [currentProblem.id]: lang }));
     setCodeByKey((prev) => (key in prev ? prev : { ...prev, [key]: starterCode(currentProblem, lang) }));
-  }
-
-  // Tab trong ô code chèn 2 dấu cách thay vì nhảy focus.
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key !== "Tab") return;
-    e.preventDefault();
-    const el = e.currentTarget;
-    const { selectionStart: a, selectionEnd: b } = el;
-    const next = currentCode.slice(0, a) + "  " + currentCode.slice(b);
-    setCodeByKey((prev) => ({ ...prev, [currentKey]: next }));
-    requestAnimationFrame(() => el.setSelectionRange(a + 2, a + 2));
   }
 
   async function handleSubmit() {
@@ -355,7 +341,7 @@ export default function ExamCode() {
         )}
         <div className="flex min-h-0 flex-1">
           {/* Đề bài / lịch sử nộp */}
-          <section className="flex w-[38%] min-w-[300px] flex-col border-r border-line bg-surface">
+          <section className="flex shrink-0 flex-col bg-surface" style={{ width: left.size }}>
             <div className="flex shrink-0 gap-4 border-b border-line px-4 text-xs">
               <Tab active={leftTab === "problem"} onClick={() => setLeftTab("problem")} icon={<FileCode2 size={13} />}>
                 Đề bài
@@ -376,7 +362,7 @@ export default function ExamCode() {
                   <h2 className="mt-2 text-base font-semibold text-fg">
                     {currentProblem.order}. {currentProblem.title}
                   </h2>
-                  <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{currentProblem.description}</p>
+                  <Markdown className="mt-3">{currentProblem.description}</Markdown>
                   {currentProblem.sample_test_cases.map((tc, i) => (
                     <div key={i} className="mt-4">
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">Ví dụ {i + 1}</p>
@@ -401,6 +387,7 @@ export default function ExamCode() {
             </div>
           </section>
 
+          <ResizeHandle axis="x" onPointerDown={left.onPointerDown} onDoubleClick={left.reset} />
           {/* Trình soạn code */}
           <section className="flex min-w-0 flex-1 flex-col bg-surface-2">
             <div className="flex h-10 shrink-0 items-center gap-3 border-b border-line px-3 text-xs">
@@ -432,45 +419,41 @@ export default function ExamCode() {
               ) : (
                 <span className="text-[11px] text-warning">Máy chưa có trình biên dịch cho {LANG_LABEL[currentLanguage] ?? currentLanguage}</span>
               )}
-              <span className="ml-auto text-[11px] text-subtle">Dán từ ngoài bị giới hạn</span>
+              <span className="ml-auto text-[11px] text-subtle">Không cho sao chép / dán</span>
             </div>
-            <textarea
-              value={currentCode}
-              onChange={(e) => setCodeByKey((prev) => ({ ...prev, [currentKey]: e.target.value }))}
-              onPaste={(e) => guard.onPaste(e, { problemId: currentProblem.id })}
-              onKeyDown={handleKeyDown}
-              spellCheck={false}
-              className="min-h-0 flex-1 resize-none bg-surface p-4 font-mono text-[13px] leading-relaxed text-fg outline-none"
-            />
-            <div className="shrink-0 border-t border-line bg-surface">
-              <div className="flex items-center gap-2 px-3 py-1.5">
-                <Button size="sm" icon={<Play size={12} />} loading={running} disabled={locked || !activeToolchain} onClick={() => void handleRun()}>
-                  Chạy thử
+            <div className="min-h-0 flex-1 overflow-auto bg-surface">
+              <Editor
+                value={currentCode}
+                onValueChange={(code) => setCodeByKey((prev) => ({ ...prev, [currentKey]: code }))}
+                highlight={(code) => highlight(code, currentLanguage)}
+                padding={16}
+                tabSize={2}
+                insertSpaces
+                onPaste={(e) => guard.onPaste(e, { problemId: currentProblem.id })}
+                spellCheck={false}
+                className="min-h-full font-mono text-[13px] leading-relaxed text-fg"
+                textareaClassName="outline-none"
+                style={{ fontFamily: "var(--font-mono)", fontSize: 13, minHeight: "100%" }}
+              />
+            </div>
+            <ResizeHandle axis="y" onPointerDown={termHeight.onPointerDown} onDoubleClick={termHeight.reset} />
+            <div className="flex shrink-0 flex-col border-b border-line" style={{ height: termHeight.size }}>
+              <div className="flex shrink-0 items-center gap-2 border-b border-line bg-surface px-3 py-1.5">
+                <Button size="sm" variant="primary" icon={<Play size={12} />} disabled={locked || !activeToolchain || term.running} onClick={() => void handleRun()}>
+                  Chạy
                 </Button>
-                <input
-                  value={stdin}
-                  onChange={(e) => setStdin(e.target.value)}
-                  placeholder="Dữ liệu vào (stdin)…"
-                  className="h-7 min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-2 font-mono text-xs text-fg outline-none"
-                />
-                {currentProblem.sample_test_cases[0] && (
-                  <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setStdin(currentProblem.sample_test_cases[0].input)}>
-                    Dùng ví dụ 1
-                  </button>
-                )}
+                <span className="text-[11px] text-muted">Chạy bằng trình biên dịch trên máy bạn; nhập dữ liệu ngay trong terminal bên dưới.</span>
               </div>
-              {runResult && (
-                <pre className="selectable max-h-40 overflow-auto whitespace-pre-wrap border-t border-line bg-surface-2 px-3 py-2 font-mono text-xs text-fg">
-                  <span className={runResult.ok ? "text-success" : "text-danger"}>
-                    {runResult.phase === "compile" ? "Lỗi biên dịch" : runResult.timed_out ? "Quá thời gian" : runResult.ok ? "Chạy xong" : "Lỗi"}
-                    {runResult.millis > 0 && ` · ${runResult.millis}ms`}
-                    {runResult.exit_code !== null && runResult.exit_code !== 0 && ` · mã ${runResult.exit_code}`}
-                  </span>
-                  {"\n"}
-                  {runResult.stdout}
-                  {runResult.stderr && <span className="text-danger">{runResult.stderr}</span>}
-                </pre>
-              )}
+              <Terminal
+                className="min-h-0 flex-1"
+                chunks={term.chunks}
+                running={term.running}
+                exit={term.exit}
+                onSend={(line) => void term.write(line)}
+                onEof={term.eof}
+                onKill={term.kill}
+                onClear={term.clear}
+              />
             </div>
             <div className="flex shrink-0 items-center gap-3 border-t border-line bg-surface px-3 py-2">
               {submitError ? (

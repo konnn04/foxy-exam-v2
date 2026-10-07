@@ -66,6 +66,10 @@ pub fn run() {
             monitor::monitor_keylog_drain,
             runner::runner_toolchains,
             runner::runner_run,
+            runner::runner_session_start,
+            runner::runner_session_write,
+            runner::runner_session_close_stdin,
+            runner::runner_session_kill,
         ])
         .setup(|app| {
             // Menu chuột phải trên icon khay hệ thống (system tray).

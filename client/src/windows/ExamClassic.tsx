@@ -1,4 +1,5 @@
 import { diag } from "../lib/diag";
+import { Markdown } from "../components/Markdown";
 import { formatTime } from "../lib/datetime";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpenText, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, Loader2, Save, X } from "lucide-react";
@@ -365,7 +366,7 @@ export default function ExamClassic() {
                 {current.type === "MULTIPLE_CHOICE" && <span className="text-[11px] text-muted">· chọn nhiều đáp án</span>}
               </div>
               <h2 className="mt-3 text-[13px] font-semibold text-accent-fg">Câu {index + 1}</h2>
-              {current.type !== "MULTIPLE_FILL_IN_BLANK" && <p className="mt-1 whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-fg">{current.content}</p>}
+              {current.type !== "MULTIPLE_FILL_IN_BLANK" && <Markdown className="mt-1 text-[15px] font-medium text-fg">{current.content}</Markdown>}
 
               <div className="mt-5">
                 {current.type === "SINGLE_CHOICE" && (
@@ -378,7 +379,7 @@ export default function ExamClassic() {
                         round
                         onClick={() => update(current.id, { ...a, answerId: opt.id })}
                       >
-                        {opt.content}
+                        <Markdown className="[&_p]:my-0">{opt.content}</Markdown>
                       </Option>
                     ))}
                   </div>
@@ -401,7 +402,7 @@ export default function ExamClassic() {
                             })
                           }
                         >
-                          {opt.content}
+                          <Markdown className="[&_p]:my-0">{opt.content}</Markdown>
                         </Option>
                       );
                     })}
@@ -678,8 +679,8 @@ function GroupPassage({ parent }: { parent: ClassicalQuestionItem }) {
       <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle">
         <BookOpenText size={12} /> {st.media === "audio" ? "Bài nghe dùng chung" : st.media === "image" ? "Hình ảnh dùng chung" : "Đoạn đọc dùng chung"}
       </p>
-      {parent.content && <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{parent.content}</p>}
-      {st.passage && <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-fg/90">{st.passage}</p>}
+      {parent.content && <Markdown>{parent.content}</Markdown>}
+      {st.passage && <Markdown className="mt-2">{st.passage}</Markdown>}
       {st.media === "image" && st.image_url && <img src={assetUrl(st.image_url) ?? ""} alt="" className="mt-3 max-h-80 rounded-lg border border-line object-contain" />}
       {st.media === "audio" && st.audio_url && (
         <div className="mt-3 flex items-center gap-3">
