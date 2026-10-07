@@ -19,7 +19,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --ignore-platform-reqs
 
 # ---- 3. runtime ---------------------------------------------------------------------------------
-FROM dunglas/frankenphp:1-php8.3-alpine
+FROM dunglas/frankenphp:1-php8.4-alpine
 
 RUN install-php-extensions pdo_pgsql pgsql redis bcmath pcntl zip opcache intl \
     && apk add --no-cache curl
@@ -30,7 +30,7 @@ COPY . .
 COPY --from=assets /build/public/build ./public/build
 COPY --from=vendor /usr/bin/composer /usr/bin/composer
 RUN composer dump-autoload --optimize --no-dev --no-interaction \
-    && mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+    && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chmod +x docker/start.sh
 
 # Caddy inside FrankenPHP serves plain HTTP on :8000; TLS is terminated by Coolify's proxy / the gateway.
