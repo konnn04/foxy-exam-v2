@@ -155,8 +155,9 @@ services:
       - "LIVEKIT_KEYS=foxy: ${SERVICE_PASSWORD_64_LIVEKIT}"
     expose:
       - "7880"
-      - "7881"
-      - "7882/udp"
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
     depends_on:
       redis:
         condition: service_healthy
