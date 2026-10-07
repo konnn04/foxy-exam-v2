@@ -6,9 +6,13 @@ package record
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -72,7 +76,46 @@ type DB struct {
 	pg bool
 }
 
+// ensurePostgres creates the target database when the server answers "does not exist" (SQLSTATE 3D000),
+// so a fresh Postgres needs no init script.
+func ensurePostgres(ctx context.Context, dsn string) error {
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return err
+	}
+	conn, err := pgx.ConnectConfig(ctx, cfg)
+	if err == nil {
+		return conn.Close(ctx)
+	}
+	var pe *pgconn.PgError
+	if !errors.As(err, &pe) || pe.Code != "3D000" {
+		return err
+	}
+	admin := cfg.Copy()
+	admin.Database = "postgres"
+	ac, err := pgx.ConnectConfig(ctx, admin)
+	if err != nil {
+		return fmt.Errorf("create database: %w", err)
+	}
+	defer ac.Close(ctx)
+	if _, err := ac.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{cfg.Database}.Sanitize()); err != nil {
+		var ce *pgconn.PgError
+		if errors.As(err, &ce) && ce.Code == "42P04" { // created concurrently
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 func Open(driver, dsn string) (*DB, error) {
+	if driver == "pgx" {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := ensurePostgres(ctx, dsn); err != nil {
+			return nil, err
+		}
+	}
 	d, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, err

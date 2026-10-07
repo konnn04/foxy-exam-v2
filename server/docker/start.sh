@@ -19,9 +19,10 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   php artisan migrate --force
 fi
 
-# production caches (config reads env at runtime in the container, so this is safe here)
-php artisan config:cache
-php artisan route:cache
+if [ "${RUN_SEED:-false}" = "true" ]; then
+  php artisan foxy:seed-if-empty
+fi
+
 php artisan view:cache
 
 echo ">> starting FrankenPHP on ${SERVER_NAME}"

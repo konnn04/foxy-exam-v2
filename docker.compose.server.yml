@@ -49,6 +49,7 @@ services:
       CACHE_STORE: database
       QUEUE_CONNECTION: sync
       RUN_MIGRATIONS: "true"
+      RUN_SEED: ${RUN_SEED:-true}
       AI_WORKER_URL: ${AI_WORKER_URL:-}
       AI_WORKER_TIMEOUT: ${AI_WORKER_TIMEOUT:-2}
       AI_ENFORCE: ${AI_ENFORCE:-false}
@@ -190,7 +191,6 @@ services:
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./deploy/server/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
