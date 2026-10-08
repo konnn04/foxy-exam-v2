@@ -111,7 +111,7 @@ class AiServiceAvailabilityTest extends TestCase
 
         $exam = Exam::where('code', 'FOXY-2026')->first();
         $config = $exam->monitoring_config;
-        $config['ai_face_check'] = false;
+        $config['ai_identity'] = false;
         $exam->update(['monitoring_config' => $config]);
 
         // Đăng nhập phòng thi thành công vì kỳ thi này không cần AI

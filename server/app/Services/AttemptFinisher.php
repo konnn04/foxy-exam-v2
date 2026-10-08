@@ -33,7 +33,6 @@ class AttemptFinisher
             'ended_reason' => $reason,
         ]);
         $this->realtime->lifecycle($attempt, 'ended');
-        \Illuminate\Support\Facades\Storage::disk('local')->delete("ai-reference/{$attempt->id}.jpg");
 
         return $attempt;
     }

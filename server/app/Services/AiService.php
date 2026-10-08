@@ -49,6 +49,36 @@ class AiService
         return static::getStatus() === 'ONLINE';
     }
 
+    /** Does one service answer a ping right now? "face" | "objects"; false when it is not configured. */
+    public static function serviceOnline(string $which): bool
+    {
+        if (static::$fakeStatus !== null) {
+            return static::$fakeStatus;
+        }
+        $base = rtrim((string) config($which === 'face' ? 'services.ai_face.url' : 'services.ai_objects.url'), '/');
+        if ($base === '') {
+            // the legacy single worker serves both; a test environment with nothing configured behaves as online
+            $legacy = rtrim((string) config('services.ai_worker.url'), '/');
+            if ($legacy === '') {
+                return app()->environment('testing');
+            }
+            $base = $legacy;
+        }
+        $key = "foxy_ai_ping_{$which}";
+        $cached = Cache::get($key);
+        if ($cached !== null) {
+            return $cached;
+        }
+        try {
+            $ok = Http::timeout((float) config('services.ai_worker.timeout', 2.0))->get("{$base}/health")->successful();
+        } catch (Throwable) {
+            $ok = false;
+        }
+        Cache::put($key, $ok, now()->addSeconds($ok ? 10 : 5));
+
+        return $ok;
+    }
+
     /** Base URLs of the configured AI services (the legacy single AI_WORKER_URL counts when the new ones are empty). */
     public static function endpoints(): array
     {
@@ -161,27 +191,29 @@ class AiService
             ];
         }
 
-        $monitoringConfig = $exam->monitoring_config ?? [];
-        $aiFaceRequired = !empty($monitoringConfig['ai_face_check']);
+        $cfg = $exam->monitoring_config ?? [];
+        // the camera and MediaPipe run on the candidate's machine; only identity and prohibited objects need a service
+        $needFace = !empty($cfg['ai_identity']);
+        $needObjects = !empty($cfg['ai_objects']) || !empty($cfg['extra_camera_objects']);
 
-        if (!$aiFaceRequired) {
+        if (!$needFace && !$needObjects) {
             return [
                 'required' => false,
                 'available' => true,
                 'status' => 'NOT_REQUIRED',
-                'message' => 'Kỳ thi không yêu cầu tính năng giám sát AI.',
+                'message' => 'Kỳ thi không yêu cầu dịch vụ AI.',
             ];
         }
 
-        $isAvailable = static::isAvailable();
-        $status = static::getStatus();
+        $isAvailable = (!$needFace || static::serviceOnline('face')) && (!$needObjects || static::serviceOnline('objects'));
+        $status = $isAvailable ? 'ONLINE' : 'OFFLINE';
 
         if ($isAvailable) {
             return [
                 'required' => true,
                 'available' => true,
                 'status' => $status,
-                'message' => 'Dịch vụ AI giám sát khuôn mặt hoạt động bình thường.',
+                'message' => 'Các dịch vụ AI giám sát hoạt động bình thường.',
             ];
         }
 
@@ -189,7 +221,7 @@ class AiService
             'required' => true,
             'available' => false,
             'status' => $status,
-            'message' => 'Dịch vụ AI giám sát (khuôn mặt) hiện không khả dụng. Kỳ thi yêu cầu giám sát AI nên thí sinh không thể bắt đầu làm bài lúc này. Vui lòng liên hệ giám thị phòng thi.',
+            'message' => 'Dịch vụ AI giám sát (xác thực khuôn mặt / vật cấm) hiện không khả dụng. Kỳ thi yêu cầu giám sát AI nên thí sinh không thể bắt đầu làm bài lúc này. Vui lòng liên hệ giám thị phòng thi.',
         ];
     }
 }

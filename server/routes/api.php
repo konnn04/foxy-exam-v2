@@ -63,6 +63,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/finish', [ExamController::class, 'finishExam']);
 
             // Realtime plane: tokens + URLs for batched telemetry, evidence upload and LiveKit
+            // Face reference photo (self-enrolment from the camera)
+            Route::get('/face', [\App\Http\Controllers\Api\V1\Student\FaceEnrollmentController::class, 'status']);
+            Route::post('/face/enroll', [\App\Http\Controllers\Api\V1\Student\FaceEnrollmentController::class, 'enroll'])->middleware('throttle:10,1');
+
             // Phone as an extra camera (link + QR in the lobby, layout check)
             Route::post('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'issue'])->middleware('throttle:20,1');
             Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');

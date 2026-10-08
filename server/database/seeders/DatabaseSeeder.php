@@ -239,6 +239,7 @@ class DatabaseSeeder extends Seeder
                 'max_paste_chars' => 80,
                 'track_keystroke_dynamics' => true,
                 'ai_face_check' => true,
+                'ai_identity' => true,
             ],
             'created_by' => $teacher->id,
         ]);

@@ -7,10 +7,10 @@ use App\Models\ExamAttempt;
 use App\Models\Violation;
 use App\Services\AiService;
 use App\Support\AttemptResolver;
+use App\Support\FaceReference;
 use App\Support\Risk;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * A camera frame sent now and then by FoxyClient. The face service checks that it is still the same person as at
@@ -30,13 +30,18 @@ class AiFrameController extends Controller
         $request->validate([
             'frame' => ['required', 'file', 'mimetypes:image/jpeg,image/png', 'max:2048'],
             'evidence_id' => ['nullable', 'string', 'max:64'],
+            'source' => ['nullable', 'in:camera,phone'],
         ]);
         $attempt = AttemptResolver::for($request);
         if (!$attempt) {
             return response()->json(['success' => false, 'message' => 'Không có phiên làm bài đang diễn ra.'], 404);
         }
-        $exam = $attempt->exam;
-        if (empty(($exam->monitoring_config ?? [])['ai_face_check']) || AiService::endpoints() === [] || AiService::getStatus() !== 'ONLINE') {
+        $cfg = $attempt->exam->monitoring_config ?? [];
+        $phone = $request->input('source') === 'phone';
+        // what each picture is checked for: identity only on the main camera, objects on the camera(s) the exam names
+        $identity = !$phone && !empty($cfg['ai_identity']);
+        $objects = $phone ? !empty($cfg['extra_camera_objects']) : !empty($cfg['ai_objects']);
+        if ((!$identity && !$objects) || AiService::endpoints() === [] || AiService::getStatus() !== 'ONLINE') {
             return response()->json(['success' => true, 'checked' => false]);
         }
 
@@ -45,18 +50,19 @@ class AiFrameController extends Controller
         $this->created = [];
         $out = ['success' => true, 'checked' => true, 'prohibited' => [], 'match' => null];
 
-        $objects = AiService::detectObjects($frame);
-        if ($objects && $objects['prohibited'] !== []) {
-            $out['prohibited'] = $objects['prohibited'];
+        if ($objects && ($found = AiService::detectObjects($frame)) && $found['prohibited'] !== []) {
+            $out['prohibited'] = $found['prohibited'];
             $this->raise($attempt, 'PROHIBITED_DEVICE', 'HIGH', [
-                'message' => 'Phát hiện vật cấm: ' . implode(', ', $objects['prohibited']),
-                'labels' => $objects['prohibited'],
-                'objects' => array_slice($objects['objects'], 0, 10),
-                'source' => 'ai:objects',
+                'message' => ($phone ? 'Camera phụ phát hiện vật cấm: ' : 'Phát hiện vật cấm: ') . implode(', ', $found['prohibited']),
+                'labels' => $found['prohibited'],
+                'objects' => array_slice($found['objects'], 0, 10),
+                'source' => $phone ? 'ai:objects:phone' : 'ai:objects',
             ], $evidence);
         }
 
-        $out['match'] = $this->checkIdentity($attempt, $frame, $evidence);
+        if ($identity) {
+            $out['match'] = $this->checkIdentity($attempt, $frame, $evidence);
+        }
         $out['violation_ids'] = $this->created; // the client uploads the picture and attaches it with evidence()
 
         return response()->json($out);
@@ -83,28 +89,20 @@ class AiFrameController extends Controller
         return response()->json(['success' => true, 'attached' => $n]);
     }
 
-    /** The first single-face frame of the attempt becomes the reference; later frames must match it. */
+    /** The camera picture must show the student whose face is enrolled. Students without an enrolled photo are not judged. */
     private function checkIdentity(ExamAttempt $attempt, string $frame, ?string $evidence): ?bool
     {
-        $disk = Storage::disk('local');
-        $path = "ai-reference/{$attempt->id}.jpg";
-
-        if (!$disk->exists($path)) {
-            $faces = AiService::faces($frame);
-            if ($faces && ($faces['count'] ?? 0) === 1) {
-                $disk->put($path, $frame);
-            }
-
+        $reference = FaceReference::bytes($attempt->user);
+        if ($reference === null) {
             return null;
         }
-
-        $result = AiService::verify((string) $disk->get($path), $frame);
+        $result = AiService::verify($reference, $frame);
         if (!$result || ($result['match'] ?? null) === null) {
             return null; // no / several faces: the on-device checks report those
         }
         if ($result['match'] === false) {
             $this->raise($attempt, 'FACE_MISMATCH', 'HIGH', [
-                'message' => 'Khuôn mặt khác với khuôn mặt lúc bắt đầu bài thi',
+                'message' => 'Khuôn mặt khác với khuôn mặt đã đăng ký của sinh viên',
                 'similarity' => $result['similarity'],
                 'threshold' => $result['threshold'],
                 'source' => 'ai:face',

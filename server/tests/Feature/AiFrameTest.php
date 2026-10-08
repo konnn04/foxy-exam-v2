@@ -31,15 +31,21 @@ class AiFrameTest extends TestCase
         config(['services.ai_face.url' => 'http://face.test', 'services.ai_objects.url' => 'http://obj.test']);
 
         $exam = Exam::where('code', 'FOXY-2026')->first();
-        $exam->update(['monitoring_config' => array_merge($exam->monitoring_config ?? [], ['ai_face_check' => true])]);
+        $exam->update(['monitoring_config' => array_merge($exam->monitoring_config ?? [], ['ai_face_check' => true, 'ai_identity' => true, 'ai_objects' => true, 'extra_camera' => 'optional', 'extra_camera_objects' => true])]);
         $this->student = User::where('username', 'student01')->first();
         $this->attempt = ExamAttempt::create(['exam_id' => $exam->id, 'user_id' => $this->student->id, 'attempt_number' => 1, 'status' => 'IN_PROGRESS', 'started_at' => now()]);
     }
 
-    private function send(?string $evidence = 'ev1'): \Illuminate\Testing\TestResponse
+    private function enroll(): void
+    {
+        Storage::disk('local')->put("faces/{$this->student->id}.jpg", 'reference');
+        $this->student->forceFill(['face_enrolled_at' => now()])->save();
+    }
+
+    private function send(?string $evidence = 'ev1', string $source = 'camera'): \Illuminate\Testing\TestResponse
     {
         return $this->actingAs($this->student, 'sanctum')->withHeader('X-Foxy-Attempt', (string) $this->attempt->id)
-            ->post('/api/v1/student/ai/frame', ['frame' => UploadedFile::fake()->createWithContent('f.jpg', base64_decode(self::JPEG)), 'evidence_id' => $evidence], ['Accept' => 'application/json']);
+            ->post('/api/v1/student/ai/frame', ['frame' => UploadedFile::fake()->createWithContent('f.jpg', base64_decode(self::JPEG)), 'evidence_id' => $evidence, 'source' => $source], ['Accept' => 'application/json']);
     }
 
     private function fakeServices(array $objects = [], array $verify = [], int $faces = 1): void
@@ -53,17 +59,27 @@ class AiFrameTest extends TestCase
         ]);
     }
 
-    public function test_the_first_single_face_frame_becomes_the_reference(): void
+    public function test_a_student_without_an_enrolled_face_is_not_judged(): void
     {
         $this->fakeServices();
         $this->send()->assertOk()->assertJson(['checked' => true, 'match' => null]);
-        Storage::disk('local')->assertExists("ai-reference/{$this->attempt->id}.jpg");
+        $this->assertSame(0, Violation::where('exam_attempt_id', $this->attempt->id)->count());
+    }
+
+    public function test_the_phone_camera_is_only_checked_for_objects(): void
+    {
+        $this->enroll();
+        $this->fakeServices(objects: ['cell phone'], verify: ['match' => false]);
+        $res = $this->send('ev1', 'phone')->assertOk();
+        $this->assertSame(['cell phone'], $res->json('prohibited'));
+        $this->assertNull($res->json('match'), 'identity is only judged on the main camera');
+        $this->assertSame(0, Violation::where('violation_type', 'FACE_MISMATCH')->count());
     }
 
     public function test_a_different_face_raises_a_pending_violation_with_the_evidence(): void
     {
+        $this->enroll();
         $this->fakeServices(verify: ['match' => false, 'similarity' => 0.05]);
-        $this->send(); // the first frame is only stored as the reference
         $this->send()->assertOk()->assertJson(['match' => false]);
 
         $v = Violation::where('exam_attempt_id', $this->attempt->id)->where('violation_type', 'FACE_MISMATCH')->first();
@@ -97,18 +113,10 @@ class AiFrameTest extends TestCase
         $this->send()->assertOk()->assertJson(['checked' => false]);
 
         config(['services.ai_face.url' => 'http://face.test', 'services.ai_objects.url' => 'http://obj.test']);
-        $this->attempt->exam->update(['monitoring_config' => ['ai_face_check' => false]]);
+        $this->attempt->exam->update(['monitoring_config' => ['ai_face_check' => false, 'ai_identity' => false, 'ai_objects' => false]]);
         $this->fakeServices(objects: ['book']);
         $this->send()->assertJson(['checked' => false]);
         $this->assertSame(0, Violation::where('exam_attempt_id', $this->attempt->id)->count());
-    }
-
-    public function test_the_reference_is_deleted_when_the_attempt_is_submitted(): void
-    {
-        $this->fakeServices();
-        $this->send();
-        app(\App\Services\AttemptFinisher::class)->submit($this->attempt);
-        Storage::disk('local')->assertMissing("ai-reference/{$this->attempt->id}.jpg");
     }
 
     public function test_status_needs_every_configured_service_to_answer(): void

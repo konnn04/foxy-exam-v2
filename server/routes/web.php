@@ -1061,6 +1061,7 @@ Route::middleware(['auth'])->group(function () {
             'require_mic' => ['nullable', 'boolean'],
             'require_screen' => ['nullable', 'boolean'],
             'extra_camera' => ['nullable', 'in:off,optional,required'],
+            ...\App\Support\MonitoringConfig::REQUEST_RULES,
             'allowed_apps_enabled' => ['nullable', 'boolean'],
             'allowed_apps' => ['nullable', 'array', 'max:30'],
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
@@ -1098,6 +1099,8 @@ Route::middleware(['auth'])->group(function () {
         $monitoringConfig['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $questionSet->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
         $monitoringConfig['allowed_apps_enabled'] = $monitoringConfig['allowed_apps'] !== [];
+        $monitoringConfig = \App\Support\MonitoringConfig::fromRequest($monitoringConfig, $validated);
+        \App\Support\MonitoringConfig::assertServicesReachable($monitoringConfig);
 
         $exam = Exam::create([
             'organization_id' => $org->id,
@@ -1285,6 +1288,7 @@ Route::middleware(['auth'])->group(function () {
             'require_mic' => ['nullable', 'boolean'],
             'require_screen' => ['nullable', 'boolean'],
             'extra_camera' => ['nullable', 'in:off,optional,required'],
+            ...\App\Support\MonitoringConfig::REQUEST_RULES,
             'allowed_apps_enabled' => ['nullable', 'boolean'],
             'allowed_apps' => ['nullable', 'array', 'max:30'],
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
@@ -1323,6 +1327,9 @@ Route::middleware(['auth'])->group(function () {
         $config['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $qs && $qs->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
         $config['allowed_apps_enabled'] = $config['allowed_apps'] !== [];
+        $before = $exam->monitoring_config ?? [];
+        $config = \App\Support\MonitoringConfig::fromRequest($config, $validated);
+        \App\Support\MonitoringConfig::assertServicesReachable($config, $before);
 
         $exam->update([
             'course_id' => $validated['course_id'],
@@ -2029,6 +2036,10 @@ Route::middleware(['auth'])->group(function () {
 
 // 4.10 PROCTORING — Giám sát trực tiếp, Phiên thi & vi phạm, Xem bài làm (FoxyExam Screens v2)
 Route::middleware(['auth'])->prefix('admin')->group(function () {
+    Route::get('/users/{id}/face-photo', [\App\Http\Controllers\Admin\FaceController::class, 'photo'])->whereNumber('id');
+    Route::post('/users/{id}/face', [\App\Http\Controllers\Admin\FaceController::class, 'upload'])->whereNumber('id');
+    Route::post('/users/{id}/face/delete', [\App\Http\Controllers\Admin\FaceController::class, 'destroy'])->whereNumber('id');
+    Route::post('/users/{id}/face/lock', [\App\Http\Controllers\Admin\FaceController::class, 'lock'])->whereNumber('id');
     Route::get('/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'index']);
     Route::get('/exams/{id}/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'show'])->whereNumber('id');
     Route::post('/exams/{id}/end', [\App\Http\Controllers\Admin\MonitoringController::class, 'end'])->whereNumber('id');
