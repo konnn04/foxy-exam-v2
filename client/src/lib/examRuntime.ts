@@ -6,6 +6,7 @@ import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
+import { releaseEvidence } from "./evidence";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -179,6 +180,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     await client.stop();
     await publisher.current?.disconnect();
     publisher.current = null;
+    releaseEvidence();
     releaseLobbyMedia();
     setCameraStream(null);
     setCamera("none");

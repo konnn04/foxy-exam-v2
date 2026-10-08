@@ -141,12 +141,35 @@ export class RealtimeClient {
     this.hb = { ...this.hb, ...patch };
   }
 
-  emit(t: Exclude<RtEventType, "hb">, data: unknown) {
+  emit(t: Exclude<RtEventType, "hb">, data: unknown, ts?: number) {
     if (this.stopped) return;
-    this.push(t, data);
+    this.push(t, data, ts);
   }
 
-  private push(t: RtEventType, data: unknown) {
+  /** Store a picture through the record service and return its evidence id (null when it could not be stored). */
+  async uploadEvidence(blob: Blob): Promise<string | null> {
+    const s = this.session;
+    if (!s || !blob.size) return null;
+    const base = s.evidence.presign_url.replace(/\/v1\/evidence\/presign$/, "");
+    const auth = { Authorization: `Bearer ${s.ingest.token}` };
+    try {
+      const pre = await fetch(s.evidence.presign_url, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ content_type: blob.type }),
+      });
+      if (!pre.ok) return null;
+      const meta = (await pre.json()) as { evidence_id: string; content_url: string };
+      const put = await fetch(base + meta.content_url, { method: "PUT", headers: { ...auth, "Content-Type": blob.type }, body: blob });
+      if (!put.ok) return null;
+      const commit = await fetch(s.evidence.commit_url.replace("{id}", meta.evidence_id), { method: "POST", headers: auth });
+      return commit.ok ? meta.evidence_id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private push(t: RtEventType, data: unknown, ts = Date.now()) {
     if (this.queue.length >= MAX_QUEUE) {
       // keep violations: drop the oldest heartbeat / log instead
       const i = this.queue.findIndex((e) => e.t === "hb" || e.t === "log");
@@ -154,7 +177,7 @@ export class RealtimeClient {
     }
     this.seq += 1;
     localStorage.setItem(this.seqKey(), String(this.seq));
-    this.queue.push({ seq: this.seq, t, ts: Date.now(), data });
+    this.queue.push({ seq: this.seq, t, ts, data });
   }
 
   private schedule(ms: number) {

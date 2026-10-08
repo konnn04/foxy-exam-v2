@@ -24,6 +24,8 @@ import (
 // Storage is the object store (MinIO / S3 / R2).
 type Storage interface {
 	PresignPut(ctx context.Context, key, contentType string, ttl time.Duration) (string, error)
+	// Put stores an object streamed through this service (FoxyClient does not need to reach the storage endpoint).
+	Put(ctx context.Context, key, contentType string, body io.Reader, size int64) error
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 	Stat(ctx context.Context, key string) (size int64, err error)
 	Delete(ctx context.Context, key string) error
@@ -65,6 +67,11 @@ func (s *S3Storage) PresignPut(ctx context.Context, key, _ string, ttl time.Dura
 		return "", err
 	}
 	return u.String(), nil
+}
+
+func (s *S3Storage) Put(ctx context.Context, key, contentType string, body io.Reader, size int64) error {
+	_, err := s.internal.PutObject(ctx, s.bucket, key, body, size, minio.PutObjectOptions{ContentType: contentType})
+	return err
 }
 
 func (s *S3Storage) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
@@ -136,6 +143,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("POST /v1/evidence/presign", s.handleEvidencePresign)
 	mux.HandleFunc("POST /v1/evidence/{id}/commit", s.handleEvidenceCommit)
+	mux.HandleFunc("PUT /v1/evidence/{id}/content", s.handleEvidenceContent)
 
 	mux.HandleFunc("GET /v1/exams/{eid}/recordings", s.handleListExam)
 	mux.HandleFunc("GET /v1/exams/{eid}/attempts/{aid}/recordings", s.handleListAttempt)
@@ -394,8 +402,40 @@ func (s *Server) handleEvidencePresign(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{
 		"ok": true, "evidence_id": id, "upload_url": url, "method": "PUT",
-		"headers": map[string]string{"Content-Type": req.ContentType}, "max_bytes": spec.max, "expires_in": int(s.cfg.UploadTTL.Seconds()),
+		"headers": map[string]string{"Content-Type": req.ContentType}, "content_url": fmt.Sprintf("/v1/evidence/%s/content", id), "max_bytes": spec.max, "expires_in": int(s.cfg.UploadTTL.Seconds()),
 	})
+}
+
+// handleEvidenceContent receives the file itself and stores it: the candidate machine only ever talks to this
+// service, so object storage stays private. The size limit and content type are those given at presign time.
+func (s *Server) handleEvidenceContent(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.claims(w, r)
+	if !ok {
+		return
+	}
+	rec, err := s.db.Get(r.Context(), r.PathValue("id"))
+	if err != nil || rec.Kind != KindEvidence || rec.AttemptID != c.AttemptID || c.Role != auth.RoleCandidate {
+		writeJSON(w, 404, map[string]any{"ok": false, "error": "not_found"})
+		return
+	}
+	if rec.Status != StatusPendingUpload {
+		writeJSON(w, 409, map[string]any{"ok": false, "error": "already_uploaded"})
+		return
+	}
+	spec := evidenceTypes[rec.Mime]
+	if ct := r.Header.Get("Content-Type"); ct != rec.Mime {
+		writeJSON(w, 415, map[string]any{"ok": false, "error": "content_type_mismatch"})
+		return
+	}
+	if r.ContentLength <= 0 || r.ContentLength > spec.max {
+		writeJSON(w, 413, map[string]any{"ok": false, "error": "too_large"})
+		return
+	}
+	if err := s.st.Put(r.Context(), rec.ObjectKey, rec.Mime, http.MaxBytesReader(w, r.Body, spec.max), r.ContentLength); err != nil {
+		writeJSON(w, 503, map[string]any{"ok": false, "error": "storage_unavailable"})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
 func (s *Server) handleEvidenceCommit(w http.ResponseWriter, r *http.Request) {

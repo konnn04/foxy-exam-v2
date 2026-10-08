@@ -321,6 +321,7 @@ class MonitoringController extends Controller
                 'severity' => $v->severity,
                 'details' => $v->details,
                 'evidence_url' => $v->evidence_url,
+                'evidence_id' => $v->evidence_id,
                 'is_reviewed' => (bool) $v->is_reviewed,
                 'is_false_positive' => (bool) $v->is_false_positive,
                 'timestamp' => $v->timestamp?->toIso8601String(),

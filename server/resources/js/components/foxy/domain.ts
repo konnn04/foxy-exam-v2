@@ -35,6 +35,22 @@ export const VIOLATION_LABEL: Record<string, string> = {
   OFFLINE_TOO_LONG: 'Mất kết nối quá lâu',
 };
 
+/** Keys of violation `details` -> label shown to the proctor. Unknown keys are shown as they are. */
+export const DETAIL_LABEL: Record<string, string> = {
+  message: 'Mô tả',
+  client_type: 'Loại (client)',
+  process: 'Tiến trình',
+  title: 'Cửa sổ',
+  combo: 'Phím tắt',
+  pasted_chars: 'Số ký tự dán',
+  seconds: 'Kéo dài (giây)',
+  count: 'Số lượng',
+  programming_problem_id: 'Bài toán',
+  problem_id: 'Bài toán',
+};
+
+export const detailLabel = (k: string) => DETAIL_LABEL[k] ?? k;
+
 /** Violations that depend on AI / probability and wait for a proctor; everything else is confirmed on arrival. */
 export const NEEDS_REVIEW = ['FACE_MISMATCH', 'MULTIPLE_PEOPLE', 'NO_FACE_DETECTED', 'LOOKING_AWAY', 'FACE_TOO_FAR', 'PROHIBITED_DEVICE'];
 export const violationLabel = (t?: string) => (t && VIOLATION_LABEL[t]) || t || 'Vi phạm';

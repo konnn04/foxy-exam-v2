@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -35,6 +36,16 @@ type fakeStore struct {
 
 func (f *fakeStore) PresignPut(_ context.Context, key, _ string, _ time.Duration) (string, error) {
 	return "https://s3.test/put/" + key, nil
+}
+func (f *fakeStore) Put(_ context.Context, key, _ string, body io.Reader, _ int64) error {
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.objects[key] = int64(len(b))
+	return nil
 }
 func (f *fakeStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://s3.test/get/" + key, nil
@@ -380,5 +391,39 @@ func TestPurgeAndRetentionRemoveBytesAndRows(t *testing.T) {
 	code, out := signedCall(r.h, "POST", "/internal/v1/exams/2/purge", map[string]any{})
 	if code != 200 || out["deleted"].(float64) != 1 {
 		t.Fatalf("purge: %d %v", code, out)
+	}
+}
+
+func TestEvidenceContentIsStoredThroughTheService(t *testing.T) {
+	r := newRig(t, nil)
+	tok := candidate(5, 2)
+	_, out := call(r.h, "POST", "/v1/evidence/presign", tok, map[string]any{"content_type": "image/jpeg"})
+	id := out["evidence_id"].(string)
+	if out["content_url"] != "/v1/evidence/"+id+"/content" {
+		t.Fatalf("presign must point at the service upload, got %v", out["content_url"])
+	}
+
+	put := func(token, ct string, body []byte) int {
+		req := httptest.NewRequest("PUT", "/v1/evidence/"+id+"/content", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", ct)
+		rec := httptest.NewRecorder()
+		r.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if c := put(tok, "image/png", []byte("x")); c != 415 {
+		t.Fatalf("a different content type must be refused, got %d", c)
+	}
+	if c := put(candidate(6, 2), "image/jpeg", []byte("x")); c != 404 {
+		t.Fatalf("another attempt cannot write this evidence, got %d", c)
+	}
+	if c := put(tok, "image/jpeg", []byte("jpegbytes")); c != 200 {
+		t.Fatalf("upload: %d", c)
+	}
+	if got := r.st.objects["evidence/2/5/"+id+".jpg"]; got != 9 {
+		t.Fatalf("object not stored, size %d", got)
+	}
+	if code, _ := call(r.h, "POST", "/v1/evidence/"+id+"/commit", tok, nil); code != 200 {
+		t.Fatalf("commit after the content upload: %d", code)
 	}
 }

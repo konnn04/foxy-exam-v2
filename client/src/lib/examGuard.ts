@@ -1,3 +1,4 @@
+import { captureFrame, evidenceDue, EVIDENCE_SOURCE } from "./evidence";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
@@ -96,12 +97,17 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
       const v: GuardViolation = { id: ++seq.current, type, severity, message, t: Date.now() };
       setState((s) => ({ ...s, violations: [v, ...s.violations].slice(0, 100) }));
       if (rt?.enabled) {
-        // batched with everything else (about once a second); the original type is kept in details
-        rt.emit("violation", {
-          violation_type: type,
-          severity,
-          details: { message, client_type: type, ...details },
-        });
+        // batched with everything else (about once a second); the original type is kept in details.
+        // A picture of the moment (screen or camera) is taken now and attached when its upload finishes.
+        const at = v.t;
+        const send = (evidence_id?: string) =>
+          rt.emit("violation", { violation_type: type, severity, details: { message, client_type: type, ...details }, ...(evidence_id ? { evidence_id } : {}) }, at);
+        const source = EVIDENCE_SOURCE[type];
+        if (source && evidenceDue(type)) {
+          void captureFrame(source)
+            .then((blob) => (blob ? rt.uploadEvidence(blob) : null))
+            .then((id) => send(id ?? undefined), () => send());
+        } else send();
       } else {
         void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
           console.error("[guard] Báo vi phạm lỗi:", err),

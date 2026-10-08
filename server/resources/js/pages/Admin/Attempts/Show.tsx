@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, CircleCheck, Code, ExternalLink, Monitor, RotateCcw, ShieldAlert, ShieldCheck, Undo2, Video } from 'lucide-react';
+import { Ban, CircleCheck, Code, RotateCcw, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { EmptyState, FeedPlaceholder, FxButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
+import { EmptyState, FxButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
 import {
   ATTEMPT_STATUS,
   clockOffset,
@@ -13,8 +13,11 @@ import {
   severityOf,
   TONE_VAR,
   violationDetail,
+  detailLabel,
+  NEEDS_REVIEW,
   violationLabel,
 } from '@/components/foxy/domain';
+import { SessionMedia } from '@/components/foxy/session-media';
 import { useMore } from '@/hooks/use-more';
 import { useDialog } from '@/components/foxy/dialogs';
 import { cn } from '@/lib/utils';
@@ -41,6 +44,7 @@ interface ViolationRow {
   severity: string;
   details: unknown;
   evidence_url: string | null;
+  evidence_id: string | null;
   is_reviewed: boolean;
   is_false_positive: boolean;
   timestamp: string | null;
@@ -230,31 +234,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
-            {[
-              { label: 'Camera', icon: Video, text: 'clip camera' },
-              { label: 'Màn hình', icon: Monitor, text: 'clip màn hình' },
-            ].map((c) => (
-              <div key={c.label} className="overflow-hidden rounded-[10px] border border-border">
-                <FeedPlaceholder label={`${c.text} @ ${sel ? clockOffset(attempt.started_at, sel.timestamp) : '--:--:--'}`}>
-                  <span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/60 px-2 py-[3px] text-xs font-semibold text-white">
-                    <c.icon className="size-3" />
-                    {c.label}
-                  </span>
-                  {sel?.evidence_url && (
-                    <a
-                      href={sel.evidence_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/60 px-2 py-[3px] text-xs text-white hover:underline"
-                    >
-                      Mở bằng chứng <ExternalLink className="size-3" />
-                    </a>
-                  )}
-                </FeedPlaceholder>
-              </div>
-            ))}
-          </div>
+          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">
@@ -333,17 +313,23 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                   {[
                     ['Thời điểm', clockOffset(attempt.started_at, sel.timestamp)],
                     ['Mức độ', severityOf(sel.severity).long],
+                    ['Nguồn', NEEDS_REVIEW.includes(sel.type) ? 'AI / ước lượng — cần duyệt' : 'Client ghi nhận trực tiếp'],
                     ...Object.entries(details ?? {})
-                      .filter(([k, v]) => !['content', 'snippet', 'pasted_text'].includes(k) && (typeof v !== 'object' || v === null))
-                      .slice(0, 4)
-                      .map(([k, v]) => [k, String(v)]),
+                      .filter(([k, v]) => !['content', 'snippet', 'pasted_text', 'client_type'].includes(k) && (typeof v !== 'object' || v === null))
+                      .map(([k, v]) => [detailLabel(k), String(v)]),
                   ].map(([k, v]) => (
                     <div key={k} className="flex flex-col gap-1">
                       <span className="text-xs text-muted-foreground">{k}</span>
-                      <span className="truncate font-mono text-sm font-medium">{v}</span>
+                      <span className="break-words font-mono text-sm font-medium">{v}</span>
                     </div>
                   ))}
                 </div>
+                {details && (
+                  <details className="text-xs text-muted-foreground">
+                    <summary className="cursor-pointer select-none">Dữ liệu thô</summary>
+                    <pre className="mt-1.5 max-h-48 overflow-auto rounded-lg border border-border bg-surface p-2.5 font-mono text-[11px]">{JSON.stringify(details, null, 2)}</pre>
+                  </details>
+                )}
                 {!details && violationDetail(sel.details) && <div className="text-sm text-muted-foreground">{violationDetail(sel.details)}</div>}
                 {snippet && (
                   <div>
