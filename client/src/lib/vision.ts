@@ -1,4 +1,4 @@
-import { AttentionTracker, EMPTY_READING, attention, eyeAway, eyesClosed, faceRatio, headPose, type FrameReading, type VisionEvent } from "./vision-core";
+import { AttentionTracker, EMPTY_READING, attention, eyeGaze, eyesClosed, faceRatio, headPose, type FrameReading, type VisionEvent } from "./vision-core";
 
 /** Which MediaPipe delegate to use. "auto" tries the GPU and quietly falls back to the CPU. */
 export type FaceDelegate = "auto" | "gpu" | "cpu";
@@ -26,7 +26,8 @@ interface Landmarker {
 
 const WASM = "/mediapipe/wasm";
 const MODEL = "/mediapipe/face_landmarker.task";
-const FRAME_MS = 250; // 4 readings per second is plenty for attention and keeps the CPU path cheap
+// the GPU delegate can afford 15 readings a second (catches quick glances); the CPU path stays at 5
+const FRAME_MS = { GPU: 1000 / 15, CPU: 1000 / 5 } as const;
 
 async function createLandmarker(delegate: "GPU" | "CPU"): Promise<Landmarker> {
   const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
@@ -79,7 +80,7 @@ export class FaceMonitor {
     await v.play().catch(() => {});
     this.video = v;
     const t0 = performance.now();
-    this.timer = window.setInterval(() => this.tick(t0), FRAME_MS);
+    this.timer = window.setInterval(() => this.tick(t0), FRAME_MS[this.delegate]);
     return this.delegate;
   }
 
@@ -98,7 +99,10 @@ export class FaceMonitor {
         const shapes = res.faceBlendshapes?.[0]?.categories;
         if (shapes) {
           const named = Object.fromEntries(shapes.map((c) => [c.categoryName, c.score]));
-          r.eyeAway = eyeAway(named);
+          const gaze = eyeGaze(named);
+          r.eyeX = gaze.x;
+          r.eyeY = gaze.y;
+          r.eyeAway = Math.min(1, Math.max(Math.abs(gaze.x), Math.abs(gaze.y)));
           r.eyesClosed = eyesClosed(named);
         }
       }

@@ -288,19 +288,6 @@ export class RealtimeClient {
     return this.session?.livekit ?? null;
   }
 
-  /** The newest phone snapshot (at most 90 s old) turned into evidence; null when the phone sent none. */
-  async claimPhoneSnapshot(): Promise<string | null> {
-    const s = this.session;
-    if (!s) return null;
-    const base = s.evidence.presign_url.replace(/\/v1\/evidence\/presign$/, "");
-    try {
-      const res = await fetch(`${base}/v1/phone-snapshot/claim`, { method: "POST", headers: { Authorization: `Bearer ${s.ingest.token}` } });
-      return res.ok ? ((await res.json()) as { evidence_id: string }).evidence_id : null;
-    } catch {
-      return null;
-    }
-  }
-
   get evidence() {
     return this.session?.evidence ?? null;
   }

@@ -26,6 +26,7 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 | `DEVICE_CHANGED` | MEDIUM | Rust thiết bị | Cắm hoặc rút thiết bị trong giờ thi |
 | `BULK_PASTE` | HIGH / CRITICAL | Client onPaste | Dán nhiều hơn `max_paste_chars`; > 100 ký tự là CRITICAL (server) |
 | `CAMERA_LOST` | HIGH | Client, track `ended` | Camera tắt hoặc rút giữa giờ thi |
+| `PHONE_DISCONNECTED` | HIGH | LiveKit (người xem) | Camera phụ (điện thoại) mất kết nối giữa giờ thi |
 | `SCREEN_SHARE_STOPPED` | HIGH | Client, track `ended` | Dừng chia sẻ màn hình giữa giờ thi |
 
 ## Chờ duyệt (AI / xác suất)
@@ -34,7 +35,9 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 |---|---|---|---|
 | `NO_FACE_DETECTED` | MEDIUM | MediaPipe trên máy | Không thấy khuôn mặt liên tục 5 s (báo lại sau 30 s) |
 | `MULTIPLE_PEOPLE` | HIGH | MediaPipe | Hơn 1 khuôn mặt liên tục 2 s (báo lại sau 30 s) |
-| `LOOKING_AWAY` | LOW | MediaPipe (hướng đầu + ánh mắt) | Đầu lệch > 35° ngang / 30° dọc hoặc mắt lệch > 0,6 trong 6 s (báo lại sau 45 s) |
+| `LOOKING_AWAY` | LOW | MediaPipe (hướng đầu) | Đầu lệch > 25° ngang / 20° dọc trong 6 s (báo lại sau 45 s) |
+| `GAZE_AWAY` | LOW | MediaPipe (ánh mắt) | Đầu thẳng nhưng mắt liếc ra ngoài (> 0,45) trong 4 s, ghi hướng liếc (báo lại sau 40 s) |
+| `SPOT_CHECK_FAILED` | MEDIUM | Kiểm tra ngẫu nhiên camera phụ | Được yêu cầu nhìn camera điện thoại 10 s nhưng dưới 40% khung hình nhìn vào |
 | `FACE_TOO_FAR` | LOW | MediaPipe | Khuôn mặt chiếm < 14% chiều ngang khung trong 8 s (báo lại sau 60 s) |
 | `FACE_MISMATCH` | HIGH | Dịch vụ AI khuôn mặt (`ai/face-service`) | Khuôn mặt khác với khung hình đầu tiên của lượt thi (cosine < 0,35); khung hình gửi mỗi ~40 s |
 | `PROHIBITED_DEVICE` | HIGH | Dịch vụ AI vật thể (`ai/object-service`) | Thấy điện thoại, laptop, sách, điều khiển, TV trong khung camera (tối đa 1 lần/phút); chưa nhận diện được tai nghe |

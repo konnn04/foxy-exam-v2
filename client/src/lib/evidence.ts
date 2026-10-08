@@ -15,6 +15,7 @@ export const EVIDENCE_SOURCE: Partial<Record<ViolationType, "screen" | "camera">
   NO_FACE_DETECTED: "camera",
   MULTIPLE_PEOPLE: "camera",
   LOOKING_AWAY: "camera",
+  GAZE_AWAY: "camera",
   FACE_TOO_FAR: "camera",
 };
 
@@ -39,7 +40,7 @@ async function playerFor(stream: MediaStream): Promise<HTMLVideoElement | null> 
 }
 
 /** JPEG of the current frame of the screen share or the camera; null when that source is not running. */
-export async function captureFrame(source: "screen" | "camera"): Promise<Blob | null> {
+export async function captureFrame(source: "screen" | "camera" | "phone"): Promise<Blob | null> {
   const stream = getLobbyMedia()[source];
   if (!stream?.active) return null;
   const v = await playerFor(stream);
@@ -80,12 +81,13 @@ export interface EvidenceSet {
  * Up to three pictures of the moment a violation happens: the screen, the main camera and the phone camera (when the exam
  * uses it). `known` lets a caller that already holds a frame (the AI check holds the camera frame) skip capturing it.
  */
-export async function collectEvidence(rt: RealtimeClient, type: ViolationType, withPhone: boolean, known: { camera?: Blob } = {}): Promise<EvidenceSet> {
+export async function collectEvidence(rt: RealtimeClient, type: ViolationType, withPhone: boolean, known: { camera?: Blob; phone?: Blob } = {}): Promise<EvidenceSet> {
   const [screen, camera] = await Promise.all([captureFrame("screen"), known.camera ?? captureFrame("camera")]);
+  const phone = withPhone ? (known.phone ?? (await captureFrame("phone"))) : null;
   const [screenId, cameraId, phoneId] = await Promise.all([
     screen ? rt.uploadEvidence(screen) : null,
     camera ? rt.uploadEvidence(camera) : null,
-    withPhone ? rt.claimPhoneSnapshot() : null,
+    phone ? rt.uploadEvidence(phone) : null,
   ]);
   const all: EvidenceSet["all"] = {};
   if (screenId) all.screen = screenId;

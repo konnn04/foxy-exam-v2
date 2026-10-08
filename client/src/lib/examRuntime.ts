@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { attachAiEvidence, sendAiFrame, type MonitoringConfig } from "./api";
+import { attachAiEvidence, getMobileViewer, sendAiFrame, type MonitoringConfig, type ViolationType } from "./api";
+import { getSession } from "./session";
+import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
 import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
@@ -9,6 +11,8 @@ import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { captureFrame, collectEvidence, releaseEvidence } from "./evidence";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
+
+export const SPOT_CHECK_SECONDS = 10;
 
 export interface ExamWarning {
   id: string;
@@ -60,6 +64,15 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const cfgRef = useRef(config);
   cfgRef.current = config ?? cfgRef.current;
   const [blurred, setBlurred] = useState(false);
+  const [phoneState, setPhoneState] = useState<PhoneState>("off");
+  const [phoneStream, setPhoneStream] = useState<MediaStream | null>(null);
+  const [spot, setSpot] = useState<{ left: number } | null>(null);
+  const phoneFeed = useRef<PhoneFeed | null>(null);
+  const phoneRef = useRef<MediaStream | null>(null);
+  const phoneEverLive = useRef(false);
+  const lastPhoneLoss = useRef(0);
+  const spotTimer = useRef<number | undefined>(undefined);
+  const spotTick = useRef<number | undefined>(undefined);
   const badSince = useRef<number | null>(null);
   const goodSince = useRef<number | null>(null);
 
@@ -133,19 +146,108 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     [client, guard],
   );
 
+  /** Watches the linked phone for the whole exam; losing it is a violation (and a blocker when the exam requires it). */
+  const startPhone = useCallback(async () => {
+    const examId = getSession()?.exam.id;
+    if (!examId || (cfgRef.current?.extra_camera ?? "off") === "off") return;
+    try {
+      const res = (await getMobileViewer(examId)).data;
+      if (!res?.viewer) return;
+      const feed = new PhoneFeed(
+        (s) => {
+          setPhoneState(s);
+          if (s === "live") phoneEverLive.current = true;
+          const now = Date.now();
+          if (s === "lost" && phoneEverLive.current && active.current && now - lastPhoneLoss.current > 30_000) {
+            lastPhoneLoss.current = now;
+            guard.report("PHONE_DISCONNECTED", "HIGH", "Camera phụ (điện thoại) mất kết nối");
+          }
+        },
+        (stream) => {
+          phoneRef.current = stream;
+          setPhoneStream(stream);
+          setLobbyMedia({ phone: stream });
+        },
+      );
+      phoneFeed.current = feed;
+      await feed.connect(res.viewer);
+    } catch (err) {
+      console.warn("[runtime] phone camera feed failed:", err);
+      setPhoneState("lost");
+    }
+  }, [guard]);
+
+  /** At random moments the candidate must look at the phone camera for 10 s; not doing so is a violation. */
+  const scheduleSpotCheck = useCallback(() => {
+    window.clearTimeout(spotTimer.current);
+    if (!cfgRef.current?.extra_camera_spot_check) return;
+    const run = async () => {
+      const stream = phoneRef.current;
+      if (!active.current) return;
+      if (!stream) {
+        spotTimer.current = window.setTimeout(() => void run(), 60_000); // phone not visible right now: ask again soon
+        return;
+      }
+      let ok = 0;
+      let total = 0;
+      const monitor = new FaceMonitor(
+        (s) => {
+          total += 1;
+          if (s.faces === 1 && !isLookingAway(s)) ok += 1;
+        },
+        () => {},
+      );
+      try {
+        await monitor.start(stream);
+      } catch {
+        monitor.stop();
+        spotTimer.current = window.setTimeout(() => void run(), 15 * 60_000); // cannot analyse here: never punish the candidate for it
+        return;
+      }
+      let left = SPOT_CHECK_SECONDS;
+      setSpot({ left });
+      spotTick.current = window.setInterval(() => {
+        left -= 1;
+        setSpot({ left });
+        if (left > 0) return;
+        window.clearInterval(spotTick.current);
+        monitor.stop();
+        setSpot(null);
+        if (active.current && total >= 8 && ok / total < 0.4) {
+          guard.report("SPOT_CHECK_FAILED", "MEDIUM", `Không nhìn camera phụ khi được yêu cầu (${ok}/${total} khung hình)`, { frames_ok: ok, frames_total: total });
+        }
+        spotTimer.current = window.setTimeout(() => void run(), (8 + Math.random() * 10) * 60_000);
+      }, 1000);
+    };
+    spotTimer.current = window.setTimeout(() => void run(), (6 + Math.random() * 8) * 60_000);
+  }, [guard]);
+
   /** Every ~40 s one camera frame goes to the server's AI checks; when it flags something the picture is attached as evidence. */
   const startAiFrames = useCallback(() => {
     window.clearTimeout(aiTimer.current);
-    if (!cfgRef.current?.ai_face_check) return;
+    const c = cfgRef.current;
+    if (!c?.ai_identity && !c?.ai_objects && !(c?.extra_camera_objects && (c.extra_camera ?? "off") !== "off")) return;
     const tick = async () => {
       if (!active.current) return;
       try {
+        const withPhone = (cfgRef.current?.extra_camera ?? "off") !== "off";
         const blob = await captureFrame("camera");
-        if (blob) {
+        if (blob && (cfgRef.current?.ai_identity || cfgRef.current?.ai_objects)) {
           const res = await sendAiFrame(blob);
           if (res.violation_ids?.length) {
-            const set = await collectEvidence(client, res.prohibited.length ? "PROHIBITED_DEVICE" : "LOOKING_AWAY", (cfgRef.current?.extra_camera ?? "off") !== "off", { camera: blob });
+            const kind: ViolationType = res.prohibited.length ? "PROHIBITED_DEVICE" : "FACE_MISMATCH";
+            const set = await collectEvidence(client, kind, withPhone, { camera: blob });
             if (set.primary) await attachAiEvidence(res.violation_ids, set.primary, set.all);
+          }
+        }
+        if (withPhone && cfgRef.current?.extra_camera_objects) {
+          const shot = await captureFrame("phone");
+          if (shot) {
+            const res = await sendAiFrame(shot, "phone");
+            if (res.violation_ids?.length) {
+              const set = await collectEvidence(client, "PROHIBITED_DEVICE", true, { phone: shot });
+              if (set.primary) await attachAiEvidence(res.violation_ids, set.primary, set.all);
+            }
           }
         }
       } catch {
@@ -188,14 +290,21 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       }
       if (media.camera) void startVision(media.camera);
       startAiFrames();
+      void startPhone().then(scheduleSpotCheck);
       await guard.start(cfgRef.current);
     },
-    [client, guard, startAiFrames, startVision, watchTracks],
+    [client, guard, startAiFrames, startPhone, scheduleSpotCheck, startVision, watchTracks],
   );
 
   const end = useCallback(async () => {
     active.current = false;
     window.clearTimeout(aiTimer.current);
+    window.clearTimeout(spotTimer.current);
+    window.clearInterval(spotTick.current);
+    setSpot(null);
+    await phoneFeed.current?.stop();
+    phoneFeed.current = null;
+    phoneEverLive.current = false;
     offTracks.current.forEach((f) => f());
     offTracks.current = [];
     vision.current?.stop();
@@ -291,12 +400,15 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     };
   }, []);
 
+  const needPhone = cfgRef.current?.extra_camera === "required";
   const blocker =
     needCamera && camera === "lost"
       ? ({ kind: "camera", text: "Camera đã bị tắt. Bật lại camera để tiếp tục làm bài." } as const)
       : needScreen && screen === "lost"
         ? ({ kind: "screen", text: "Bạn đã dừng chia sẻ màn hình. Chia sẻ lại để tiếp tục làm bài." } as const)
-        : null;
+        : needPhone && phoneState === "lost" && active.current
+          ? ({ kind: "phone", text: "Camera phụ (điện thoại) đã mất kết nối. Mở lại trang camera trên điện thoại, đặt đúng góc rồi bài thi sẽ tự mở lại." } as const)
+          : null;
 
   return {
     guard,
@@ -315,8 +427,10 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     sample,
     visionError,
     blurred,
-    needs: { camera: Boolean(config?.ai_face_check), mic: Boolean(config?.require_mic), screen: Boolean(config?.require_screen) },
+    needs: { camera: Boolean(config?.ai_face_check), mic: Boolean(config?.require_mic), screen: Boolean(config?.require_screen), phone: (config?.extra_camera ?? "off") !== "off" },
     blocker,
+    phone: { state: phoneState, stream: phoneStream },
+    spot,
     restoreCamera,
     restoreScreen,
     restoreError,

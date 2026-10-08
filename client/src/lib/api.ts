@@ -99,6 +99,12 @@ export interface MonitoringConfig {
   ai_face_check: boolean;
   /** the phone as a second camera */
   extra_camera?: "off" | "optional" | "required";
+  /** AI services: identity (face service) and prohibited objects (object service) */
+  ai_identity?: boolean;
+  ai_objects?: boolean;
+  /** sub-options of the phone camera */
+  extra_camera_objects?: boolean;
+  extra_camera_spot_check?: boolean;
 }
 
 export interface ApiEnvelope<T> {
@@ -578,6 +584,28 @@ export function verifyMobileLayout(examId: number, frame: Blob) {
   return request<{ ok: boolean; message: string; problem: string | null; skipped?: boolean }>(`/student/exams/${examId}/mobile-camera/verify`, { method: "POST", body });
 }
 
+export interface MobileViewer {
+  viewer: { url: string; token: string; room: string } | null;
+  connected: boolean;
+}
+
+/** Credentials to watch the student's linked phone; data is null when no phone was linked for this exam. */
+export const getMobileViewer = (examId: number) => request<{ success: boolean; data: MobileViewer | null }>(`/student/exams/${examId}/mobile-camera`);
+
+export interface FaceStatus {
+  enrolled: boolean;
+  locked: boolean;
+  enrolled_at: string | null;
+}
+
+export const getFaceStatus = () => request<{ success: boolean; data: FaceStatus }>("/student/face");
+
+export function enrollFace(frame: Blob) {
+  const body = new FormData();
+  body.append("frame", frame, "face.jpg");
+  return request<{ success: boolean; message: string }>("/student/face/enroll", { method: "POST", body });
+}
+
 export interface AiFrameResult {
   success: boolean;
   checked: boolean;
@@ -587,9 +615,10 @@ export interface AiFrameResult {
 }
 
 /** A camera frame for the server-side AI checks (same person as at the start, prohibited objects). */
-export function sendAiFrame(frame: Blob): Promise<AiFrameResult> {
+export function sendAiFrame(frame: Blob, source: "camera" | "phone" = "camera"): Promise<AiFrameResult> {
   const body = new FormData();
   body.append("frame", frame, "frame.jpg");
+  body.append("source", source);
   return request<AiFrameResult>("/student/ai/frame", { method: "POST", body });
 }
 
@@ -619,6 +648,9 @@ export type ViolationType =
   | "DEVICE_CHANGED"
   | "APP_NOT_ALLOWED"
   | "LOOKING_AWAY"
+  | "GAZE_AWAY"
+  | "SPOT_CHECK_FAILED"
+  | "PHONE_DISCONNECTED"
   | "FACE_TOO_FAR"
   | "CAMERA_LOST"
   | "SCREEN_SHARE_STOPPED"

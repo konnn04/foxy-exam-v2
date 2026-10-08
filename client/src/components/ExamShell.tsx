@@ -1,6 +1,6 @@
 import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, WifiOff } from "lucide-react";
+import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
 import { Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { lockdownOn } from "../lib/examGuard";
@@ -128,16 +128,32 @@ export function ExamShell({
             </Overlay>
           )}
           {blocker && (
-            <Overlay z={25} icon={blocker.kind === "camera" ? <Camera size={28} className="text-danger" /> : <MonitorUp size={28} className="text-danger" />} title="Bài thi đang bị tạm khoá">
+            <Overlay
+              z={25}
+              icon={blocker.kind === "camera" ? <Camera size={28} className="text-danger" /> : blocker.kind === "phone" ? <Smartphone size={28} className="text-danger" /> : <MonitorUp size={28} className="text-danger" />}
+              title="Bài thi đang bị tạm khoá"
+            >
               {blocker.text}
               <div className="mt-4 flex flex-col items-center gap-2">
-                <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
-                  {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
-                </Button>
+                {blocker.kind !== "phone" && (
+                  <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
+                    {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
+                  </Button>
+                )}
                 {runtime.restoreError && <span className="text-danger">{runtime.restoreError}</span>}
                 <span className="text-[11px] text-subtle">Sự việc đã được ghi nhận và gửi cho giám thị.</span>
               </div>
             </Overlay>
+          )}
+          {runtime.spot && (
+            <div className="absolute inset-0 z-[28] flex items-center justify-center bg-app/80 backdrop-blur-sm">
+              <div className="w-full max-w-sm rounded-2xl border border-accent/40 bg-surface p-6 text-center shadow-2xl">
+                <Smartphone size={30} className="mx-auto text-accent" />
+                <h3 className="mt-3 text-base font-semibold text-fg">Nhìn vào camera điện thoại</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted">Kiểm tra ngẫu nhiên: hãy quay mặt về phía camera phụ và giữ nguyên trong thời gian còn lại.</p>
+                <p className="mt-4 font-mono text-4xl font-semibold tabular-nums text-accent">{runtime.spot.left}</p>
+              </div>
+            </div>
           )}
           {guard.blockReason && (
             <Overlay z={20} icon={<ShieldAlert size={28} className="text-danger" />} title="Bài thi đang bị tạm khoá">
@@ -240,6 +256,28 @@ function ExitDialog({ onStay, onLeave }: { onStay: () => void; onLeave: () => Pr
   );
 }
 
+/** The second camera: the phone, watched live. Shown whenever the exam uses it, with its state. */
+function PhonePreview({ runtime }: { runtime: Runtime }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const { state, stream } = runtime.phone;
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  if (!runtime.needs.phone) return null;
+  const live = state === "live" && !!stream;
+  return (
+    <div className="mx-3 mt-3 overflow-hidden rounded-lg border border-line bg-black">
+      <div className="relative">
+        <video ref={ref} autoPlay muted playsInline className={cx("aspect-video w-full object-cover", !live && "opacity-30")} />
+        <span className={cx("absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold", live ? "text-white" : "text-[#ff8a80]")}>
+          <Smartphone size={10} /> {live ? "CAMERA PHỤ" : state === "connecting" ? "ĐANG KẾT NỐI" : "MẤT KẾT NỐI"}
+        </span>
+        {!live && <span className="absolute inset-0 flex items-center justify-center px-3 text-center text-[10px] text-white/80">Mở lại trang camera trên điện thoại</span>}
+      </div>
+    </div>
+  );
+}
+
 function CameraPreview({ runtime }: { runtime: Runtime }) {
   const ref = useRef<HTMLVideoElement>(null);
   const { cameraStream, camera, sample, visionError } = runtime;
@@ -302,6 +340,7 @@ function GuardPanel({ runtime, children }: { runtime: Runtime; children?: ReactN
         <span className="h-1.5 w-1.5 rounded-full bg-danger live-dot" /> Đang giám sát
       </p>
       <CameraPreview runtime={runtime} />
+      <PhonePreview runtime={runtime} />
       <div className="space-y-1.5 p-3">
         {row(guard.displays <= 1, <Monitor size={13} />, "Màn hình", `${guard.displays}`)}
         {runtime.needs.camera && row(guard.cameras > 0 || runtime.camera !== "none", <Camera size={13} />, "Camera", runtime.camera === "lost" ? "mất" : `${Math.max(guard.cameras, runtime.camera === "ok" ? 1 : 0)}`)}

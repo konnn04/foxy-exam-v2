@@ -29,7 +29,7 @@ var ViolationTypes = map[string]bool{
 	"MULTIPLE_KEYBOARDS": true, "FACE_MISMATCH": true, "MULTIPLE_PEOPLE": true, "NO_FACE_DETECTED": true, "PROHIBITED_DEVICE": true,
 	// detected by FoxyClient itself
 	"BANNED_APP": true, "MULTIPLE_MONITORS": true, "CAPTURE_DEVICE": true, "DEVICE_CHANGED": true, "SYSTEM_SHORTCUT": true, "APP_NOT_ALLOWED": true,
-	"LOOKING_AWAY": true, "FACE_TOO_FAR": true, "CAMERA_LOST": true, "SCREEN_SHARE_STOPPED": true, "OFFLINE_TOO_LONG": true,
+	"LOOKING_AWAY": true, "GAZE_AWAY": true, "SPOT_CHECK_FAILED": true, "PHONE_DISCONNECTED": true, "FACE_TOO_FAR": true, "CAMERA_LOST": true, "SCREEN_SHARE_STOPPED": true, "OFFLINE_TOO_LONG": true,
 }
 
 var Severities = map[string]bool{"LOW": true, "MEDIUM": true, "HIGH": true, "CRITICAL": true}

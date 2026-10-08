@@ -58,14 +58,40 @@ Config: `client/.env.example`. Verification of the batching client against a rea
 - Đề bài, câu hỏi, đáp án hiển thị Markdown có GFM và công thức LaTeX (`$x^2$`, `$$...$$`); code có tô màu cú pháp (Prism). Server dùng cùng bộ ở trình soạn bài toán, xem trước câu hỏi và xem bài làm.
 - Có thể kéo thả đổi độ rộng: khung đề bài / code, chiều cao terminal (client) và cột của mọi bảng `FxList` (server), nhớ theo máy.
 
-## Camera mở rộng (điện thoại) và ảnh minh chứng
+## Tuỳ chọn giám sát và quan hệ phụ thuộc
 
-Cấu hình kỳ thi `monitoring_config.extra_camera`: `off` | `optional` | `required`.
+Một tuỳ chọn phụ không bao giờ bật khi tuỳ chọn chính tắt (`App\Support\MonitoringConfig::normalize`, áp dụng khi lưu kỳ thi; form cũng khoá và tắt theo):
+
+| Chính | Phụ |
+|---|---|
+| `ai_face_check` (camera + MediaPipe trên máy thí sinh) | `ai_identity` (xác thực sinh viên, cần dịch vụ khuôn mặt), `ai_objects` (vật cấm, cần dịch vụ vật thể) |
+| `extra_camera` = `optional` / `required` | `extra_camera_objects` (vật cấm qua camera phụ), `extra_camera_spot_check` (kiểm tra ngẫu nhiên) |
+
+Một tính năng AI chỉ bật được khi dịch vụ của nó trả lời ping (`GET /health`); tính năng đã bật từ trước giữ nguyên khi dịch vụ chập chờn. Kỳ thi cần dịch vụ nào mà dịch vụ đó offline thì thí sinh chưa vào thi được (`AI_ENFORCE=false` bỏ chặn này).
+
+## Sinh trắc học khuôn mặt
+
+Xác thực sinh viên so camera với ảnh tham chiếu của chính sinh viên (`users.face_photo`, lưu riêng tư, không bao giờ công khai). Sinh viên chưa có ảnh được yêu cầu đăng ký ở phòng chờ (`POST /student/face/enroll`, dịch vụ khuôn mặt phải thấy đúng một mặt rõ); đăng ký xong ảnh bị **khoá** để không đổi giữa chừng. Giảng viên xem, tải ảnh lên thay, khoá/mở khoá hoặc xoá ở trang người dùng (`/admin/users/{id}`); form kỳ thi cho biết khóa học có bao nhiêu sinh viên đã đăng ký.
+
+## Phân tích ánh mắt và tốc độ MediaPipe
+
+- `LOOKING_AWAY`: đầu quay lệch (> 25° ngang hoặc > 20° dọc) quá 6 s.
+- `GAZE_AWAY`: đầu thẳng nhưng mắt liếc ra ngoài (blendshape eyeLook, ngưỡng 0,45) quá 4 s; nội dung ghi hướng liếc (ngang / lên / xuống).
+- Mắt bị che hoặc nhắm (cả hai blink > 0,6) cũng tính là không nhìn màn hình khi làm mờ bài.
+- Tốc độ: GPU 15 khung/giây, CPU 5 khung/giây (chọn theo delegate chạy được).
+
+## Camera mở rộng (điện thoại)
+
+Cấu hình `extra_camera`: `off` | `optional` | `required`.
 
 1. Phòng chờ tự tạo liên kết (`POST /student/exams/{id}/mobile-camera`) và hiện mã QR. Token chỉ lưu dạng SHA-256 (`mobile_camera_tokens`), gắn với (sinh viên, kỳ thi) rồi gắn vào lượt thi khi bắt đầu; hết hạn khi nộp bài.
-2. Điện thoại mở `/m/camera/{token}`, bật camera và đổi token lấy thông tin LiveKit (`POST /api/v1/public/mobile-camera/{token}/exchange`). Trước giờ thi nó phát vào phòng riêng `lobby-{user}-{exam}`; phòng chờ của máy tính vào cùng phòng (chỉ xem) để hiện hình xem trước.
-3. Máy tính gửi ảnh từ điện thoại tới `POST /student/exams/{id}/mobile-camera/verify`: dịch vụ vật thể phải thấy người và laptop (bỏ qua nếu chưa có dịch vụ AI). Chế độ `required` khoá nút Bắt đầu tới khi đạt.
-4. Khi bắt đầu thi, máy tính gửi tin `go` qua kênh dữ liệu LiveKit; điện thoại đổi token lại và phát vào phòng thi `exam-{id}` với danh tính `attempt-{aid}-mobile` (không được xem ai khác). Record service ghi hình thành `camera2`. Nếu tin `go` mất, trang điện thoại tự kiểm tra lại mỗi 20 s khi còn ở phòng chờ.
-5. Trong giờ thi điện thoại gửi một ảnh nhỏ mỗi 20 s lên record service (`purpose: phone`, chỉ giữ 12 ảnh mới nhất). Khi có vi phạm, máy tính "nhận" ảnh mới nhất (≤ 90 s) thành minh chứng.
+2. Điện thoại mở `/m/camera/{token}`, bật camera và đổi token lấy thông tin LiveKit (`POST /api/v1/public/mobile-camera/{token}/exchange`). Nó phát vào **phòng riêng** `cam2-{user}-{exam}` và ở đó suốt kỳ thi (không đổi phòng); điện thoại không xem được ai. Mất kết nối thì trang tự kết nối lại; liên kết hết hạn (410) thì hiện "đã kết thúc".
+3. Máy tính vào cùng phòng với tư cách người xem (chỉ subscribe): phòng chờ hiện hình xem trước, cửa sổ thi tiếp tục xem điện thoại (khung "Camera phụ" cạnh camera chính). Tín hiệu kết nối là sự kiện LiveKit, không polling.
+4. Phòng chờ gửi một ảnh từ điện thoại tới `POST /student/exams/{id}/mobile-camera/verify`: dịch vụ vật thể phải thấy người và laptop (bỏ qua nếu chưa có dịch vụ AI). Điện thoại nên đặt nằm ngang, vuông góc (90°) với laptop. Chế độ `required` khoá nút Bắt đầu tới khi đạt.
+5. Khi lượt thi bắt đầu, core (`MobileCameraController::bind` và `ack`) nhờ record service ghi hình điện thoại thành `camera2` từ phòng riêng (`POST /internal/v1/egress/start`, `kind=camera2`, `room=cam2-…`, `identity=phone`); kết nối lại không tạo bản ghi thứ hai.
+6. Trong giờ thi: mất điện thoại → vi phạm `PHONE_DISCONNECTED` (và che bài nếu bắt buộc); `extra_camera_objects` → khung hình điện thoại gửi dịch vụ vật thể ~40 s/lần; `extra_camera_spot_check` → ngẫu nhiên (6–14 phút đầu, rồi 8–18 phút) hiện đếm ngược 10 s yêu cầu nhìn camera phụ, MediaPipe chạy trên khung điện thoại, dưới 40% khung hình nhìn vào thì ghi `SPOT_CHECK_FAILED`.
+7. Trang điện thoại có nút **Tắt màn hình** (lớp phủ đen, camera vẫn chạy) và Wake Lock.
 
-Mỗi vi phạm có ảnh minh chứng (`details.evidence`): **màn hình**, **camera chính** và **camera phụ** (nếu dùng). `violations.evidence_id` là ảnh sát nhất với loại vi phạm. Trang phiên thi của giám thị hiện cả ba ảnh và có thêm trình phát video `camera2`.
+## Ảnh minh chứng
+
+Mỗi vi phạm cần ảnh có tối đa 3 ảnh (`details.evidence`): **màn hình**, **camera chính**, **camera phụ** (chụp từ video điện thoại đang xem). `violations.evidence_id` là ảnh sát nhất với loại vi phạm. Trang phiên thi của giám thị hiện cả ba ảnh; phần video chỉ hiện nguồn đã được ghi hoặc kỳ thi yêu cầu.

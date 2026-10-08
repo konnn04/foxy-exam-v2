@@ -3,7 +3,8 @@ import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, QrCode, RefreshCw
 import { Badge, Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { usePhoneCamera } from "../lib/phoneCamera";
-import { ApiError, getExam, getHealth, startExam, type ExamDetail } from "../lib/api";
+import { ApiError, enrollFace, getExam, getFaceStatus, getHealth, startExam, type ExamDetail } from "../lib/api";
+import { captureFrame } from "../lib/evidence";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, FAILURE_TEXT, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
@@ -20,7 +21,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
 interface Check {
-  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "phone" | "mic" | "screen";
+  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "enroll" | "phone" | "mic" | "screen";
   label: string;
   level: Level;
   detail: string;
@@ -28,7 +29,7 @@ interface Check {
   required: boolean;
 }
 
-const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "phone", "mic", "screen"];
+const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "enroll", "phone", "mic", "screen"];
 
 const matchesBanned = (name: string) => {
   const n = name.toLowerCase().replace(/\.exe$/, "");
@@ -73,8 +74,10 @@ export default function ExamLobby({
   const wantCamera = Boolean(cfg?.ai_face_check);
   const wantMic = Boolean(cfg?.require_mic);
   const wantScreen = Boolean(cfg?.require_screen);
+  const wantIdentity = Boolean(cfg?.ai_identity);
   const wantPhone = (cfg?.extra_camera ?? "off") !== "off";
   const needPhone = cfg?.extra_camera === "required";
+  const [enrolling, setEnrolling] = useState(false);
   const phone = usePhoneCamera(pending.id);
 
   const attachPreview = useCallback((s: MediaStream | null) => {
@@ -259,6 +262,14 @@ export default function ExamLobby({
     // the camera and microphone are opened only when the student asks, never silently on entering the lobby
     set("camera", { level: "idle", detail: reqCam ? "Bắt buộc — nhấn “Bật camera” để kiểm tra" : "Nhấn “Bật camera” để kiểm tra (không bắt buộc)", required: reqCam });
     set("face", { level: "idle", detail: "Bật camera để nhận diện khuôn mặt", required: reqCam });
+    if (d?.monitoring_config?.ai_identity) {
+      try {
+        const st = (await getFaceStatus()).data;
+        set("enroll", st.enrolled ? { level: "ok", detail: "Đã có khuôn mặt tham chiếu của bạn", required: true } : { level: "fail", detail: "Bạn chưa đăng ký khuôn mặt — bật camera, nhìn thẳng rồi bấm “Đăng ký”", required: true });
+      } catch {
+        set("enroll", { level: "fail", detail: "Không kiểm tra được trạng thái đăng ký khuôn mặt", required: true });
+      }
+    }
     set("mic", { level: "idle", detail: "Nhấn “Kiểm tra micro” để thử", required: Boolean(d?.monitoring_config?.require_mic) });
     if (bypass("screen")) set("screen", { level: "warn", detail: "Dev: bỏ qua chia sẻ màn hình", required: false });
     else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: "Bắt buộc chia sẻ TOÀN MÀN HÌNH — nhấn “Chia sẻ màn hình”", required: true });
@@ -321,6 +332,21 @@ export default function ExamLobby({
     return () => window.clearTimeout(t);
   }, [phone.link, phone.layout, phone.checkLayout]);
 
+  const enroll = useCallback(async () => {
+    setEnrolling(true);
+    try {
+      const blob = await captureFrame("camera");
+      if (!blob) throw new Error("Chưa có hình từ camera.");
+      await enrollFace(blob);
+      set("enroll", { level: "ok", detail: "Đã đăng ký khuôn mặt của bạn", required: true });
+      void dialog.alert({ title: "Đã đăng ký khuôn mặt", text: "Khuôn mặt này sẽ được dùng để xác thực bạn trong kỳ thi. Muốn đổi, hãy nhờ giảng viên mở khoá.", tone: "success" });
+    } catch (e) {
+      void dialog.alert({ title: "Chưa đăng ký được khuôn mặt", text: errorText(e, "Thử lại sau."), tone: "danger" });
+    } finally {
+      setEnrolling(false);
+    }
+  }, [set]);
+
   const blockers = ORDER.map((id) => checks[id]).filter((c) => c.required && c.level !== "ok" && c.level !== "warn");
   const checking = ORDER.some((id) => checks[id].level === "checking");
   // a required check that only warned (e.g. dev bypass) does not block; "fail" and "idle" on required ones do
@@ -348,7 +374,6 @@ export default function ExamLobby({
       });
       clearPendingExam();
       startedRef.current = true;
-      if (wantPhone) await phone.announceStart(); // the phone moves to the exam room
       onStarted();
     } catch (e) {
       const text = e instanceof ApiError ? e.message : errorText(e, "Không vào được phòng thi.");
@@ -357,7 +382,7 @@ export default function ExamLobby({
     } finally {
       setStarting(false);
     }
-  }, [onStarted, pending.id, needScreen, shareScreen, wantPhone, phone]);
+  }, [onStarted, pending.id, needScreen, shareScreen]);
 
   // dev: "setup" bypass goes straight in as soon as the exam detail is known
   const auto = useRef(false);
@@ -421,6 +446,19 @@ export default function ExamLobby({
               </li>
             )}
             {wantCamera && <Row c={{ ...checks.face, required: needCamera }} icon={<ScanFace size={14} />} />}
+            {wantIdentity && (
+              <Row
+                c={{ ...checks.enroll, required: true }}
+                icon={<ScanFace size={14} />}
+                action={
+                  checks.enroll.level !== "ok" ? (
+                    <Button size="sm" loading={enrolling} disabled={checks.face.level !== "ok"} onClick={() => void enroll()}>
+                      Đăng ký
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
             {wantPhone && (
               <Row
                 c={{ ...checks.phone, required: needPhone }}
@@ -523,6 +561,7 @@ function initial(): Record<Check["id"], Check> {
     apps: mk("apps", "Ứng dụng bị cấm", true),
     camera: mk("camera", "Camera", false),
     face: mk("face", "Nhận diện khuôn mặt", false),
+    enroll: mk("enroll", "Khuôn mặt đã đăng ký", false),
     phone: mk("phone", "Camera mở rộng (điện thoại)", false),
     mic: mk("mic", "Micro", false),
     screen: mk("screen", "Chia sẻ màn hình", false),

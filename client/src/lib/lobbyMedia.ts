@@ -7,9 +7,11 @@ import { stopStream } from "./media";
 interface LobbyMedia {
   camera: MediaStream | null;
   screen: MediaStream | null;
+  /** the phone camera, watched through LiveKit (set by the exam runtime, never captured locally) */
+  phone: MediaStream | null;
 }
 
-let media: LobbyMedia = { camera: null, screen: null };
+let media: LobbyMedia = { camera: null, screen: null, phone: null };
 
 export const getLobbyMedia = (): LobbyMedia => media;
 
@@ -20,7 +22,7 @@ export function setLobbyMedia(patch: Partial<LobbyMedia>) {
 export function releaseLobbyMedia() {
   stopStream(media.camera);
   stopStream(media.screen);
-  media = { camera: null, screen: null };
+  media = { camera: null, screen: null, phone: null };
 }
 
 /** Pending exam picked in the dashboard: the attempt is created only AFTER the lobby, so setup time is not exam time. */

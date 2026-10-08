@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { AttentionTracker, attention, eyeAway, eyesClosed, faceRatio, headPose, isFrontal, isLookingAway, type FrameReading } from "../src/lib/vision-core";
 
-const reading = (o: Partial<FrameReading> = {}): FrameReading => ({ faces: 1, faceRatio: 0.4, yaw: 0, pitch: 0, eyeAway: 0, eyesClosed: 0, ...o });
+const reading = (o: Partial<FrameReading> = {}): FrameReading => ({ faces: 1, faceRatio: 0.4, yaw: 0, pitch: 0, eyeAway: 0, eyesClosed: 0, eyeX: 0, eyeY: 0, ...o });
 
 // identity rotation = looking straight at the camera
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -59,5 +59,18 @@ assert.ok(!isFrontal(reading({ faceRatio: 0.3, faces: 2 })));
 assert.ok(isLookingAway(reading({ yaw: 30 })) && !isLookingAway(reading({ yaw: 20 })));
 assert.ok(isLookingAway(reading({ eyesClosed: 0.8 })), "hidden eyes count as not facing the screen");
 assert.equal(eyesClosed({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.1 }), 0.1, "a single blink is ignored");
+
+// the eyes glance away while the head faces the screen: its own, quicker event
+const g = new AttentionTracker();
+g.update(reading({ eyeAway: 0.7, eyeX: 0.7 }), 0);
+assert.equal(g.update(reading({ eyeAway: 0.7, eyeX: 0.7 }), 3).length, 0);
+const glance = g.update(reading({ eyeAway: 0.7, eyeX: 0.7 }), 4.5)[0];
+assert.equal(glance?.kind, "GAZE_AWAY");
+assert.ok(glance.message.includes("ngang"), glance.message);
+// a turned head is LOOKING_AWAY, never also a gaze event
+const h = new AttentionTracker();
+h.update(reading({ yaw: 50, eyeAway: 0.7 }), 0);
+const kinds = h.update(reading({ yaw: 50, eyeAway: 0.7 }), 7).map((e) => e.kind);
+assert.deepEqual(kinds, ["LOOKING_AWAY"]);
 
 console.log("vision-core ok");

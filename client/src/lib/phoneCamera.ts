@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { ConnectionState, Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
+import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { issueMobileCamera, verifyMobileLayout } from "./api";
 
@@ -8,8 +8,8 @@ export type Layout = "unknown" | "checking" | "ok" | "bad";
 
 /**
  * The lobby side of the extra camera: asks the server for a link (shown as a QR code), joins the private room the phone
- * publishes into to show its preview, checks that the candidate and the laptop are in the picture, and tells the phone
- * when the exam starts so it moves to the exam room.
+ * publishes into to show its preview and checks that the candidate and the laptop are in the picture. The phone stays in
+ * that room for the whole exam (the exam window keeps watching it, see phoneFeed.ts).
  */
 export function usePhoneCamera(examId: number) {
   const [qr, setQr] = useState<string | null>(null);
@@ -103,15 +103,7 @@ export function usePhoneCamera(examId: number) {
     }
   }, [examId]);
 
-  /** The exam started: the phone must publish into the exam room now (it also notices by itself within seconds). */
-  const announceStart = useCallback(async () => {
-    const r = room.current;
-    if (!r || r.state !== ConnectionState.Connected) return;
-    await r.localParticipant.publishData(new TextEncoder().encode(JSON.stringify({ t: "go" })), { reliable: true }).catch(() => {});
-    await new Promise((res) => window.setTimeout(res, 1200));
-  }, []);
-
   useEffect(() => () => void leave(), [leave]);
 
-  return { qr, link, layout, layoutMessage, error, connect, checkLayout, announceStart, attach, leave, url: url.current };
+  return { qr, link, layout, layoutMessage, error, connect, checkLayout, attach, leave, url: url.current };
 }
