@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/foxyexam/realtime/internal/auth"
 	"github.com/foxyexam/realtime/internal/events"
@@ -84,6 +85,9 @@ type View struct {
 	Question      int    `json:"question,omitempty"`
 	Attention     *int   `json:"attention,omitempty"` // 0..100, from the candidate's on-device face analysis
 	Faces         *int   `json:"faces,omitempty"`
+	CPU           *int   `json:"cpu,omitempty"` // 0..100 of the candidate's machine
+	RAM           *int   `json:"ram,omitempty"`
+	ChatSeq       int64  `json:"chat_seq,omitempty"` // id of the newest chat message: the proctor UI fetches what it has not seen
 	LastSeenMS    int64  `json:"last_seen_ms"`
 	Violations    int    `json:"violations"`
 	LastViolation *Brief `json:"last_violation,omitempty"`
@@ -160,6 +164,14 @@ func (a *attState) apply(f map[string]string) {
 		case "fc":
 			n := int(atoi(v))
 			a.Faces = &n
+		case "cpu":
+			n := int(atoi(v))
+			a.CPU = &n
+		case "ram":
+			n := int(atoi(v))
+			a.RAM = &n
+		case "cs":
+			a.ChatSeq = atoi(v)
 		case "v":
 			a.Violations = int(atoi(v))
 		case "lv":
@@ -368,8 +380,7 @@ func (r *room) broadcast(m *Message) {
 }
 
 // run feeds the room until it is idle.
-func (r *room) run(ctx context.Context) {
-	sub := r.h.st.Subscribe(ctx, r.examID)
+func (r *room) run(ctx context.Context, sub *redis.PubSub) {
 	defer sub.Close()
 	msgs := sub.Channel()
 	t := time.NewTicker(r.h.cfg.Tick)
@@ -444,11 +455,14 @@ func (h *Hub) join(ctx context.Context, examID int64) (*room, error) {
 		r.cancel = cancel
 		h.rooms[examID] = r
 		h.mu.Unlock()
+		// subscribe before loading: a delta published while the snapshot is read must not be lost
+		sub := h.st.Subscribe(rctx, examID)
 		if err := r.load(ctx); err != nil {
+			sub.Close()
 			h.dropRoom(examID, r)
 			return nil, err
 		}
-		go r.run(rctx)
+		go r.run(rctx, sub)
 		return r, nil
 	}
 	h.mu.Unlock()

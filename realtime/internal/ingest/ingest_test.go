@@ -264,3 +264,42 @@ func TestStateReportsWhereTheSequenceLeftOff(t *testing.T) {
 		t.Fatalf("no token: %d", code)
 	}
 }
+
+func TestTheCoreCanQueueAChatMessageForACandidateAndSignalItsProctors(t *testing.T) {
+	e := setup(t, nil)
+	tok := candidate(5, 2)
+	post(e.h, tok, map[string]any{"events": []any{ev(1, "hb", map[string]any{"focus": true})}})
+
+	signed := func(body string) int {
+		raw := []byte(body)
+		ts, sig := auth.SignBody(intSecret, raw, time.Now())
+		req := httptest.NewRequest("POST", "/internal/v1/signal", bytes.NewReader(raw))
+		req.Header.Set(auth.HeaderTimestamp, ts)
+		req.Header.Set(auth.HeaderSignature, sig)
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"command":{"id":"m1","type":"CHAT","message":"Xin chào","by":7}}`); c != 200 {
+		t.Fatalf("chat command: %d", c)
+	}
+	r := decode(t, post(e.h, tok, map[string]any{"events": []any{ev(2, "hb", map[string]any{})}}))
+	if len(r.Commands) != 1 || r.Commands[0].Type != "CHAT" || r.Commands[0].Message != "Xin chào" {
+		t.Fatalf("the candidate must receive the message with its next response: %+v", r.Commands)
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"field":"cs","value":12}`); c != 200 {
+		t.Fatalf("chat signal: %d", c)
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"field":"st","value":1}`); c != 400 {
+		t.Fatalf("only whitelisted fields may be set by the core, got %d", c)
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"command":{"id":"m2","type":"SHUTDOWN"}}`); c != 400 {
+		t.Fatalf("unknown commands are refused, got %d", c)
+	}
+	req := httptest.NewRequest("POST", "/internal/v1/signal", bytes.NewReader([]byte(`{"attempt_id":5,"exam_id":2,"field":"cs","value":1}`)))
+	rec := httptest.NewRecorder()
+	e.h.ServeHTTP(rec, req)
+	if rec.Code != 401 {
+		t.Fatalf("an unsigned signal must be refused, got %d", rec.Code)
+	}
+}

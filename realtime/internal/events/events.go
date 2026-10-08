@@ -57,6 +57,8 @@ type Heartbeat struct {
 	Question   *int  `json:"question,omitempty"`  // question / problem the candidate is looking at
 	Attention  *int  `json:"attention,omitempty"` // 0..100 from the on-device face analysis
 	Faces      *int  `json:"faces,omitempty"`
+	CPU        *int  `json:"cpu,omitempty"` // 0..100, whole machine of the candidate
+	RAM        *int  `json:"ram,omitempty"`
 }
 
 // Violation is the Data of a TypeViolation event.
@@ -131,13 +133,13 @@ func (e Event) Validate() error {
 // Command is a server instruction for one candidate, delivered in an ingest response until acknowledged.
 type Command struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"` // WARN | PAUSE | RESUME | FORCE_END
+	Type    string `json:"type"` // WARN | PAUSE | RESUME | FORCE_END | CHAT
 	Message string `json:"message,omitempty"`
 	By      int64  `json:"by,omitempty"` // proctor user id
 	At      int64  `json:"at"`           // unix ms
 }
 
-var CommandTypes = map[string]bool{"WARN": true, "PAUSE": true, "RESUME": true, "FORCE_END": true}
+var CommandTypes = map[string]bool{"WARN": true, "PAUSE": true, "RESUME": true, "FORCE_END": true, "CHAT": true}
 
 // Stored is an event as it travels through the Redis stream towards the worker.
 type Stored struct {

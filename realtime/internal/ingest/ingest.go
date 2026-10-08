@@ -80,6 +80,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/time", s.handleTime)
 	mux.HandleFunc("GET /v1/state", s.handleState)
 	mux.HandleFunc("POST /internal/v1/lifecycle", s.handleLifecycle)
+	mux.HandleFunc("POST /internal/v1/signal", s.handleSignal)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
@@ -285,6 +286,12 @@ func (s *Server) fold(p *store.AcceptParams, e events.Event) {
 		if h.Faces != nil {
 			p.Fields["fc"] = *h.Faces
 		}
+		if h.CPU != nil {
+			p.Fields["cpu"] = *h.CPU
+		}
+		if h.RAM != nil {
+			p.Fields["ram"] = *h.RAM
+		}
 	case events.TypeViolation:
 		var v events.Violation
 		if json.Unmarshal(e.Data, &v) == nil {
@@ -329,6 +336,56 @@ func (s *Server) handleLifecycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.st.SetLifecycle(r.Context(), req.AttemptID, req.ExamID, req.UserID, req.Status, s.cfg.Now()); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ---------------------------------------------------------------- signals (Laravel -> ingest)
+
+type signalRequest struct {
+	AttemptID int64 `json:"attempt_id"`
+	ExamID    int64 `json:"exam_id"`
+	// Command queues an instruction for the candidate (delivered with the next ingest responses).
+	Command *events.Command `json:"command,omitempty"`
+	// Field / Value publish one live field to the proctors (see store.SignalFields).
+	Field string `json:"field,omitempty"`
+	Value int64  `json:"value,omitempty"`
+}
+
+func (s *Server) handleSignal(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<16))
+	if err != nil {
+		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{"ok": false})
+		return
+	}
+	if err := auth.VerifyBody(s.cfg.InternalSecret, body, r.Header.Get(auth.HeaderTimestamp), r.Header.Get(auth.HeaderSignature), s.cfg.Now(), 5*time.Minute); err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "bad_signature"})
+		return
+	}
+	var req signalRequest
+	if json.Unmarshal(body, &req) != nil || req.AttemptID == 0 || req.ExamID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_request"})
+		return
+	}
+	now := s.cfg.Now()
+	switch {
+	case req.Command != nil:
+		c := *req.Command
+		if !events.CommandTypes[c.Type] || c.ID == "" || len(c.Message) > 1200 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_command"})
+			return
+		}
+		c.At = now.UnixMilli()
+		err = s.st.PushCommand(r.Context(), req.AttemptID, req.ExamID, c)
+	case store.SignalFields[req.Field]:
+		err = s.st.Signal(r.Context(), req.AttemptID, req.ExamID, req.Field, req.Value, now)
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_request"})
+		return
+	}
+	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false})
 		return
 	}

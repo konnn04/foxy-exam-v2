@@ -168,6 +168,15 @@ func (s *Store) PushCommand(ctx context.Context, aid, eid int64, c events.Comman
 	return err
 }
 
+// SignalFields are the only live fields the core may set through the internal API.
+var SignalFields = map[string]bool{"cs": true} // cs = id of the newest chat message of the attempt
+
+// Signal publishes one live field of an attempt to the proctors' hubs (the core uses it for "new chat message").
+func (s *Store) Signal(ctx context.Context, aid, eid int64, field string, value any, now time.Time) error {
+	d, _ := json.Marshal(Delta{AttemptID: aid, Fields: map[string]any{field: value}, At: now.UnixMilli()})
+	return s.R.Publish(ctx, ChannelRoom(eid), d).Err()
+}
+
 // AttemptExam returns the exam an attempt belongs to according to the live state (0 if unknown).
 func (s *Store) AttemptExam(ctx context.Context, aid int64) (int64, error) {
 	v, err := s.R.HGet(ctx, KeyAttempt(aid), "eid").Int64()

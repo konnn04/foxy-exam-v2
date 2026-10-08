@@ -206,10 +206,19 @@ func TestWebSocketStreamsSnapshotThenCoalescedDeltas(t *testing.T) {
 
 	// the candidate leaves the exam window and a violation is recorded
 	accept(t, st, 5, 1, time.Now(), map[string]any{"f": 0}, store.ViolationBrief{Type: "TAB_SWITCH", Severity: "MEDIUM", TS: 1})
+	// the change may arrive split over several ticks: fold them until the row shows it all
 	var delta Message
 	for i := 0; i < 20; i++ {
-		if m := read(); m.Type == "delta" {
-			delta = m
+		m := read()
+		if m.Type != "delta" {
+			continue
+		}
+		if len(m.Rows) == 1 {
+			delta.Rows = m.Rows
+		}
+		delta.Feed = append(delta.Feed, m.Feed...)
+		delta.Counts = m.Counts
+		if len(delta.Rows) == 1 && delta.Rows[0].Violations == 1 && len(delta.Feed) >= 1 {
 			break
 		}
 	}
