@@ -453,3 +453,40 @@ func TestPhoneCameraIsRecordedFromItsPrivateRoomOnTheCoreRequest(t *testing.T) {
 		t.Fatalf("expected one camera2 recording, got %+v", list)
 	}
 }
+
+func TestTrustedServicesStoreEvidenceWithASignedCall(t *testing.T) {
+	r := newRig(t, nil)
+	send := func(url, ct string, body []byte, sign bool) int {
+		req := httptest.NewRequest("POST", url, bytes.NewReader(body))
+		req.Header.Set("Content-Type", ct)
+		if sign {
+			ts, sig := auth.SignBody(intSecret, body, time.Now())
+			req.Header.Set(auth.HeaderTimestamp, ts)
+			req.Header.Set(auth.HeaderSignature, sig)
+		}
+		rec := httptest.NewRecorder()
+		r.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	jpeg := []byte("ÿØnot really a jpeg")
+	good := "/internal/v1/evidence?exam_id=2&attempt_id=5&org_id=4"
+	if c := send(good, "image/jpeg", jpeg, false); c != 401 {
+		t.Fatalf("an unsigned call must be refused, got %d", c)
+	}
+	if c := send(good, "text/plain", jpeg, true); c != 400 {
+		t.Fatalf("only images are accepted, got %d", c)
+	}
+	if c := send("/internal/v1/evidence?exam_id=2", "image/jpeg", jpeg, true); c != 400 {
+		t.Fatalf("an attempt is required, got %d", c)
+	}
+	if c := send(good, "image/jpeg", jpeg, true); c != 200 {
+		t.Fatalf("stored: %d", c)
+	}
+	list, _ := r.srv.db.ListByAttempt(context.Background(), 2, 5)
+	if len(list) != 1 || list[0].Kind != KindEvidence || list[0].Status != StatusReady {
+		t.Fatalf("expected one ready evidence row, got %+v", list)
+	}
+	if len(r.st.objects) != 1 {
+		t.Fatalf("the picture must reach storage, got %v", r.st.objects)
+	}
+}

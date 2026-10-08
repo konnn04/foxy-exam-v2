@@ -41,6 +41,17 @@ def create_app(engine: FaceEngine | None = None) -> FastAPI:
             "faces": [{"bbox": [round(v, 1) for v in f.bbox], "score": round(f.score, 3)} for f in found],
         }
 
+    @app.post("/v1/embed", dependencies=[Depends(guard)])
+    async def embed(frame: UploadFile = File(...)):
+        """Embedding of the largest face (the supervisor agent keeps the reference one and compares every frame itself)."""
+        found = engine.analyze(await read(frame))
+        face = largest(found)
+        return {
+            "count": len(found),
+            "score": round(face.score, 3) if face else None,
+            "embedding": [round(float(v), 5) for v in face.embedding] if face else None,
+        }
+
     @app.post("/v1/verify", dependencies=[Depends(guard)])
     async def verify(reference: UploadFile = File(...), frame: UploadFile = File(...)):
         ref_faces = engine.analyze(await read(reference))

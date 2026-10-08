@@ -71,10 +71,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'viewer']);
             Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');
 
-            // Camera frames for the AI services (identity + prohibited objects)
-            Route::post('/ai/frame', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'store'])->middleware('throttle:12,1');
-            Route::post('/ai/evidence', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'evidence'])->middleware('throttle:12,1');
-
             Route::post('/realtime/session', [RealtimeController::class, 'session']);
 
             // Anti-Cheat Telemetry & Keystroke Op-Log
@@ -98,4 +94,8 @@ Route::prefix('v1')->group(function () {
 // Service-to-service (realtime worker -> core), HMAC-signed, no user session
 Route::prefix('internal/v1')->middleware(VerifyInternalSignature::class)->group(function () {
     Route::post('/events/bulk', [InternalEventsController::class, 'bulk']);
+    // the supervisor agent: what to check for an attempt, and the student's reference face
+    Route::get('/agent/attempts/lookup', [\App\Http\Controllers\Api\Internal\AgentController::class, 'lookup']);
+    Route::get('/agent/attempts/{id}', [\App\Http\Controllers\Api\Internal\AgentController::class, 'attempt'])->whereNumber('id');
+    Route::get('/agent/attempts/{id}/face-reference', [\App\Http\Controllers\Api\Internal\AgentController::class, 'faceReference'])->whereNumber('id');
 });

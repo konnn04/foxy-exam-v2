@@ -606,29 +606,6 @@ export function enrollFace(frame: Blob) {
   return request<{ success: boolean; message: string }>("/student/face/enroll", { method: "POST", body });
 }
 
-export interface AiFrameResult {
-  success: boolean;
-  checked: boolean;
-  prohibited: string[];
-  match: boolean | null;
-  violation_ids?: number[];
-}
-
-/** A camera frame for the server-side AI checks (same person as at the start, prohibited objects). */
-export function sendAiFrame(frame: Blob, source: "camera" | "phone" = "camera"): Promise<AiFrameResult> {
-  const body = new FormData();
-  body.append("frame", frame, "frame.jpg");
-  body.append("source", source);
-  return request<AiFrameResult>("/student/ai/frame", { method: "POST", body });
-}
-
-export function attachAiEvidence(violationIds: number[], evidenceId: string, all: Record<string, string> = {}) {
-  return request<{ success: boolean }>("/student/ai/evidence", {
-    method: "POST",
-    body: JSON.stringify({ violation_ids: violationIds, evidence_id: evidenceId, evidence: all }),
-  });
-}
-
 export type ViolationType =
   | "BULK_PASTE"
   | "SYNTHETIC_INPUT"

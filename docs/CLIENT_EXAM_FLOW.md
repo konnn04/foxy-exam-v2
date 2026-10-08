@@ -89,7 +89,7 @@ Cấu hình `extra_camera`: `off` | `optional` | `required`.
 3. Máy tính vào cùng phòng với tư cách người xem (chỉ subscribe): phòng chờ hiện hình xem trước, cửa sổ thi tiếp tục xem điện thoại (khung "Camera phụ" cạnh camera chính). Tín hiệu kết nối là sự kiện LiveKit, không polling.
 4. Phòng chờ gửi một ảnh từ điện thoại tới `POST /student/exams/{id}/mobile-camera/verify`: dịch vụ vật thể phải thấy người và laptop (bỏ qua nếu chưa có dịch vụ AI). Điện thoại nên đặt nằm ngang, vuông góc (90°) với laptop. Chế độ `required` khoá nút Bắt đầu tới khi đạt.
 5. Khi lượt thi bắt đầu, core (`MobileCameraController::bind` và `ack`) nhờ record service ghi hình điện thoại thành `camera2` từ phòng riêng (`POST /internal/v1/egress/start`, `kind=camera2`, `room=cam2-…`, `identity=phone`); kết nối lại không tạo bản ghi thứ hai.
-6. Trong giờ thi: mất điện thoại → vi phạm `PHONE_DISCONNECTED` (và che bài nếu bắt buộc); `extra_camera_objects` → khung hình điện thoại gửi dịch vụ vật thể ~40 s/lần; `extra_camera_spot_check` → ngẫu nhiên (6–14 phút đầu, rồi 8–18 phút) hiện đếm ngược 10 s yêu cầu nhìn camera phụ, MediaPipe chạy trên khung điện thoại, dưới 40% khung hình nhìn vào thì ghi `SPOT_CHECK_FAILED`.
+6. Trong giờ thi: mất điện thoại → vi phạm `PHONE_DISCONNECTED` (và che bài nếu bắt buộc); `extra_camera_objects` → supervisor agent phân tích khung hình điện thoại mỗi giây (xem `ai/README.md`); `extra_camera_spot_check` → ngẫu nhiên (6–14 phút đầu, rồi 8–18 phút) hiện đếm ngược 10 s yêu cầu nhìn camera phụ, MediaPipe chạy trên khung điện thoại, dưới 40% khung hình nhìn vào thì ghi `SPOT_CHECK_FAILED`.
 7. Trang điện thoại có nút **Tắt màn hình** (lớp phủ đen, camera vẫn chạy) và Wake Lock.
 
 ## Ảnh minh chứng

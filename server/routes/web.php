@@ -996,6 +996,7 @@ Route::middleware(['auth'])->group(function () {
             'aiStatus' => [
                 'face' => \App\Services\AiService::serviceOnline('face'),
                 'objects' => \App\Services\AiService::serviceOnline('objects'),
+                'agent' => \App\Services\AiService::serviceOnline('agent'),
             ],
             'quota' => [
                 'plan_name' => $quotaPlan->display_name ?? $quotaPlan->name,

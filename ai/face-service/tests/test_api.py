@@ -80,3 +80,13 @@ def test_verify_explains_why_it_cannot_decide():
 def test_garbage_upload_is_a_400():
     r = client({}).post("/v1/faces", files={"frame": ("f.png", b"not an image", "image/png")})
     assert r.status_code == 400
+
+
+def test_embed_returns_the_largest_face_embedding_or_nothing():
+    big = Face((0, 0, 100, 100), 0.9, np.asarray([1, 0], dtype=np.float32))
+    small = Face((0, 0, 10, 10), 0.99, np.asarray([0, 1], dtype=np.float32))
+    c = client({1: [small, big]})
+    out = c.post("/v1/embed", files={"frame": ("f.png", png(1), "image/png")}).json()
+    assert out["count"] == 2 and out["embedding"] == [1.0, 0.0]
+    empty = c.post("/v1/embed", files={"frame": ("f.png", png(9), "image/png")}).json()
+    assert empty["count"] == 0 and empty["embedding"] is None

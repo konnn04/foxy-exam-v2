@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { attachAiEvidence, getMobileViewer, sendAiFrame, type MonitoringConfig, type ViolationType } from "./api";
+import { getMobileViewer, type MonitoringConfig } from "./api";
 import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
@@ -8,7 +8,7 @@ import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
-import { captureFrame, collectEvidence, releaseEvidence } from "./evidence";
+import { releaseEvidence } from "./evidence";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -60,7 +60,6 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const vision = useRef<FaceMonitor | null>(null);
   const offTracks = useRef<(() => void)[]>([]);
   const active = useRef(false);
-  const aiTimer = useRef<number | undefined>(undefined);
   const cfgRef = useRef(config);
   cfgRef.current = config ?? cfgRef.current;
   const [blurred, setBlurred] = useState(false);
@@ -222,42 +221,6 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     spotTimer.current = window.setTimeout(() => void run(), (6 + Math.random() * 8) * 60_000);
   }, [guard]);
 
-  /** Every ~40 s one camera frame goes to the server's AI checks; when it flags something the picture is attached as evidence. */
-  const startAiFrames = useCallback(() => {
-    window.clearTimeout(aiTimer.current);
-    const c = cfgRef.current;
-    if (!c?.ai_identity && !c?.ai_objects && !(c?.extra_camera_objects && (c.extra_camera ?? "off") !== "off")) return;
-    const tick = async () => {
-      if (!active.current) return;
-      try {
-        const withPhone = (cfgRef.current?.extra_camera ?? "off") !== "off";
-        const blob = await captureFrame("camera");
-        if (blob && (cfgRef.current?.ai_identity || cfgRef.current?.ai_objects)) {
-          const res = await sendAiFrame(blob);
-          if (res.violation_ids?.length) {
-            const kind: ViolationType = res.prohibited.length ? "PROHIBITED_DEVICE" : "FACE_MISMATCH";
-            const set = await collectEvidence(client, kind, withPhone, { camera: blob });
-            if (set.primary) await attachAiEvidence(res.violation_ids, set.primary, set.all);
-          }
-        }
-        if (withPhone && cfgRef.current?.extra_camera_objects) {
-          const shot = await captureFrame("phone");
-          if (shot) {
-            const res = await sendAiFrame(shot, "phone");
-            if (res.violation_ids?.length) {
-              const set = await collectEvidence(client, "PROHIBITED_DEVICE", true, { phone: shot });
-              if (set.primary) await attachAiEvidence(res.violation_ids, set.primary, set.all);
-            }
-          }
-        }
-      } catch {
-        /* a missed frame is just a missed frame */
-      }
-      aiTimer.current = window.setTimeout(() => void tick(), 35_000 + Math.random() * 10_000);
-    };
-    aiTimer.current = window.setTimeout(() => void tick(), 8_000);
-  }, [client]);
-
   const begin = useCallback(
     async (attemptId: number, cfg?: Partial<MonitoringConfig> | null) => {
       if (cfg) cfgRef.current = cfg;
@@ -289,16 +252,14 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         }
       }
       if (media.camera) void startVision(media.camera);
-      startAiFrames();
       void startPhone().then(scheduleSpotCheck);
       await guard.start(cfgRef.current);
     },
-    [client, guard, startAiFrames, startPhone, scheduleSpotCheck, startVision, watchTracks],
+    [client, guard, startPhone, scheduleSpotCheck, startVision, watchTracks],
   );
 
   const end = useCallback(async () => {
     active.current = false;
-    window.clearTimeout(aiTimer.current);
     window.clearTimeout(spotTimer.current);
     window.clearInterval(spotTick.current);
     setSpot(null);

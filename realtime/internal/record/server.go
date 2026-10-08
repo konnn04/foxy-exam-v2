@@ -150,6 +150,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/recordings/{id}/url", s.handleURL)
 
 	mux.HandleFunc("POST /internal/v1/egress/start", s.handleStart)
+	mux.HandleFunc("POST /internal/v1/evidence", s.handleInternalEvidence)
 	mux.HandleFunc("POST /internal/v1/recordings/{id}/stop", s.handleStop)
 	mux.HandleFunc("DELETE /internal/v1/recordings/{id}", s.handleDelete)
 	mux.HandleFunc("POST /internal/v1/exams/{eid}/purge", s.handlePurge)
@@ -204,7 +205,12 @@ func (s *Server) proctor(w http.ResponseWriter, r *http.Request, examID int64) b
 }
 
 func (s *Server) internal(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<16))
+	return s.internalLimited(w, r, 1<<16)
+}
+
+// internalLimited is internal() with a bigger body cap (pictures sent by the supervisor agent).
+func (s *Server) internalLimited(w http.ResponseWriter, r *http.Request, max int64) ([]byte, bool) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
 	if err != nil {
 		writeJSON(w, 413, map[string]any{"ok": false})
 		return nil, false
@@ -214,6 +220,53 @@ func (s *Server) internal(w http.ResponseWriter, r *http.Request) ([]byte, bool)
 		return nil, false
 	}
 	return body, true
+}
+
+// handleInternalEvidence stores a picture sent by a trusted backend service (the supervisor agent), signed like every
+// internal call: POST /internal/v1/evidence?exam_id=&attempt_id=&org_id= with the image as the body.
+func (s *Server) handleInternalEvidence(w http.ResponseWriter, r *http.Request) {
+	body, ok := s.internalLimited(w, r, 2<<20)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	examID, attemptID, orgID := queryInt(q.Get("exam_id")), queryInt(q.Get("attempt_id")), queryInt(q.Get("org_id"))
+	ct := r.Header.Get("Content-Type")
+	spec, known := evidenceTypes[ct]
+	if examID <= 0 || attemptID <= 0 || !known || !strings.HasPrefix(ct, "image/") || len(body) == 0 || int64(len(body)) > spec.max {
+		writeJSON(w, 400, map[string]any{"ok": false, "error": "bad_request"})
+		return
+	}
+	existing, _ := s.db.ListByAttempt(r.Context(), examID, attemptID)
+	n := 0
+	for _, e := range existing {
+		if e.Kind == KindEvidence {
+			n++
+		}
+	}
+	if n >= s.cfg.MaxEvidence {
+		writeJSON(w, 429, map[string]any{"ok": false, "error": "evidence_quota"})
+		return
+	}
+	now := s.cfg.Now()
+	id := newID()
+	key := fmt.Sprintf("evidence/%d/%d/%s.%s", examID, attemptID, id, spec.ext)
+	if err := s.st.Put(r.Context(), key, ct, strings.NewReader(string(body)), int64(len(body))); err != nil {
+		writeJSON(w, 503, map[string]any{"ok": false, "error": "storage_unavailable"})
+		return
+	}
+	rec := Recording{ID: id, ExamID: examID, AttemptID: attemptID, OrgID: orgID, Kind: KindEvidence, ObjectKey: key, Status: StatusReady, Mime: ct, SizeBytes: int64(len(body)), CreatedAt: now.UnixMilli()}
+	if err := s.db.Insert(r.Context(), rec); err != nil {
+		_ = s.st.Delete(r.Context(), key)
+		writeJSON(w, 503, map[string]any{"ok": false})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true, "evidence_id": id})
+}
+
+func queryInt(v string) int64 {
+	n, _ := strconv.ParseInt(v, 10, 64)
+	return n
 }
 
 // ---------------------------------------------------------------- LiveKit webhook -> egress

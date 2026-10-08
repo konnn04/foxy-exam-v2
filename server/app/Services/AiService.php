@@ -55,7 +55,10 @@ class AiService
         if (static::$fakeStatus !== null) {
             return static::$fakeStatus;
         }
-        $base = rtrim((string) config($which === 'face' ? 'services.ai_face.url' : 'services.ai_objects.url'), '/');
+        $base = rtrim((string) config(['face' => 'services.ai_face.url', 'objects' => 'services.ai_objects.url', 'agent' => 'services.ai_agent.url'][$which]), '/');
+        if ($base === '' && $which === 'agent') {
+            return true; // no agent configured: nothing to wait for
+        }
         if ($base === '') {
             // the legacy single worker serves both; a test environment with nothing configured behaves as online
             $legacy = rtrim((string) config('services.ai_worker.url'), '/');
@@ -85,6 +88,7 @@ class AiService
         $list = array_values(array_filter([
             rtrim((string) config('services.ai_face.url'), '/'),
             rtrim((string) config('services.ai_objects.url'), '/'),
+            rtrim((string) config('services.ai_agent.url'), '/'),
         ]));
 
         return $list ?: array_values(array_filter([rtrim((string) config('services.ai_worker.url'), '/')]));
@@ -205,7 +209,8 @@ class AiService
             ];
         }
 
-        $isAvailable = (!$needFace || static::serviceOnline('face')) && (!$needObjects || static::serviceOnline('objects'));
+        // the agent does the actual per-second analysis, so it must be up whenever a service is needed
+        $isAvailable = (!$needFace || static::serviceOnline('face')) && (!$needObjects || static::serviceOnline('objects')) && static::serviceOnline('agent');
         $status = $isAvailable ? 'ONLINE' : 'OFFLINE';
 
         if ($isAvailable) {

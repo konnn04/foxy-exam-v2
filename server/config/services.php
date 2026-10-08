@@ -38,6 +38,8 @@ return [
     // The two AI services (face verification, prohibited objects) run outside the compose file, e.g. on a GPU box.
     'ai_face' => ['url' => env('AI_FACE_URL'), 'token' => env('AI_TOKEN')],
     'ai_objects' => ['url' => env('AI_OBJECT_URL'), 'token' => env('AI_TOKEN')],
+    // the supervisor agent watches the cameras in LiveKit and runs both services on every second's frame
+    'ai_agent' => ['url' => env('AI_AGENT_URL')],
 
     'ai_worker' => [
         'url' => env('AI_WORKER_URL'),

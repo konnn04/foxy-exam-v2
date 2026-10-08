@@ -39,8 +39,8 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 | `GAZE_AWAY` | LOW | MediaPipe (ánh mắt) | Đầu thẳng nhưng mắt liếc ra ngoài (> 0,45) trong 4 s, ghi hướng liếc (báo lại sau 40 s) |
 | `SPOT_CHECK_FAILED` | MEDIUM | Kiểm tra ngẫu nhiên camera phụ | Được yêu cầu nhìn camera điện thoại 10 s nhưng dưới 40% khung hình nhìn vào |
 | `FACE_TOO_FAR` | LOW | MediaPipe | Khuôn mặt chiếm < 14% chiều ngang khung trong 8 s (báo lại sau 60 s) |
-| `FACE_MISMATCH` | HIGH | Dịch vụ AI khuôn mặt (`ai/face-service`) | Khuôn mặt khác với khung hình đầu tiên của lượt thi (cosine < 0,35); khung hình gửi mỗi ~40 s |
-| `PROHIBITED_DEVICE` | HIGH | Dịch vụ AI vật thể (`ai/object-service`) | Thấy điện thoại, laptop, sách, điều khiển, TV trong khung camera (tối đa 1 lần/phút); chưa nhận diện được tai nghe |
+| `FACE_MISMATCH` | HIGH | Supervisor agent + dịch vụ khuôn mặt (mỗi giây 1 khung hình) | Khuôn mặt khác ảnh sinh trắc đã đăng ký (cosine < 0,35) ở 3 trong 5 khung hình một mặt gần nhất; báo lại sau 120 s |
+| `PROHIBITED_DEVICE` | HIGH | Supervisor agent + dịch vụ vật thể (mỗi giây 1 khung hình, camera chính và camera phụ) | Cùng một vật cấm (điện thoại, laptop, sách, điều khiển, TV) ở 2 trong 3 khung hình gần nhất; báo lại sau 60 s mỗi vật; chưa nhận diện được tai nghe |
 
 ## Đã khai báo nhưng chưa có cơ chế phát
 
