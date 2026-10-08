@@ -121,6 +121,8 @@ export default function ExamCode() {
   useEffect(() => runtime.setQuestion(problems?.[activeIdx]?.id ?? 0), [activeIdx, problems, runtime]);
 
   const loadedAttemptRef = useRef<number | null>(null);
+  const rtStatus = useRef(runtime.status);
+  rtStatus.current = runtime.status;
   useEffect(() => {
     async function loadPaper() {
       const current = getSession();
@@ -175,6 +177,8 @@ export default function ExamCode() {
     let tickTimer: number | undefined;
 
     async function runHeartbeat() {
+      // while the realtime channel is up it carries the heartbeat, the time and the end-of-attempt signal: no REST polling
+      if (rtStatus.current !== "off") return;
       try {
         const hb = await sendHeartbeat();
         setRemainingSeconds(hb.remaining_seconds);

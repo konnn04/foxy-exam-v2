@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime } from '@/lib/datetime';
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -52,12 +53,12 @@ export default function ShowUser({ user, teams, currentScopeOrg, targetUser: u }
     ['Họ', u.last_name || '—'],
     ['Tên đệm', u.middle_name || '—'],
     ['Tên', u.first_name || '—'],
-    ['Ngày sinh', u.date_of_birth || '—'],
+    ['Ngày sinh', formatDate(u.date_of_birth)],
     ['Địa chỉ', u.address || '—'],
     ['Tên đăng nhập', <span className="font-mono">{u.username}</span>],
     ['Email', u.email],
     ['Tổ chức', u.organization ? `${u.organization.code} — ${u.organization.name}` : '—'],
-    ['Ngày tạo', <span className="font-mono">{u.created_at}</span>],
+    ['Ngày tạo', <span className="font-mono">{formatDateTime(u.created_at)}</span>],
   ];
 
   return (

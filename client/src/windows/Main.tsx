@@ -125,14 +125,19 @@ export default function Main() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
-  // Kiểm tra kết nối nhẹ mỗi 30s cho chấm "online" trên thanh tiêu đề.
+  // Connection state follows the browser's online/offline events (no polling); a failed API call also marks offline.
   useEffect(() => {
-    const id = window.setInterval(() => {
+    const check = () =>
       getHealth()
         .then(() => setOnline(true))
         .catch(() => setOnline(false));
-    }, 30_000);
-    return () => window.clearInterval(id);
+    const down = () => setOnline(false);
+    window.addEventListener("online", check);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", check);
+      window.removeEventListener("offline", down);
+    };
   }, []);
 
   async function handleLogout() {

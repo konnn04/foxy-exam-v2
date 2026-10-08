@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/datetime';
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Code, Library, ListChecks, Pencil, Trash2 } from 'lucide-react';
@@ -115,7 +116,7 @@ export function QuestionSetsTab({ questionSets = [] }: QuestionSetsTabProps) {
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
           },
-          { key: 'created', label: 'Ngày tạo', width: '92px', render: (q) => <span className="font-mono text-xs text-muted-foreground">{q.created_at?.split(' ')[0]}</span> },
+          { key: 'created', label: 'Ngày tạo', width: '92px', render: (q) => <span className="font-mono text-xs text-muted-foreground">{formatDate(q.created_at)}</span> },
         ]}
         actionsWidth="72px"
         actions={(q) => (

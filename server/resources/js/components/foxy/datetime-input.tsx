@@ -2,7 +2,7 @@ import { CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 import { FxInput } from '@/components/foxy/ui';
-import { DATETIME_FORMAT, formatDateTime, parseDateTime } from '@/lib/datetime';
+import { DATETIME_FORMAT, DATE_FORMAT, formatDate, formatDateTime, parseDate, parseDateTime } from '@/lib/datetime';
 
 /** Keeps the digits and re-inserts the separators of dd/MM/yyyy HH:mm while typing. */
 function mask(raw: string): string {
@@ -63,4 +63,28 @@ export function DateTimeInput({ value, onChange }: { value: string | null; onCha
       />
     </div>
   );
+}
+
+/** dd/MM/yyyy field. The value is a plain yyyy-MM-dd date string (what the server stores). */
+export function DateInput({ value, onChange }: { value: string | null; onChange: (ymd: string) => void }) {
+  const [text, setText] = useState(value ? formatDate(value) : '');
+
+  useEffect(() => {
+    if (value && parseDate(text) !== value) setText(formatDate(value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const type = (raw: string) => {
+    const d = raw.replace(/\D/g, '').slice(0, 8);
+    let next = d.slice(0, 2);
+    if (d.length > 2) next += '/' + d.slice(2, 4);
+    if (d.length > 4) next += '/' + d.slice(4, 8);
+    setText(next);
+    if (next === '') onChange('');
+    else if (next.length === DATE_FORMAT.length) {
+      const ymd = parseDate(next);
+      if (ymd) onChange(ymd);
+    }
+  };
+
+  return <FxInput mono inputMode="numeric" placeholder="dd/mm/yyyy" value={text} onChange={(e) => type(e.target.value)} aria-invalid={text.length > 0 && !parseDate(text)} />;
 }

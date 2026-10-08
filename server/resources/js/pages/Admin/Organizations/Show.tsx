@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/datetime';
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Building2, ClipboardList, Pencil, Trash2, Users } from 'lucide-react';
@@ -63,7 +64,7 @@ export default function ShowOrganization({ user, teams, organization: o }: Props
         }
         desc={
           <>
-            <span className="font-mono">{o.code.toLowerCase()}.foxyexam.vn</span> · {TYPE[o.type] ?? o.type} · tạo {o.created_at}
+            <span className="font-mono">{o.code.toLowerCase()}.foxyexam.vn</span> · {TYPE[o.type] ?? o.type} · tạo {formatDate(o.created_at)}
           </>
         }
         actions={

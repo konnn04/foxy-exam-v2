@@ -3,6 +3,7 @@
  * Each Create/Edit page pair renders the same component, so both always look identical.
  */
 import React, { useState } from 'react';
+import { DateInput } from './datetime-input';
 import { router } from '@inertiajs/react';
 import { Building2, GraduationCap, Save, Shuffle, Trash2, UserPlus } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
@@ -472,7 +473,7 @@ export function UserForm({
               </div>
               <div className="grid gap-3" style={grid()}>
                 <Field label="Ngày sinh" error={errors.date_of_birth}>
-                  <FxInput type="date" mono value={form.date_of_birth ?? ''} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
+                  <DateInput value={form.date_of_birth || null} onChange={(v) => setForm({ ...form, date_of_birth: v })} />
                 </Field>
                 <Field label="Địa chỉ" error={errors.address}>
                   <FxInput value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />

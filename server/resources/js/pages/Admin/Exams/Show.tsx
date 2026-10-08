@@ -233,7 +233,7 @@ export default function ShowExam({ user, teams, exam }: Props) {
                       <div className="truncate text-[13px] font-medium">{a.student_name}</div>
                       <div className="font-mono text-xs text-muted-foreground">
                         {a.student_username} · lượt #{a.attempt_number ?? 1}
-                        {a.started_at && ` · ${a.started_at}`}
+                        {a.started_at && ` · ${formatDateTime(a.started_at)}`}
                       </div>
                     </div>
                     <Pill tone={s.tone}>{s.label}</Pill>

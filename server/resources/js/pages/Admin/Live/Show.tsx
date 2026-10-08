@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Activity, Ban, LayoutGrid, List, Megaphone, Radio, Search, Square, TriangleAlert } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
@@ -132,11 +132,26 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
     if (ok) router.post(`/admin/attempts/${a.id}/force-end`, {}, { preserveScroll: true });
   };
 
-  // Realtime: refresh tiles and the event feed every 10 s.
+  // No polling while the hub is connected: tiles and the event feed reload when the hub reports that an attempt
+  // changed (status or violation count). Without a hub (realtime off) fall back to a slow refresh.
+  const hubSignature = Object.values(rt.rows)
+    .map((r) => `${r.attempt_id}:${r.status}:${r.violations}`)
+    .join('|');
+  const firstSignature = useRef(true);
   useEffect(() => {
-    const t = setInterval(() => router.reload({ only: ['attempts', 'feed', 'serverTime'] }), 10_000);
+    if (!hubLive) return;
+    if (firstSignature.current) {
+      firstSignature.current = false;
+      return;
+    }
+    const t = setTimeout(() => router.reload({ only: ['attempts', 'feed', 'serverTime'] }), 1500);
+    return () => clearTimeout(t);
+  }, [hubSignature, hubLive]);
+  useEffect(() => {
+    if (rt.state !== 'disabled') return;
+    const t = setInterval(() => router.reload({ only: ['attempts', 'feed', 'serverTime'] }), 15_000);
     return () => clearInterval(t);
-  }, []);
+  }, [rt.state]);
 
   const rows = useMemo(() => attempts.map((a) => ({ ...a, state: stateOf(a, now, rt.rows[a.id], hubLive), hub: rt.rows[a.id] })), [attempts, now, rt.rows, hubLive]);
   const count = (s: TileState) => rows.filter((r) => r.state === s).length;

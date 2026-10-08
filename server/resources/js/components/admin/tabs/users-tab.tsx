@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/datetime';
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Eye, Pencil, Trash2, UserPlus, Users } from 'lucide-react';
@@ -133,7 +134,7 @@ export function UsersTab({ users, currentUserId, activeTeamName, activeTeam, isR
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
           },
-          { key: 'created', label: 'Ngày tạo', width: '130px', render: (u) => <span className="font-mono text-xs text-muted-foreground">{u.created_at}</span> },
+          { key: 'created', label: 'Ngày tạo', width: '130px', render: (u) => <span className="font-mono text-xs text-muted-foreground">{formatDate(u.created_at)}</span> },
         ]}
         actions={(u) => (
           <>

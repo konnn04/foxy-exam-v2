@@ -180,7 +180,7 @@ class DashboardController extends Controller
                 'exams_used' => (int) ($o->usages->first()?->exams_created_count ?? 0),
                 'exams_limit' => (int) ($o->activeSubscription?->plan?->max_exams_per_month ?? 0),
                 'admin_email' => $o->users->first()?->email,
-                'created_at' => $o->created_at?->format('d/m/Y'),
+                'created_at' => $o->created_at?->toIso8601String(),
             ])->values(),
             'listMeta' => $this->meta($page, ['q' => $q, 'plan' => $plan, 'status' => $status]),
         ];
@@ -221,7 +221,7 @@ class DashboardController extends Controller
                 'role' => $u->role,
                 'status' => $u->status,
                 'organization' => ['id' => $u->organization?->id, 'name' => $u->organization?->name, 'code' => $u->organization?->code],
-                'created_at' => $u->created_at?->format('d/m/Y H:i') ?? 'N/A',
+                'created_at' => $u->created_at?->toIso8601String(),
             ])->values(),
             'listMeta' => $this->meta($page, ['q' => $q, 'role' => $role, 'status' => $status]),
         ];
@@ -295,7 +295,7 @@ class DashboardController extends Controller
                 'course_id' => $qs->course_id,
                 'organization_name' => $qs->organization?->name,
                 'questions_count' => $qs->type === 'CLASSICAL' ? $qs->classical_questions_count : $qs->programming_problems_count,
-                'created_at' => $qs->created_at?->format('d/m/Y H:i') ?? 'N/A',
+                'created_at' => $qs->created_at?->toIso8601String(),
             ]);
     }
 
@@ -317,8 +317,8 @@ class DashboardController extends Controller
                 'status' => $inv->status,
                 'payment_method' => $inv->payment_method,
                 'transaction_id' => $inv->transaction_id,
-                'paid_at' => $inv->paid_at?->format('d/m/Y H:i'),
-                'created_at' => $inv->created_at?->format('d/m/Y H:i') ?? 'N/A',
+                'paid_at' => $inv->paid_at?->toIso8601String(),
+                'created_at' => $inv->created_at?->toIso8601String(),
                 'notes' => $inv->notes,
             ]);
     }

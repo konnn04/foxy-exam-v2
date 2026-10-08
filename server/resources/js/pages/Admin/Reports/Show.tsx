@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
 import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
-import { formatTime } from '@/lib/datetime';
+import { formatDateTime, formatTime } from '@/lib/datetime';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { FxButton, IconButton, PageHeader, Panel, Pill, type Tone } from '@/components/foxy/ui';
@@ -165,8 +166,8 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
             ),
           },
           { key: 'no', label: 'Lần', width: '56px', render: (a) => <span className="font-mono text-xs">#{a.attempt_number ?? 1}</span> },
-          { key: 'start', label: 'Bắt đầu', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{a.started_at ?? '—'}</span> },
-          { key: 'sub', label: 'Nộp bài', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{a.submitted_at ?? '—'}</span> },
+          { key: 'start', label: 'Bắt đầu', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(a.started_at)}</span> },
+          { key: 'sub', label: 'Nộp bài', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(a.submitted_at)}</span> },
           {
             key: 'st',
             label: 'Trạng thái',

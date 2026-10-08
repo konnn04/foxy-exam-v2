@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/datetime';
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { Check, Receipt } from 'lucide-react';
@@ -95,7 +96,7 @@ export function BillingTab({ invoices }: BillingTabProps) {
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
           },
-          { key: 'created', label: 'Ngày tạo', width: '130px', render: (i) => <span className="font-mono text-xs text-muted-foreground">{i.created_at}</span> },
+          { key: 'created', label: 'Ngày tạo', width: '130px', render: (i) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(i.created_at)}</span> },
         ]}
         actionsWidth="150px"
         actions={(i) =>
