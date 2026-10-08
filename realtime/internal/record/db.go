@@ -19,6 +19,9 @@ const (
 	KindCamera   = "camera"
 	KindScreen   = "screen"
 	KindEvidence = "evidence"
+	// KindCamera2 is the phone used as an extra camera; KindPhoneSnap are its rolling snapshots (promoted to evidence when claimed).
+	KindCamera2   = "camera2"
+	KindPhoneSnap = "phone_snap"
 
 	StatusRecording     = "recording"
 	StatusPendingUpload = "pending_upload"
@@ -178,6 +181,34 @@ func (d *DB) ByEgress(ctx context.Context, egressID string) (Recording, error) {
 // Active returns the live recording of a kind for an attempt, if any.
 func (d *DB) Active(ctx context.Context, attemptID int64, kind string) (Recording, error) {
 	return scan(d.QueryRowContext(ctx, d.rebind("SELECT "+cols+" FROM recordings WHERE attempt_id = ? AND kind = ? AND status = ? ORDER BY created_at DESC LIMIT 1"), attemptID, kind, StatusRecording))
+}
+
+// Latest returns the newest recording of a kind and status for an attempt.
+func (d *DB) Latest(ctx context.Context, attemptID int64, kind, status string) (Recording, error) {
+	return scan(d.QueryRowContext(ctx, d.rebind("SELECT "+cols+" FROM recordings WHERE attempt_id = ? AND kind = ? AND status = ? ORDER BY created_at DESC LIMIT 1"), attemptID, kind, status))
+}
+
+// OfKind lists an attempt's recordings of one kind, newest first.
+func (d *DB) OfKind(ctx context.Context, attemptID int64, kind, status string) ([]Recording, error) {
+	rows, err := d.QueryContext(ctx, d.rebind("SELECT "+cols+" FROM recordings WHERE attempt_id = ? AND kind = ? AND status = ? ORDER BY created_at DESC"), attemptID, kind, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Recording
+	for rows.Next() {
+		r, err := scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func (d *DB) SetKind(ctx context.Context, id, kind string) error {
+	_, err := d.ExecContext(ctx, d.rebind("UPDATE recordings SET kind = ? WHERE id = ?"), kind, id)
+	return err
 }
 
 func (d *DB) ListByExam(ctx context.Context, examID int64) ([]Recording, error) {
