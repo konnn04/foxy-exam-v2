@@ -42,11 +42,60 @@ class AiService
         }
 
         // 2. Nếu đang chạy test suite mặc định và chưa set AI_WORKER_URL, cho phép pass để không phá vỡ các test cũ
-        if (app()->environment('testing') && empty(config('services.ai_worker.url'))) {
+        if (app()->environment('testing') && static::endpoints() === []) {
             return true;
         }
 
         return static::getStatus() === 'ONLINE';
+    }
+
+    /** Base URLs of the configured AI services (the legacy single AI_WORKER_URL counts when the new ones are empty). */
+    public static function endpoints(): array
+    {
+        $list = array_values(array_filter([
+            rtrim((string) config('services.ai_face.url'), '/'),
+            rtrim((string) config('services.ai_objects.url'), '/'),
+        ]));
+
+        return $list ?: array_values(array_filter([rtrim((string) config('services.ai_worker.url'), '/')]));
+    }
+
+    private static function call(string $service, string $path, array $files, array $query = []): ?array
+    {
+        $base = rtrim((string) config("services.{$service}.url"), '/');
+        if ($base === '') {
+            return null;
+        }
+        try {
+            $req = Http::timeout((float) config('services.ai_worker.timeout', 2.0) + 6)
+                ->withHeaders(array_filter(['X-AI-Token' => (string) config("services.{$service}.token")]));
+            foreach ($files as $name => $bytes) {
+                $req = $req->attach($name, $bytes, "{$name}.jpg");
+            }
+            $res = $req->post($base . $path . ($query ? '?' . http_build_query($query) : ''));
+
+            return $res->successful() ? $res->json() : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /** @return array{count:int}|null */
+    public static function faces(string $frame): ?array
+    {
+        return static::call('ai_face', '/v1/faces', ['frame' => $frame]);
+    }
+
+    /** @return array{match:?bool,similarity:?float,reason:?string,threshold:float}|null */
+    public static function verify(string $reference, string $frame): ?array
+    {
+        return static::call('ai_face', '/v1/verify', ['reference' => $reference, 'frame' => $frame]);
+    }
+
+    /** @return array{objects:array,prohibited:string[]}|null */
+    public static function detectObjects(string $frame, float $minScore = 0.5): ?array
+    {
+        return static::call('ai_objects', '/v1/detect', ['frame' => $frame], ['min_score' => $minScore]);
     }
 
     /**
@@ -58,13 +107,13 @@ class AiService
             return static::$fakeStatus ? 'ONLINE' : 'OFFLINE';
         }
 
-        if (app()->environment('testing') && empty(config('services.ai_worker.url'))) {
+        if (app()->environment('testing') && static::endpoints() === []) {
             return 'ONLINE';
         }
 
-        $endpoint = rtrim((string) config('services.ai_worker.url', env('AI_WORKER_URL')), '/');
+        $endpoints = static::endpoints();
 
-        if (empty($endpoint)) {
+        if ($endpoints === []) {
             return 'UNCONFIGURED';
         }
 
@@ -78,9 +127,12 @@ class AiService
         $timeout = (float) config('services.ai_worker.timeout', 2.0);
 
         try {
-            $response = Http::timeout($timeout)->get("{$endpoint}/health");
-
-            if ($response->successful()) {
+            // every configured service must answer: a face service without the object service is not "online"
+            $all = true;
+            foreach ($endpoints as $endpoint) {
+                $all = $all && Http::timeout($timeout)->get("{$endpoint}/health")->successful();
+            }
+            if ($all) {
                 Cache::put($cacheKey, 'ONLINE', now()->addSeconds(10));
                 return 'ONLINE';
             }

@@ -35,6 +35,10 @@ return [
         ],
     ],
 
+    // The two AI services (face verification, prohibited objects) run outside the compose file, e.g. on a GPU box.
+    'ai_face' => ['url' => env('AI_FACE_URL'), 'token' => env('AI_TOKEN')],
+    'ai_objects' => ['url' => env('AI_OBJECT_URL'), 'token' => env('AI_TOKEN')],
+
     'ai_worker' => [
         'url' => env('AI_WORKER_URL'),
         'timeout' => (float) env('AI_WORKER_TIMEOUT', 2.0),

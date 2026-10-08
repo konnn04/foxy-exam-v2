@@ -44,7 +44,7 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json",
-    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(init.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
 
@@ -558,6 +558,28 @@ export function sendOpLogBatch(input: {
       paste_event_count: input.pasteEventCount,
       synthetic_flags: input.syntheticFlags,
     }),
+  });
+}
+
+export interface AiFrameResult {
+  success: boolean;
+  checked: boolean;
+  prohibited: string[];
+  match: boolean | null;
+  violation_ids?: number[];
+}
+
+/** A camera frame for the server-side AI checks (same person as at the start, prohibited objects). */
+export function sendAiFrame(frame: Blob): Promise<AiFrameResult> {
+  const body = new FormData();
+  body.append("frame", frame, "frame.jpg");
+  return request<AiFrameResult>("/student/ai/frame", { method: "POST", body });
+}
+
+export function attachAiEvidence(violationIds: number[], evidenceId: string) {
+  return request<{ success: boolean }>("/student/ai/evidence", {
+    method: "POST",
+    body: JSON.stringify({ violation_ids: violationIds, evidence_id: evidenceId }),
   });
 }
 

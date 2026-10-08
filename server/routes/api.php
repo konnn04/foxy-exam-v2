@@ -56,6 +56,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/finish', [ExamController::class, 'finishExam']);
 
             // Realtime plane: tokens + URLs for batched telemetry, evidence upload and LiveKit
+            // Camera frames for the AI services (identity + prohibited objects)
+            Route::post('/ai/frame', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'store'])->middleware('throttle:12,1');
+            Route::post('/ai/evidence', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'evidence'])->middleware('throttle:12,1');
+
             Route::post('/realtime/session', [RealtimeController::class, 'session']);
 
             // Anti-Cheat Telemetry & Keystroke Op-Log

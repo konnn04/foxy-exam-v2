@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { MonitoringConfig } from "./api";
+import { attachAiEvidence, sendAiFrame, type MonitoringConfig } from "./api";
 import { bypass } from "./dev";
 import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
-import { releaseEvidence } from "./evidence";
+import { captureFrame, releaseEvidence } from "./evidence";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -56,6 +56,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const vision = useRef<FaceMonitor | null>(null);
   const offTracks = useRef<(() => void)[]>([]);
   const active = useRef(false);
+  const aiTimer = useRef<number | undefined>(undefined);
   const cfgRef = useRef(config);
   cfgRef.current = config ?? cfgRef.current;
   const [blurred, setBlurred] = useState(false);
@@ -132,6 +133,29 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     [client, guard],
   );
 
+  /** Every ~40 s one camera frame goes to the server's AI checks; when it flags something the picture is attached as evidence. */
+  const startAiFrames = useCallback(() => {
+    window.clearTimeout(aiTimer.current);
+    if (!cfgRef.current?.ai_face_check) return;
+    const tick = async () => {
+      if (!active.current) return;
+      try {
+        const blob = await captureFrame("camera");
+        if (blob) {
+          const res = await sendAiFrame(blob);
+          if (res.violation_ids?.length) {
+            const id = await client.uploadEvidence(blob);
+            if (id) await attachAiEvidence(res.violation_ids, id);
+          }
+        }
+      } catch {
+        /* a missed frame is just a missed frame */
+      }
+      aiTimer.current = window.setTimeout(() => void tick(), 35_000 + Math.random() * 10_000);
+    };
+    aiTimer.current = window.setTimeout(() => void tick(), 8_000);
+  }, [client]);
+
   const begin = useCallback(
     async (attemptId: number, cfg?: Partial<MonitoringConfig> | null) => {
       if (cfg) cfgRef.current = cfg;
@@ -163,13 +187,15 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         }
       }
       if (media.camera) void startVision(media.camera);
+      startAiFrames();
       await guard.start(cfgRef.current);
     },
-    [client, guard, startVision, watchTracks],
+    [client, guard, startAiFrames, startVision, watchTracks],
   );
 
   const end = useCallback(async () => {
     active.current = false;
+    window.clearTimeout(aiTimer.current);
     offTracks.current.forEach((f) => f());
     offTracks.current = [];
     vision.current?.stop();

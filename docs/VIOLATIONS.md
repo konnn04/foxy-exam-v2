@@ -36,8 +36,8 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 | `MULTIPLE_PEOPLE` | HIGH | MediaPipe | Hơn 1 khuôn mặt liên tục 2 s (báo lại sau 30 s) |
 | `LOOKING_AWAY` | LOW | MediaPipe (hướng đầu + ánh mắt) | Đầu lệch > 35° ngang / 30° dọc hoặc mắt lệch > 0,6 trong 6 s (báo lại sau 45 s) |
 | `FACE_TOO_FAR` | LOW | MediaPipe | Khuôn mặt chiếm < 14% chiều ngang khung trong 8 s (báo lại sau 60 s) |
-| `FACE_MISMATCH` | — | Dành cho xác thực khuôn mặt phía server | **Chưa có cơ chế phát ra** |
-| `PROHIBITED_DEVICE` | — | Dành cho nhận diện vật thể (điện thoại, tai nghe…) | **Chưa có cơ chế phát ra** |
+| `FACE_MISMATCH` | HIGH | Dịch vụ AI khuôn mặt (`ai/face-service`) | Khuôn mặt khác với khung hình đầu tiên của lượt thi (cosine < 0,35); khung hình gửi mỗi ~40 s |
+| `PROHIBITED_DEVICE` | HIGH | Dịch vụ AI vật thể (`ai/object-service`) | Thấy điện thoại, laptop, sách, điều khiển, TV trong khung camera (tối đa 1 lần/phút); chưa nhận diện được tai nghe |
 
 ## Đã khai báo nhưng chưa có cơ chế phát
 
