@@ -27,8 +27,8 @@ class MobileCameraExchangeController extends Controller
     }
 
     /**
-     * state "lobby": publish into the private lobby room. state "exam": the attempt started, publish into the exam room
-     * as attempt-N-mobile and upload snapshots (the `snapshots` block). Callable any number of times.
+     * Credentials for the phone's private room. The room is the same before and during the exam, so the phone never
+     * has to move: `state` only says whether the attempt has started. Callable any number of times (reconnects).
      */
     public function exchange(string $token): JsonResponse
     {
@@ -37,26 +37,7 @@ class MobileCameraExchangeController extends Controller
             return $this->gone();
         }
 
-        if ($row->attempt) {
-            $attempt = $row->attempt;
-            $ttl = max(900, (int) $attempt->started_at?->diffInSeconds(now(), true) + $attempt->exam->duration_minutes * 60 + 900);
-            $creds = $this->realtime->phoneExamCredentials($attempt, $ttl);
-            $record = rtrim((string) config('services.realtime.record_url'), '/');
-
-            return response()->json([
-                'state' => 'exam',
-                'livekit' => $creds,
-                'snapshots' => [
-                    'presign_url' => $record . '/v1/evidence/presign',
-                    'commit_url' => $record . '/v1/evidence/{id}/commit',
-                    'content_base' => $record,
-                    'token' => $this->realtime->candidateToken($attempt, $ttl),
-                    'interval_ms' => 20_000,
-                ],
-            ]);
-        }
-
-        return response()->json(['state' => 'lobby', 'livekit' => $this->realtime->phoneLobbyCredentials($row->user, $row->exam)]);
+        return response()->json(['state' => $row->attempt_id ? 'exam' : 'lobby', 'livekit' => $this->realtime->phoneCredentials($row->user, $row->exam)]);
     }
 
     /** The phone finished publishing: the computer's lobby may continue. */
@@ -66,18 +47,11 @@ class MobileCameraExchangeController extends Controller
         if (!$row) {
             return $this->gone();
         }
-        if (!$row->relay_ack_at) {
-            $row->update(['relay_ack_at' => now()]);
+        $row->update(['relay_ack_at' => now()]);
+        if ($row->attempt) {
+            $this->realtime->startPhoneRecording($row->attempt); // idempotent: a reconnect never starts a second recording
         }
 
         return response()->json(['ok' => true]);
-    }
-
-    /** Cheap state check for the phone page: lets it notice that the exam started (lobby -> exam) or ended. */
-    public function state(string $token): JsonResponse
-    {
-        $row = $this->find($token);
-
-        return response()->json(['active' => $row !== null, 'state' => $row?->attempt_id ? 'exam' : 'lobby']);
     }
 }

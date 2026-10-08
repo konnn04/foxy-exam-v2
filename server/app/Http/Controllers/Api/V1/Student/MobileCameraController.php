@@ -28,9 +28,17 @@ class MobileCameraController extends Controller
     /** Called when an attempt is created or resumed: the lobby's phone link now belongs to this attempt. */
     public static function bind(User $user, Exam $exam, ExamAttempt $attempt): bool
     {
-        return MobileCameraToken::where('user_id', $user->id)->where('exam_id', $exam->id)
-            ->whereNull('attempt_id')->where('expires_at', '>', now())
-            ->update(['attempt_id' => $attempt->id]) > 0;
+        $row = MobileCameraToken::where('user_id', $user->id)->where('exam_id', $exam->id)
+            ->whereNull('attempt_id')->where('expires_at', '>', now())->latest('id')->first();
+        if (!$row) {
+            return false;
+        }
+        $row->update(['attempt_id' => $attempt->id]);
+        if ($row->relay_ack_at) {
+            app(Realtime::class)->startPhoneRecording($attempt); // the phone is already publishing: record from the start
+        }
+
+        return true;
     }
 
     /** POST /student/exams/{exam}/mobile-camera: a fresh link (any earlier unused one stops working). */
@@ -55,10 +63,21 @@ class MobileCameraController extends Controller
             'data' => [
                 'url' => url("/m/camera/{$raw}"),
                 'expires_at' => $row->expires_at->toIso8601String(),
-                // the lobby joins the room the phone publishes into, to show its preview and to tell it when the exam starts
-                'viewer' => $this->realtime->lobbyViewerCredentials($user, $exam),
+                // the computer watches the phone through this room (lobby preview now, the exam window later)
+                'viewer' => $this->realtime->phoneViewerCredentials($user, $exam),
             ],
         ]);
+    }
+
+    /** GET /student/exams/{exam}/mobile-camera: credentials to watch an already linked phone (the exam window uses it). */
+    public function viewer(Request $request, Exam $exam): JsonResponse
+    {
+        $row = MobileCameraToken::where('user_id', $request->user()->id)->where('exam_id', $exam->id)->where('expires_at', '>', now())->latest('id')->first();
+        if (!$row || !$row->isValid()) {
+            return response()->json(['success' => true, 'data' => null]);
+        }
+
+        return response()->json(['success' => true, 'data' => ['viewer' => $this->realtime->phoneViewerCredentials($request->user(), $exam), 'connected' => $row->relay_ack_at !== null]]);
     }
 
     /** POST /student/exams/{exam}/mobile-camera/verify (multipart frame): is the candidate and the laptop in the phone's picture? */

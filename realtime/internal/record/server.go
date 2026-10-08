@@ -144,7 +144,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/evidence/presign", s.handleEvidencePresign)
 	mux.HandleFunc("POST /v1/evidence/{id}/commit", s.handleEvidenceCommit)
 	mux.HandleFunc("PUT /v1/evidence/{id}/content", s.handleEvidenceContent)
-	mux.HandleFunc("POST /v1/phone-snapshot/claim", s.handleClaimPhoneSnapshot)
 
 	mux.HandleFunc("GET /v1/exams/{eid}/recordings", s.handleListExam)
 	mux.HandleFunc("GET /v1/exams/{eid}/attempts/{aid}/recordings", s.handleListAttempt)
@@ -227,17 +226,12 @@ func parseRoom(name string) (examID int64, ok bool) {
 	return n, err == nil && n > 0
 }
 
-// parseIdentity understands "attempt-N" (the candidate's computer) and "attempt-N-mobile" (the phone camera).
-func parseIdentity(id string) (attemptID int64, mobile bool, ok bool) {
+func parseIdentity(id string) (attemptID int64, ok bool) {
 	if !strings.HasPrefix(id, "attempt-") {
-		return 0, false, false
+		return 0, false
 	}
-	rest := strings.TrimPrefix(id, "attempt-")
-	if strings.HasSuffix(rest, "-mobile") {
-		mobile, rest = true, strings.TrimSuffix(rest, "-mobile")
-	}
-	n, err := strconv.ParseInt(rest, 10, 64)
-	return n, mobile, err == nil && n > 0
+	n, err := strconv.ParseInt(strings.TrimPrefix(id, "attempt-"), 10, 64)
+	return n, err == nil && n > 0
 }
 
 func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
@@ -262,17 +256,15 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch ev.Event {
 	case "track_published":
 		eid, ok1 := parseRoom(ev.Room.Name)
-		aid, mobile, ok2 := parseIdentity(ev.Participant.Identity)
+		aid, ok2 := parseIdentity(ev.Participant.Identity)
 		if !ok1 || !ok2 {
 			break // proctors / agents / unknown rooms are never recorded
 		}
 		var kind string
-		switch {
-		case ev.Track.Source == "CAMERA" && mobile:
-			kind = KindCamera2
-		case ev.Track.Source == "CAMERA":
+		switch ev.Track.Source {
+		case "CAMERA":
 			kind = KindCamera
-		case ev.Track.Source == "SCREEN_SHARE" && !mobile:
+		case "SCREEN_SHARE":
 			kind = KindScreen
 		}
 		if kind == "" {
@@ -295,6 +287,12 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 // startRecording starts an egress for (attempt, kind) unless one is already running.
 func (s *Server) startRecording(ctx context.Context, examID, attemptID, orgID int64, kind string) (Recording, error) {
+	return s.startRecordingIn(ctx, examID, attemptID, orgID, kind, "", "")
+}
+
+// startRecordingIn records one participant. room / identity default to the candidate's own (exam room, attempt-N);
+// the phone camera passes its private room and identity "phone".
+func (s *Server) startRecordingIn(ctx context.Context, examID, attemptID, orgID int64, kind, room, identity string) (Recording, error) {
 	if cur, err := s.db.Active(ctx, attemptID, kind); err == nil {
 		return cur, nil // idempotent: reconnects republish tracks
 	}
@@ -303,11 +301,13 @@ func (s *Server) startRecording(ctx context.Context, examID, attemptID, orgID in
 	key := fmt.Sprintf("recordings/%d/%d/%s-%d.mp4", examID, attemptID, kind, now.Unix())
 	rec := Recording{ID: id, ExamID: examID, AttemptID: attemptID, OrgID: orgID, Kind: kind, ObjectKey: key, Mime: "video/mp4", StartedAt: now.UnixMilli(), CreatedAt: now.UnixMilli()}
 
-	identity := fmt.Sprintf("attempt-%d", attemptID)
-	if kind == KindCamera2 {
-		identity += "-mobile"
+	if room == "" {
+		room = fmt.Sprintf("exam-%d", examID)
 	}
-	egressID, err := s.eg.StartParticipant(ctx, fmt.Sprintf("exam-%d", examID), identity, kind == KindScreen, key)
+	if identity == "" {
+		identity = fmt.Sprintf("attempt-%d", attemptID)
+	}
+	egressID, err := s.eg.StartParticipant(ctx, room, identity, kind == KindScreen, key)
 	if err != nil {
 		rec.Status, rec.Error = StatusFailed, err.Error()
 		_ = s.db.Insert(ctx, rec) // keep a visible trace so the proctor knows the video is missing
@@ -376,46 +376,36 @@ func (s *Server) handleEvidencePresign(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		ContentType string `json:"content_type"`
-		// Purpose "phone" is a rolling snapshot of the phone camera: jpeg only, its own small quota, old ones rotate out.
-		Purpose string `json:"purpose"`
 	}
 	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&req) != nil {
 		writeJSON(w, 400, map[string]any{"ok": false, "error": "bad_json"})
 		return
 	}
 	spec, ok := evidenceTypes[req.ContentType]
-	if !ok || (req.Purpose == "phone" && req.ContentType != "image/jpeg") {
+	if !ok {
 		writeJSON(w, 400, map[string]any{"ok": false, "error": "content_type_not_allowed"})
 		return
 	}
-	kind := KindEvidence
-	if req.Purpose == "phone" {
-		kind = KindPhoneSnap
-	} else {
-		existing, _ := s.db.ListByAttempt(r.Context(), c.ExamID, c.AttemptID)
-		n := 0
-		for _, e := range existing {
-			if e.Kind == KindEvidence {
-				n++
-			}
+	existing, _ := s.db.ListByAttempt(r.Context(), c.ExamID, c.AttemptID)
+	n := 0
+	for _, e := range existing {
+		if e.Kind == KindEvidence {
+			n++
 		}
-		if n >= s.cfg.MaxEvidence {
-			writeJSON(w, 429, map[string]any{"ok": false, "error": "evidence_quota"})
-			return
-		}
+	}
+	if n >= s.cfg.MaxEvidence {
+		writeJSON(w, 429, map[string]any{"ok": false, "error": "evidence_quota"})
+		return
 	}
 	now := s.cfg.Now()
 	id := newID()
 	key := fmt.Sprintf("evidence/%d/%d/%s.%s", c.ExamID, c.AttemptID, id, spec.ext)
-	if req.Purpose == "phone" {
-		key = fmt.Sprintf("phone/%d/%d/%s.%s", c.ExamID, c.AttemptID, id, spec.ext)
-	}
 	url, err := s.st.PresignPut(r.Context(), key, req.ContentType, s.cfg.UploadTTL)
 	if err != nil {
 		writeJSON(w, 503, map[string]any{"ok": false, "error": "storage_unavailable"})
 		return
 	}
-	rec := Recording{ID: id, ExamID: c.ExamID, AttemptID: c.AttemptID, OrgID: c.OrgID, Kind: kind, ObjectKey: key, Status: StatusPendingUpload, Mime: req.ContentType, CreatedAt: now.UnixMilli()}
+	rec := Recording{ID: id, ExamID: c.ExamID, AttemptID: c.AttemptID, OrgID: c.OrgID, Kind: KindEvidence, ObjectKey: key, Status: StatusPendingUpload, Mime: req.ContentType, CreatedAt: now.UnixMilli()}
 	if err := s.db.Insert(r.Context(), rec); err != nil {
 		writeJSON(w, 503, map[string]any{"ok": false})
 		return
@@ -434,7 +424,7 @@ func (s *Server) handleEvidenceContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rec, err := s.db.Get(r.Context(), r.PathValue("id"))
-	if err != nil || (rec.Kind != KindEvidence && rec.Kind != KindPhoneSnap) || rec.AttemptID != c.AttemptID || c.Role != auth.RoleCandidate {
+	if err != nil || rec.Kind != KindEvidence || rec.AttemptID != c.AttemptID || c.Role != auth.RoleCandidate {
 		writeJSON(w, 404, map[string]any{"ok": false, "error": "not_found"})
 		return
 	}
@@ -464,7 +454,7 @@ func (s *Server) handleEvidenceCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rec, err := s.db.Get(r.Context(), r.PathValue("id"))
-	if err != nil || (rec.Kind != KindEvidence && rec.Kind != KindPhoneSnap) || rec.AttemptID != c.AttemptID || c.Role != auth.RoleCandidate {
+	if err != nil || rec.Kind != KindEvidence || rec.AttemptID != c.AttemptID || c.Role != auth.RoleCandidate {
 		writeJSON(w, 404, map[string]any{"ok": false, "error": "not_found"})
 		return
 	}
@@ -481,50 +471,7 @@ func (s *Server) handleEvidenceCommit(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.db.SetSize(r.Context(), rec.ID, size)
 	rec.Status, rec.SizeBytes = StatusReady, size
-	if rec.Kind == KindPhoneSnap {
-		s.rotatePhoneSnaps(r.Context(), rec.AttemptID)
-	}
 	writeJSON(w, 200, map[string]any{"ok": true, "recording": rec})
-}
-
-const (
-	phoneSnapKeep   = 12
-	phoneSnapMaxAge = 90 * time.Second
-)
-
-// rotatePhoneSnaps keeps only the newest snapshots: they exist to be claimed when a violation happens.
-func (s *Server) rotatePhoneSnaps(ctx context.Context, attemptID int64) {
-	list, err := s.db.OfKind(ctx, attemptID, KindPhoneSnap, StatusReady)
-	if err != nil || len(list) <= phoneSnapKeep {
-		return
-	}
-	for _, old := range list[phoneSnapKeep:] {
-		_ = s.deleteOne(ctx, old)
-	}
-}
-
-// handleClaimPhoneSnapshot turns the newest phone snapshot (at most 90 s old) into evidence, so the computer can
-// attach "what the phone camera saw" to a violation. Claimed pictures are no longer rotated out.
-func (s *Server) handleClaimPhoneSnapshot(w http.ResponseWriter, r *http.Request) {
-	c, ok := s.claims(w, r)
-	if !ok {
-		return
-	}
-	if c.Role != auth.RoleCandidate || c.AttemptID == 0 {
-		writeJSON(w, 403, map[string]any{"ok": false, "error": "forbidden"})
-		return
-	}
-	snap, err := s.db.Latest(r.Context(), c.AttemptID, KindPhoneSnap, StatusReady)
-	age := s.cfg.Now().UnixMilli() - snap.CreatedAt
-	if err != nil || age > phoneSnapMaxAge.Milliseconds() {
-		writeJSON(w, 404, map[string]any{"ok": false, "error": "no_recent_snapshot"})
-		return
-	}
-	if err := s.db.SetKind(r.Context(), snap.ID, KindEvidence); err != nil {
-		writeJSON(w, 503, map[string]any{"ok": false})
-		return
-	}
-	writeJSON(w, 200, map[string]any{"ok": true, "evidence_id": snap.ID, "age_ms": age})
 }
 
 // ---------------------------------------------------------------- reads for proctors
@@ -611,12 +558,18 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		AttemptID int64  `json:"attempt_id"`
 		OrgID     int64  `json:"org_id"`
 		Kind      string `json:"kind"`
+		Room      string `json:"room"`
+		Identity  string `json:"identity"`
 	}
 	if json.Unmarshal(body, &req) != nil || req.ExamID == 0 || req.AttemptID == 0 || (req.Kind != KindCamera && req.Kind != KindScreen && req.Kind != KindCamera2) {
 		writeJSON(w, 400, map[string]any{"ok": false, "error": "bad_request"})
 		return
 	}
-	rec, err := s.startRecording(r.Context(), req.ExamID, req.AttemptID, req.OrgID, req.Kind)
+	if req.Kind == KindCamera2 && (!strings.HasPrefix(req.Room, "cam2-") || req.Identity != "phone") {
+		writeJSON(w, 400, map[string]any{"ok": false, "error": "camera2_needs_its_room"})
+		return
+	}
+	rec, err := s.startRecordingIn(r.Context(), req.ExamID, req.AttemptID, req.OrgID, req.Kind, req.Room, req.Identity)
 	if err != nil {
 		writeJSON(w, 502, map[string]any{"ok": false, "error": err.Error(), "recording": rec})
 		return

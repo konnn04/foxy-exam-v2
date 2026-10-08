@@ -31,6 +31,8 @@ class MobileCameraTest extends TestCase
             'services.realtime.livekit' => ['url' => 'wss://lk.test', 'api_key' => 'key', 'api_secret' => 'secret-secret-secret-secret-1234'],
             'services.realtime.jwt_secret' => 'jwt-secret',
             'services.realtime.record_url' => 'https://rec.test',
+            'services.realtime.record_internal_url' => 'http://rec.internal',
+            'services.realtime.internal_secret' => 'internal-secret',
         ]);
         $this->exam = Exam::where('code', 'FOXY-2026')->first();
         $this->exam->update(['monitoring_config' => array_merge($this->exam->monitoring_config ?? [], ['extra_camera' => 'required'])]);
@@ -57,17 +59,24 @@ class MobileCameraTest extends TestCase
         return ExamAttempt::create(['exam_id' => $this->exam->id, 'user_id' => $this->student->id, 'attempt_number' => 1, 'status' => 'IN_PROGRESS', 'started_at' => now()]);
     }
 
-    public function test_the_lobby_gets_a_link_and_a_viewer_and_the_phone_joins_the_lobby_room(): void
+    public function test_the_lobby_gets_a_link_and_a_viewer_and_the_phone_joins_the_private_room(): void
     {
         $data = $this->issue();
         $this->assertMatchesRegularExpression('#/m/camera/[A-Za-z0-9]{48}$#', $data['url']);
-        $this->assertSame("lobby-{$this->student->id}-{$this->exam->id}", $data['viewer']['room']);
+        $room = "cam2-{$this->student->id}-{$this->exam->id}";
+        $this->assertSame($room, $data['viewer']['room']);
         $this->assertStringStartsWith('viewer-', $data['viewer']['identity']);
+        $viewer = $this->claims($data['viewer']['token'])['video'];
+        $this->assertTrue($viewer['canSubscribe']);
+        $this->assertFalse($viewer['canPublish']);
 
         $res = $this->postJson('/api/v1/public/mobile-camera/' . $this->raw($data) . '/exchange')->assertOk();
         $this->assertSame('lobby', $res->json('state'));
-        $this->assertSame($data['viewer']['room'], $res->json('livekit.room'));
-        $this->assertTrue($this->claims($res->json('livekit.token'))['video']['canPublish']);
+        $this->assertSame($room, $res->json('livekit.room'));
+        $this->assertSame('phone', $res->json('livekit.identity'));
+        $grants = $this->claims($res->json('livekit.token'))['video'];
+        $this->assertTrue($grants['canPublish']);
+        $this->assertFalse($grants['canSubscribe'], 'the phone sees nobody');
     }
 
     public function test_the_token_is_stored_only_as_a_hash_and_a_new_link_replaces_the_old_one(): void
@@ -80,24 +89,46 @@ class MobileCameraTest extends TestCase
         $this->postJson('/api/v1/public/mobile-camera/' . $this->raw($second) . '/exchange')->assertOk();
     }
 
-    public function test_starting_the_exam_moves_the_phone_to_the_exam_room_as_attempt_mobile(): void
+    public function test_starting_the_exam_keeps_the_phone_in_its_room_and_records_it(): void
     {
+        Http::fake(['rec.internal/*' => Http::response(['ok' => true])]);
         $token = $this->raw($this->issue());
+        $this->postJson("/api/v1/public/mobile-camera/{$token}/ack")->assertOk(); // the phone is publishing
+        Http::assertNothingSent(); // no attempt yet: nothing to record
+
         $attempt = $this->attempt();
         MobileCameraController::bind($this->student, $this->exam, $attempt);
 
         $res = $this->postJson("/api/v1/public/mobile-camera/{$token}/exchange")->assertOk();
         $this->assertSame('exam', $res->json('state'));
-        $this->assertSame("exam-{$this->exam->id}", $res->json('livekit.room'));
-        $this->assertSame("attempt-{$attempt->id}-mobile", $res->json('livekit.identity'));
-        $grants = $this->claims($res->json('livekit.token'))['video'];
-        $this->assertTrue($grants['canPublish']);
-        $this->assertFalse($grants['canSubscribe'], 'the phone must not see other candidates');
+        $this->assertSame("cam2-{$this->student->id}-{$this->exam->id}", $res->json('livekit.room'), 'the phone never changes room');
 
-        $snap = $this->claims($res->json('snapshots.token'));
-        $this->assertSame('candidate', $snap['role']);
-        $this->assertSame($attempt->id, $snap['aid']);
-        $this->assertSame('exam', $this->getJson("/api/v1/public/mobile-camera/{$token}/state")->json('state'));
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/internal/v1/egress/start')
+            && $r['kind'] === 'camera2' && $r['attempt_id'] === $attempt->id && $r['room'] === "cam2-{$this->student->id}-{$this->exam->id}" && $r['identity'] === 'phone'
+            && $r->hasHeader('X-Foxy-Signature'));
+    }
+
+    public function test_a_phone_that_connects_after_the_exam_started_is_recorded_on_its_ack(): void
+    {
+        Http::fake(['rec.internal/*' => Http::response(['ok' => true])]);
+        $token = $this->raw($this->issue());
+        $attempt = $this->attempt();
+        MobileCameraController::bind($this->student, $this->exam, $attempt);
+        Http::assertNothingSent();
+
+        $this->postJson("/api/v1/public/mobile-camera/{$token}/ack")->assertOk();
+        Http::assertSentCount(1);
+        $this->postJson("/api/v1/public/mobile-camera/{$token}/ack")->assertOk(); // a reconnect asks again; the record service is idempotent
+        Http::assertSentCount(2);
+    }
+
+    public function test_the_computer_can_get_viewer_credentials_for_an_already_linked_phone(): void
+    {
+        $this->actingAs($this->student, 'sanctum')->getJson("/api/v1/student/exams/{$this->exam->id}/mobile-camera")->assertOk()->assertJson(['data' => null]);
+        $this->issue();
+        $res = $this->actingAs($this->student, 'sanctum')->getJson("/api/v1/student/exams/{$this->exam->id}/mobile-camera")->assertOk();
+        $this->assertSame("cam2-{$this->student->id}-{$this->exam->id}", $res->json('data.viewer.room'));
+        $this->assertFalse($res->json('data.connected'));
     }
 
     public function test_the_link_dies_with_the_attempt_and_with_its_expiry(): void
@@ -107,7 +138,6 @@ class MobileCameraTest extends TestCase
         MobileCameraController::bind($this->student, $this->exam, $attempt);
         $attempt->update(['status' => 'SUBMITTED']);
         $this->postJson("/api/v1/public/mobile-camera/{$token}/exchange")->assertStatus(410);
-        $this->assertFalse($this->getJson("/api/v1/public/mobile-camera/{$token}/state")->json('active'));
 
         $other = $this->raw($this->issue());
         MobileCameraToken::query()->update(['expires_at' => now()->subMinute(), 'attempt_id' => null]);

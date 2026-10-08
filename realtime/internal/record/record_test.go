@@ -428,62 +428,28 @@ func TestEvidenceContentIsStoredThroughTheService(t *testing.T) {
 	}
 }
 
-func TestPhoneCameraIsRecordedAsCamera2AndNeverAsScreen(t *testing.T) {
+func TestPhoneCameraIsRecordedFromItsPrivateRoomOnTheCoreRequest(t *testing.T) {
 	r := newRig(t, nil)
-	if c := r.webhook(t, trackPublished("exam-2", "attempt-5-mobile", "CAMERA"), lkSecret); c != 200 {
-		t.Fatalf("webhook: %d", c)
+	start := func(body map[string]any) (int, map[string]any) { return signedCall(r.h, "POST", "/internal/v1/egress/start", body) }
+
+	if code, _ := start(map[string]any{"exam_id": 2, "attempt_id": 5, "org_id": 4, "kind": "camera2"}); code != 400 {
+		t.Fatalf("camera2 without its private room must be refused, got %d", code)
 	}
-	if len(r.eg.started) != 1 || r.eg.started[0].identity != "attempt-5-mobile" || r.eg.started[0].screen {
-		t.Fatalf("the phone camera must start one participant egress for attempt-5-mobile, got %+v", r.eg.started)
+	if code, _ := start(map[string]any{"exam_id": 2, "attempt_id": 5, "org_id": 4, "kind": "camera2", "room": "exam-2", "identity": "phone"}); code != 400 {
+		t.Fatalf("the phone is never recorded from the shared exam room, got %d", code)
 	}
-	r.webhook(t, trackPublished("exam-2", "attempt-5-mobile", "SCREEN_SHARE"), lkSecret)
-	if len(r.eg.started) != 1 {
-		t.Fatalf("a phone never records a screen share, got %d egress calls", len(r.eg.started))
+	code, out := start(map[string]any{"exam_id": 2, "attempt_id": 5, "org_id": 4, "kind": "camera2", "room": "cam2-9-2", "identity": "phone"})
+	if code != 200 {
+		t.Fatalf("start: %d %v", code, out)
+	}
+	if len(r.eg.started) != 1 || r.eg.started[0].room != "cam2-9-2" || r.eg.started[0].identity != "phone" || r.eg.started[0].screen {
+		t.Fatalf("egress must follow the phone in its own room, got %+v", r.eg.started)
+	}
+	if code, _ = start(map[string]any{"exam_id": 2, "attempt_id": 5, "org_id": 4, "kind": "camera2", "room": "cam2-9-2", "identity": "phone"}); code != 200 || len(r.eg.started) != 1 {
+		t.Fatalf("a reconnect must not start a second recording while one is running, got %d egress calls", len(r.eg.started))
 	}
 	list, _ := r.srv.db.ListByAttempt(context.Background(), 2, 5)
 	if len(list) != 1 || list[0].Kind != KindCamera2 {
 		t.Fatalf("expected one camera2 recording, got %+v", list)
-	}
-}
-
-func TestPhoneSnapshotsRotateAndAreClaimedAsEvidence(t *testing.T) {
-	r := newRig(t, nil)
-	tok := candidate(5, 2)
-	snap := func() string {
-		_, out := call(r.h, "POST", "/v1/evidence/presign", tok, map[string]any{"content_type": "image/jpeg", "purpose": "phone"})
-		id := out["evidence_id"].(string)
-		r.st.objects["phone/2/5/"+id+".jpg"] = 100
-		if code, _ := call(r.h, "POST", "/v1/evidence/"+id+"/commit", tok, nil); code != 200 {
-			t.Fatalf("commit: %d", code)
-		}
-		r.now = r.now.Add(time.Second)
-		return id
-	}
-	if code, _ := call(r.h, "POST", "/v1/evidence/presign", tok, map[string]any{"content_type": "image/png", "purpose": "phone"}); code != 400 {
-		t.Fatalf("phone snapshots are jpeg only, got %d", code)
-	}
-	first := snap()
-	if code, _ := call(r.h, "POST", "/v1/phone-snapshot/claim", candidate(6, 2), nil); code != 404 {
-		t.Fatalf("another attempt has no snapshot to claim, got %d", code)
-	}
-	var last string
-	for i := 0; i < phoneSnapKeep+3; i++ {
-		last = snap()
-	}
-	if len(r.st.deleted) < 3 {
-		t.Fatalf("old snapshots must rotate out of storage, deleted %v", r.st.deleted)
-	}
-	code, out := call(r.h, "POST", "/v1/phone-snapshot/claim", tok, nil)
-	if code != 200 || out["evidence_id"] != last {
-		t.Fatalf("claim must return the newest snapshot %s, got %d %v", last, code, out)
-	}
-	rec, _ := r.srv.db.Get(context.Background(), last)
-	if rec.Kind != KindEvidence {
-		t.Fatalf("a claimed snapshot becomes evidence, got %s", rec.Kind)
-	}
-	_ = first
-	r.now = r.now.Add(5 * time.Minute)
-	if code, _ := call(r.h, "POST", "/v1/phone-snapshot/claim", tok, nil); code != 404 {
-		t.Fatalf("a stale snapshot is not evidence of the present, got %d", code)
 	}
 }

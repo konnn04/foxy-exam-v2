@@ -122,27 +122,46 @@ class Realtime
         ];
     }
 
-    public static function lobbyRoom(int $userId, int $examId): string
+    /** The phone's private room: only the phone publishes, only that student's computer (and recording) watches. */
+    public static function phoneRoom(int $userId, int $examId): string
     {
-        return "lobby-{$userId}-{$examId}";
+        return "cam2-{$userId}-{$examId}";
     }
 
-    /** The phone while the candidate is still in the lobby: it publishes its camera into a private room. */
-    public function phoneLobbyCredentials(User $user, Exam $exam): ?array
+    public function phoneCredentials(User $user, Exam $exam): ?array
     {
-        return $this->lk(self::lobbyRoom($user->id, $exam->id), 'phone', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => true, 'canPublishData' => false], ['role' => 'phone-lobby'], 3600);
+        return $this->lk(self::phoneRoom($user->id, $exam->id), 'phone', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => false, 'canPublishData' => false], ['role' => 'phone'], 12 * 3600);
     }
 
-    /** The lobby of the computer: sees the phone preview and tells it when the exam has started. */
-    public function lobbyViewerCredentials(User $user, Exam $exam): ?array
+    /** The candidate's computer: watches the phone (lobby preview, exam window, frames for the AI). */
+    public function phoneViewerCredentials(User $user, Exam $exam): ?array
     {
-        return $this->lk(self::lobbyRoom($user->id, $exam->id), 'viewer-' . $user->id, $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => true], ['role' => 'lobby-viewer'], 3600);
+        return $this->lk(self::phoneRoom($user->id, $exam->id), 'viewer-' . $user->id . '-' . bin2hex(random_bytes(3)), $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => false], ['role' => 'phone-viewer'], 12 * 3600);
     }
 
-    /** The phone during the exam: same room as the candidate, identity attempt-N-mobile (the record service records it as camera2). */
-    public function phoneExamCredentials(ExamAttempt $attempt, int $ttl): ?array
+    /** Ask the record service to record the phone (it needs the attempt, so this runs once the attempt exists). Never throws. */
+    public function startPhoneRecording(ExamAttempt $attempt): void
     {
-        return $this->lk('exam-' . $attempt->exam_id, 'attempt-' . $attempt->id . '-mobile', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => false, 'canPublishData' => false], ['oid' => (int) $attempt->exam->organization_id, 'role' => 'candidate'], $ttl);
+        if (!$this->enabled()) {
+            return;
+        }
+        try {
+            $body = json_encode([
+                'exam_id' => $attempt->exam_id,
+                'attempt_id' => $attempt->id,
+                'org_id' => (int) $attempt->exam->organization_id,
+                'kind' => 'camera2',
+                'room' => self::phoneRoom($attempt->user_id, $attempt->exam_id),
+                'identity' => 'phone',
+            ]);
+            [$ts, $sig] = $this->sign($body);
+            Http::withHeaders(['X-Foxy-Timestamp' => $ts, 'X-Foxy-Signature' => $sig])
+                ->withBody($body, 'application/json')
+                ->connectTimeout(1)->timeout(4)
+                ->post(rtrim((string) config('services.realtime.record_internal_url'), '/') . '/internal/v1/egress/start');
+        } catch (\Throwable $e) {
+            Log::warning('phone recording start failed', ['attempt' => $attempt->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /** LiveKit token for a proctor: hidden, subscribe-only, limited to the exam's room. */

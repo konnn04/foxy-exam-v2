@@ -1,15 +1,13 @@
 import { Head } from '@inertiajs/react';
 import { Room, RoomEvent, Track } from 'livekit-client';
-import { CheckCircle2, Loader2, PowerOff, RotateCw, SwitchCamera, TriangleAlert, Video } from 'lucide-react';
+import { CheckCircle2, Loader2, MonitorOff, PowerOff, RotateCw, SwitchCamera, TriangleAlert, Video } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Phase = 'intro' | 'starting' | 'live' | 'ended' | 'error';
-type Stage = 'lobby' | 'exam';
 
 interface Exchange {
-  state: Stage;
+  state: 'lobby' | 'exam';
   livekit: { url: string; token: string; room: string } | null;
-  snapshots?: { presign_url: string; commit_url: string; content_base: string; token: string; interval_ms: number };
 }
 
 const api = (token: string, path: string) => `/api/v1/public/mobile-camera/${token}/${path}`;
@@ -43,18 +41,18 @@ function cameraError(e: unknown): string {
 /** The phone as the candidate's second camera: opened from the QR code in the exam lobby. */
 export default function MobileCamera({ token }: { token: string }) {
   const [phase, setPhase] = useState<Phase>('intro');
-  const [stage, setStage] = useState<Stage>('lobby');
+  const [exam, setExam] = useState(false);
   const [message, setMessage] = useState('');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [portrait, setPortrait] = useState(false);
+  const [dark, setDark] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const room = useRef<Room | null>(null);
-  const snapTimer = useRef<number | undefined>(undefined);
-  const lobbyPoll = useRef<number | undefined>(undefined);
   const wake = useRef<{ release: () => Promise<void> } | null>(null);
+  const retry = useRef<number | undefined>(undefined);
   const busy = useRef(false);
-  const stageRef = useRef<Stage>('lobby');
+  const closed = useRef(false);
 
   useEffect(() => {
     const check = () => setPortrait(window.innerHeight > window.innerWidth);
@@ -64,8 +62,8 @@ export default function MobileCamera({ token }: { token: string }) {
   }, []);
 
   const stopAll = useCallback(() => {
-    window.clearInterval(snapTimer.current);
-    window.clearInterval(lobbyPoll.current);
+    closed.current = true;
+    window.clearTimeout(retry.current);
     void room.current?.disconnect();
     room.current = null;
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -74,30 +72,9 @@ export default function MobileCamera({ token }: { token: string }) {
     wake.current = null;
   }, []);
 
-  const snapshot = useCallback(async (s: NonNullable<Exchange['snapshots']>) => {
-    const v = video.current;
-    if (!v || v.videoWidth === 0) return;
-    const scale = Math.min(1, 960 / v.videoWidth);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(v.videoWidth * scale);
-    canvas.height = Math.round(v.videoHeight * scale);
-    canvas.getContext('2d')?.drawImage(v, 0, 0, canvas.width, canvas.height);
-    const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.6));
-    if (!blob) return;
-    const auth = { Authorization: `Bearer ${s.token}` };
-    try {
-      const pre = await fetch(s.presign_url, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ content_type: 'image/jpeg', purpose: 'phone' }) });
-      if (!pre.ok) return;
-      const meta = await pre.json();
-      const put = await fetch(s.content_base + meta.content_url, { method: 'PUT', headers: { ...auth, 'Content-Type': 'image/jpeg' }, body: blob });
-      if (put.ok) await fetch(s.commit_url.replace('{id}', meta.evidence_id), { method: 'POST', headers: auth });
-    } catch {
-      /* a missed snapshot is only a missed snapshot */
-    }
-  }, []);
-
+  /** Joins (or re-joins) the private room and publishes the camera. A dropped connection comes back here by itself. */
   const join = useCallback(async () => {
-    if (busy.current || !stream.current) return;
+    if (busy.current || !stream.current || closed.current) return;
     busy.current = true;
     try {
       const res = await fetch(api(token, 'exchange'), { method: 'POST', headers: { Accept: 'application/json' } });
@@ -109,46 +86,40 @@ export default function MobileCamera({ token }: { token: string }) {
       const ex = (await res.json()) as Exchange;
       if (!ex.livekit) throw new Error('Máy chủ chưa bật hệ thống phát hình.');
 
-      window.clearInterval(snapTimer.current);
       await room.current?.disconnect();
       const r = new Room({ adaptiveStream: false, dynacast: false });
-      r.on(RoomEvent.DataReceived, (payload) => {
-        try {
-          const msg = JSON.parse(new TextDecoder().decode(payload)) as { t?: string };
-          if (msg.t === 'go' && stageRef.current === 'lobby') void join();
-        } catch {
-          /* not for us */
-        }
-      }).on(RoomEvent.Disconnected, () => {
-        if (room.current === r && stream.current) setMessage('Mất kết nối, đang thử lại…');
+      r.on(RoomEvent.Disconnected, () => {
+        if (room.current !== r || closed.current) return;
+        // the connection dropped: try again, and learn from the server whether the exam is over
+        setMessage('Mất kết nối, đang kết nối lại…');
+        retry.current = window.setTimeout(() => void join(), 3000);
       });
       await r.connect(ex.livekit.url, ex.livekit.token);
       room.current = r;
-      const track = stream.current.getVideoTracks()[0];
-      await r.localParticipant.publishTrack(track, { source: Track.Source.Camera, simulcast: false, videoEncoding: { maxBitrate: 600_000, maxFramerate: 12 } });
-      await fetch(api(token, 'ack'), { method: 'POST' });
-
-      stageRef.current = ex.state;
-      setStage(ex.state);
+      await r.localParticipant.publishTrack(stream.current.getVideoTracks()[0], {
+        source: Track.Source.Camera,
+        simulcast: false,
+        videoEncoding: { maxBitrate: 600_000, maxFramerate: 12 },
+      });
+      await fetch(api(token, 'ack'), { method: 'POST' }); // the computer is told by LiveKit itself; this starts the recording
+      setExam(ex.state === 'exam');
       setPhase('live');
       setMessage('');
-      if (ex.state === 'exam' && ex.snapshots) {
-        const s = ex.snapshots;
-        void snapshot(s);
-        snapTimer.current = window.setInterval(() => void snapshot(s), s.interval_ms);
-      }
     } catch (e) {
-      setPhase('error');
+      if (closed.current) return;
       setMessage(e instanceof Error ? e.message : 'Không kết nối được.');
+      if (phase !== 'live') setPhase('error');
+      else retry.current = window.setTimeout(() => void join(), 4000);
     } finally {
       busy.current = false;
     }
-  }, [snapshot, stopAll, token]);
+  }, [phase, stopAll, token]);
 
   const start = useCallback(
     async (side: 'environment' | 'user') => {
       setPhase('starting');
       setMessage('');
+      closed.current = false;
       try {
         stream.current?.getTracks().forEach((t) => t.stop());
         stream.current = await openCamera(side);
@@ -171,23 +142,6 @@ export default function MobileCamera({ token }: { token: string }) {
     [join],
   );
 
-  // Only while still in the lobby: a cheap fallback in case the "exam started" message from the computer is lost.
-  useEffect(() => {
-    if (phase !== 'live' || stage !== 'lobby') return;
-    lobbyPoll.current = window.setInterval(async () => {
-      try {
-        const s = await (await fetch(api(token, 'state'))).json();
-        if (!s.active) {
-          stopAll();
-          setPhase('ended');
-        } else if (s.state === 'exam') void join();
-      } catch {
-        /* offline: nothing to do */
-      }
-    }, 20_000);
-    return () => window.clearInterval(lobbyPoll.current);
-  }, [phase, stage, token, join, stopAll]);
-
   useEffect(() => () => stopAll(), [stopAll]);
 
   const flip = () => {
@@ -205,7 +159,7 @@ export default function MobileCamera({ token }: { token: string }) {
         {phase === 'live' && (
           <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold">
             <span className="size-2 animate-pulse rounded-full bg-red-500" />
-            {stage === 'exam' ? 'ĐANG GIÁM SÁT' : 'ĐÃ KẾT NỐI — CHỜ VÀO THI'}
+            {exam ? 'ĐANG GIÁM SÁT' : 'ĐÃ KẾT NỐI — CHỜ VÀO THI'}
           </span>
         )}
         {portrait && phase === 'live' && (
@@ -220,9 +174,9 @@ export default function MobileCamera({ token }: { token: string }) {
           <>
             <h1 className="text-base font-semibold">Camera mở rộng cho phòng thi</h1>
             <ul className="space-y-1 text-sm text-zinc-300">
-              <li>• Đặt điện thoại <b>nằm ngang</b> ở góc bàn, thấy được bạn, hai tay và màn hình laptop.</li>
-              <li>• Cắm sạc và giữ màn hình luôn sáng; không thoát trang này trong giờ thi.</li>
-              <li>• Chỉ ghi hình để giám sát phòng thi này; liên kết hết hạn khi bạn nộp bài.</li>
+              <li>• Đặt điện thoại <b>nằm ngang</b> ở một bên bàn, <b>vuông góc (90°)</b> với laptop: thấy bạn, hai tay và màn hình.</li>
+              <li>• Cắm sạc. Bạn có thể tắt màn hình điện thoại để đỡ chói (camera vẫn chạy).</li>
+              <li>• Không thoát trang này trong giờ thi. Liên kết hết hạn khi bạn nộp bài.</li>
             </ul>
             <button onClick={() => void start(facing)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 font-semibold text-white active:scale-[0.99]">
               <Video className="size-5" /> Bật camera và kết nối
@@ -238,12 +192,17 @@ export default function MobileCamera({ token }: { token: string }) {
           <div className="flex items-center gap-3">
             <CheckCircle2 className="size-5 shrink-0 text-green-500" />
             <p className="flex-1 text-sm text-zinc-300">
-              {stage === 'exam' ? 'Đang phát hình cho giám thị. Để nguyên điện thoại ở vị trí này.' : 'Đã kết nối. Quay lại máy tính để kiểm tra góc đặt, rồi bắt đầu làm bài.'}
+              {exam ? 'Đang phát hình cho giám thị. Để nguyên điện thoại ở vị trí này.' : 'Đã kết nối. Quay lại máy tính để kiểm tra góc đặt, rồi bắt đầu làm bài.'}
               {message && <span className="block text-amber-400">{message}</span>}
             </p>
-            <button onClick={flip} className="flex h-10 items-center gap-1.5 rounded-lg border border-zinc-700 px-3 text-xs" title="Đổi camera trước / sau">
-              <SwitchCamera className="size-4" /> Đổi camera
-            </button>
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button onClick={() => setDark(true)} className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-700 px-3 text-xs" title="Tắt màn hình (chạm để bật lại)">
+                <MonitorOff className="size-4" /> Tắt màn hình
+              </button>
+              <button onClick={flip} className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-700 px-3 text-xs" title="Đổi camera trước / sau">
+                <SwitchCamera className="size-4" /> Đổi camera
+              </button>
+            </div>
           </div>
         )}
         {phase === 'error' && (
@@ -262,6 +221,12 @@ export default function MobileCamera({ token }: { token: string }) {
           </p>
         )}
       </div>
+
+      {dark && (
+        <button type="button" onClick={() => setDark(false)} className="fixed inset-0 z-50 flex items-end justify-center bg-black pb-10 text-xs text-zinc-700">
+          Camera vẫn đang chạy — chạm để bật lại màn hình
+        </button>
+      )}
     </div>
   );
 }

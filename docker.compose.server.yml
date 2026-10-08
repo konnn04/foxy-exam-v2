@@ -58,6 +58,10 @@ services:
       RT_INGEST_INTERNAL_URL: http://ingest:8081
       RT_HUB_URL: wss://${SERVICE_FQDN_GATEWAY}/rt/hub
       RT_RECORD_URL: https://${SERVICE_FQDN_GATEWAY}/rt/record
+      RT_RECORD_INTERNAL_URL: http://record:8083
+      AI_FACE_URL: ${AI_FACE_URL:-}
+      AI_OBJECT_URL: ${AI_OBJECT_URL:-}
+      AI_TOKEN: ${AI_TOKEN:-}
       LIVEKIT_PUBLIC_URL: wss://${SERVICE_FQDN_LIVEKIT}
       LIVEKIT_API_KEY: foxy
       LIVEKIT_API_SECRET: ${SERVICE_PASSWORD_64_LIVEKIT}

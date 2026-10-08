@@ -54,6 +54,7 @@ return [
         'ingest_internal_url' => env('RT_INGEST_INTERNAL_URL', 'http://localhost:8081'),  // what the core calls
         'hub_url' => env('RT_HUB_URL', 'ws://localhost:8082'),                            // what the proctor UI connects to
         'record_url' => env('RT_RECORD_URL', 'http://localhost:8083'),
+        'record_internal_url' => env('RT_RECORD_INTERNAL_URL', 'http://localhost:8083'),
         'livekit' => [
             'url' => env('LIVEKIT_PUBLIC_URL'),       // wss://... reachable by the client
             'api_key' => env('LIVEKIT_API_KEY'),

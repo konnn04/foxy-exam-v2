@@ -26,7 +26,6 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public/mobile-camera/{token}')->middleware('throttle:90,1')->group(function () {
         Route::post('/exchange', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'exchange']);
         Route::post('/ack', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'ack']);
-        Route::get('/state', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'state']);
     });
 
     // 2. Student Authentication
@@ -69,6 +68,7 @@ Route::prefix('v1')->group(function () {
 
             // Phone as an extra camera (link + QR in the lobby, layout check)
             Route::post('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'issue'])->middleware('throttle:20,1');
+            Route::get('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'viewer']);
             Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');
 
             // Camera frames for the AI services (identity + prohibited objects)
