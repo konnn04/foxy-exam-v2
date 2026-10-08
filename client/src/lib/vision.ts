@@ -1,4 +1,4 @@
-import { AttentionTracker, EMPTY_READING, attention, eyeAway, faceRatio, headPose, type FrameReading, type VisionEvent } from "./vision-core";
+import { AttentionTracker, EMPTY_READING, attention, eyeAway, eyesClosed, faceRatio, headPose, type FrameReading, type VisionEvent } from "./vision-core";
 
 /** Which MediaPipe delegate to use. "auto" tries the GPU and quietly falls back to the CPU. */
 export type FaceDelegate = "auto" | "gpu" | "cpu";
@@ -96,7 +96,11 @@ export class FaceMonitor {
         const m = res.facialTransformationMatrixes?.[0]?.data;
         if (m) Object.assign(r, headPose(m));
         const shapes = res.faceBlendshapes?.[0]?.categories;
-        if (shapes) r.eyeAway = eyeAway(Object.fromEntries(shapes.map((c) => [c.categoryName, c.score])));
+        if (shapes) {
+          const named = Object.fromEntries(shapes.map((c) => [c.categoryName, c.score]));
+          r.eyeAway = eyeAway(named);
+          r.eyesClosed = eyesClosed(named);
+        }
       }
     } catch {
       return; // a bad frame is skipped

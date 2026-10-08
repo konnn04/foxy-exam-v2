@@ -7,6 +7,7 @@ import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, FAILURE_TEXT, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
+import { frontalHint, isFrontal } from "../lib/vision-core";
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
 import { formatDateTime } from "../lib/datetime";
@@ -85,27 +86,25 @@ export default function ExamLobby({
   const watchFace = useCallback(
     async (stream: MediaStream, required: boolean) => {
       stopFace();
-      set("face", { level: "checking", detail: "Đang tìm khuôn mặt… hãy ngồi vào khung hình", required });
+      set("face", { level: "checking", detail: "Đang kiểm tra… ngồi thẳng, nhìn vào camera, thấy rõ hai mắt", required });
       let seen = 0;
       let missed = 0;
       let ok = false;
       const m = new FaceMonitor(
         (s) => {
-          if (s.faces === 1) {
+          if (isFrontal(s)) {
             seen += 1;
             missed = 0;
           } else {
             missed += 1;
             seen = 0;
           }
-          if (!ok && seen >= 2) {
+          if (!ok && seen >= 3) {
             ok = true;
-            set("face", { level: "ok", detail: "Đã nhận diện khuôn mặt", required });
-          } else if (ok && missed >= 6) {
+            set("face", { level: "ok", detail: "Khuôn mặt thẳng, thấy rõ hai mắt", required });
+          } else if ((ok && missed >= 6) || (!ok && missed >= 3)) {
             ok = false;
-            set("face", { level: "fail", detail: s.faces === 0 ? "Không thấy khuôn mặt — hãy nhìn vào camera" : `${s.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`, required });
-          } else if (!ok && missed >= 2) {
-            set("face", { level: "fail", detail: s.faces === 0 ? "Không thấy khuôn mặt — hãy nhìn vào camera" : `${s.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`, required });
+            set("face", { level: "fail", detail: frontalHint(s), required });
           }
         },
         () => {},

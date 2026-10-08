@@ -13,9 +13,11 @@ export interface FrameReading {
   pitch: number;
   /** 0..1 how far the eyes look away from the screen centre */
   eyeAway: number;
+  /** 0..1 how closed both eyes are (1 = shut or hidden, e.g. sunglasses / a hand) */
+  eyesClosed: number;
 }
 
-export const EMPTY_READING: FrameReading = { faces: 0, faceRatio: 0, yaw: 0, pitch: 0, eyeAway: 0 };
+export const EMPTY_READING: FrameReading = { faces: 0, faceRatio: 0, yaw: 0, pitch: 0, eyeAway: 0, eyesClosed: 0 };
 
 const deg = (r: number) => (r * 180) / Math.PI;
 
@@ -38,6 +40,11 @@ export function eyeAway(s: Shapes): number {
   return Math.min(1, Math.max(horizontal, vertical));
 }
 
+/** 0..1 how closed BOTH eyes are: the weaker blink score, so a single blink does not count. */
+export function eyesClosed(s: Shapes): number {
+  return Math.min(s.eyeBlinkLeft ?? 0, s.eyeBlinkRight ?? 0);
+}
+
 /** Face width as a share of the frame, from normalized landmarks. */
 export function faceRatio(points: { x: number }[]): number {
   if (points.length === 0) return 0;
@@ -50,16 +57,40 @@ export function faceRatio(points: { x: number }[]): number {
   return Math.max(0, hi - lo);
 }
 
-export const LIMITS = { yaw: 35, pitch: 30, eye: 0.6, tooFar: 0.14 };
+export const LIMITS = { yaw: 25, pitch: 20, eye: 0.45, eyesClosed: 0.6, tooFar: 0.14 };
+
+/** What the lobby demands before the exam may start: face straight at the camera, both eyes open and clearly visible. */
+export const FRONTAL = { yaw: 15, pitch: 15, eye: 0.35, eyesClosed: 0.5, minRatio: 0.18 };
 
 export function isLookingAway(r: FrameReading): boolean {
-  return Math.abs(r.yaw) > LIMITS.yaw || Math.abs(r.pitch) > LIMITS.pitch || r.eyeAway > LIMITS.eye;
+  return Math.abs(r.yaw) > LIMITS.yaw || Math.abs(r.pitch) > LIMITS.pitch || r.eyeAway > LIMITS.eye || r.eyesClosed > LIMITS.eyesClosed;
+}
+
+export function isFrontal(r: FrameReading): boolean {
+  return (
+    r.faces === 1 &&
+    Math.abs(r.yaw) <= FRONTAL.yaw &&
+    Math.abs(r.pitch) <= FRONTAL.pitch &&
+    r.eyeAway <= FRONTAL.eye &&
+    r.eyesClosed <= FRONTAL.eyesClosed &&
+    r.faceRatio >= FRONTAL.minRatio
+  );
+}
+
+/** Why the face is not accepted yet, in words for the candidate. */
+export function frontalHint(r: FrameReading): string {
+  if (r.faces === 0) return "Không thấy khuôn mặt — hãy ngồi vào khung hình";
+  if (r.faces > 1) return `${r.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`;
+  if (r.faceRatio < FRONTAL.minRatio) return "Ngồi gần camera hơn";
+  if (r.eyesClosed > FRONTAL.eyesClosed) return "Chưa thấy rõ mắt — mở mắt, bỏ kính tối màu hoặc vật che";
+  if (Math.abs(r.yaw) > FRONTAL.yaw || Math.abs(r.pitch) > FRONTAL.pitch) return "Hãy nhìn thẳng vào camera";
+  return "Hãy nhìn thẳng vào camera, giữ hai mắt hướng về màn hình";
 }
 
 /** 0..100: how much the candidate faces the screen. 0 when nobody is there. */
 export function attention(r: FrameReading): number {
   if (r.faces === 0) return 0;
-  const worst = Math.max(Math.abs(r.yaw) / 45, Math.abs(r.pitch) / 40, r.eyeAway / 0.8);
+  const worst = Math.max(Math.abs(r.yaw) / 35, Math.abs(r.pitch) / 30, r.eyeAway / 0.6, r.eyesClosed / 0.8);
   return Math.round(Math.max(0, Math.min(1, 1 - worst)) * 100);
 }
 
