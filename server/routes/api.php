@@ -22,6 +22,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/ai/status', [TelemetryController::class, 'aiStatusProxy']);
     Route::get('/public/organizations', [\App\Http\Controllers\Api\V1\Public\OrganizationController::class, 'publicList']);
 
+    // Phone camera: the token in the link is the credential
+    Route::prefix('public/mobile-camera/{token}')->middleware('throttle:90,1')->group(function () {
+        Route::post('/exchange', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'exchange']);
+        Route::post('/ack', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'ack']);
+        Route::get('/state', [\App\Http\Controllers\Api\Public\MobileCameraExchangeController::class, 'state']);
+    });
+
     // 2. Student Authentication
     Route::post('/auth/login', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login']);
     Route::post('/student/login', [AuthController::class, 'studentLogin']);
@@ -56,6 +63,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/finish', [ExamController::class, 'finishExam']);
 
             // Realtime plane: tokens + URLs for batched telemetry, evidence upload and LiveKit
+            // Phone as an extra camera (link + QR in the lobby, layout check)
+            Route::post('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'issue'])->middleware('throttle:20,1');
+            Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');
+
             // Camera frames for the AI services (identity + prohibited objects)
             Route::post('/ai/frame', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'store'])->middleware('throttle:12,1');
             Route::post('/ai/evidence', [\App\Http\Controllers\Api\V1\Student\AiFrameController::class, 'evidence'])->middleware('throttle:12,1');

@@ -155,6 +155,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     number_questions_per_page: pick('number_questions_per_page', 1),
     require_mic: pick('require_mic', false),
     require_screen: pick('require_screen', false),
+    extra_camera: pick<'off' | 'optional' | 'required'>('extra_camera', 'off'),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -539,6 +540,23 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               { key: 'screen', label: 'Bắt buộc chia sẻ màn hình', desc: 'Dừng chia sẻ giữa giờ thi thì bài bị che cho tới khi bật lại', checked: form.require_screen, onChange: (v: boolean) => state.set('require_screen', v) },
             ]}
           />
+          <div className="flex flex-col gap-2 border-t border-border py-3.5">
+            <div>
+              <div className="text-[13px] font-medium">Camera mở rộng (điện thoại)</div>
+              <div className="text-xs text-muted-foreground">Thí sinh quét QR để dùng điện thoại làm camera thứ hai nhìn từ góc bàn; ảnh minh chứng có thêm ảnh từ điện thoại.</div>
+            </div>
+            <Segmented
+              className="max-w-[420px]"
+              stretch
+              value={form.extra_camera}
+              onChange={(v) => state.set('extra_camera', v)}
+              options={[
+                { value: 'off', label: 'Không dùng' },
+                { value: 'optional', label: 'Tùy chọn' },
+                { value: 'required', label: 'Bắt buộc' },
+              ]}
+            />
+          </div>
         </Panel>
         <Panel className="flex flex-[1_1_280px] flex-col gap-3">
           <PanelTitle title="FoxyClient" desc="Thí sinh làm bài qua ứng dụng desktop" />

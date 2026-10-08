@@ -1,5 +1,6 @@
 import { getLobbyMedia } from "./lobbyMedia";
 import type { ViolationType } from "./api";
+import type { RealtimeClient } from "./realtime";
 
 /** Which picture proves a violation: what was on the screen, or who was in front of the camera. */
 export const EVIDENCE_SOURCE: Partial<Record<ViolationType, "screen" | "camera">> = {
@@ -66,4 +67,30 @@ export function releaseEvidence() {
   });
   players.clear();
   lastShot.clear();
+}
+
+export interface EvidenceSet {
+  /** the picture that best proves the violation (goes into violations.evidence_id) */
+  primary?: string;
+  /** every picture taken at that moment: screen, main camera and, when used, the phone camera */
+  all: Partial<Record<"screen" | "camera" | "phone", string>>;
+}
+
+/**
+ * Up to three pictures of the moment a violation happens: the screen, the main camera and the phone camera (when the exam
+ * uses it). `known` lets a caller that already holds a frame (the AI check holds the camera frame) skip capturing it.
+ */
+export async function collectEvidence(rt: RealtimeClient, type: ViolationType, withPhone: boolean, known: { camera?: Blob } = {}): Promise<EvidenceSet> {
+  const [screen, camera] = await Promise.all([captureFrame("screen"), known.camera ?? captureFrame("camera")]);
+  const [screenId, cameraId, phoneId] = await Promise.all([
+    screen ? rt.uploadEvidence(screen) : null,
+    camera ? rt.uploadEvidence(camera) : null,
+    withPhone ? rt.claimPhoneSnapshot() : null,
+  ]);
+  const all: EvidenceSet["all"] = {};
+  if (screenId) all.screen = screenId;
+  if (cameraId) all.camera = cameraId;
+  if (phoneId) all.phone = phoneId;
+  const first = EVIDENCE_SOURCE[type];
+  return { primary: (first && all[first]) || all.screen || all.camera || all.phone, all };
 }

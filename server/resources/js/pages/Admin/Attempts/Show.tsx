@@ -234,7 +234,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
-          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} />
+          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">

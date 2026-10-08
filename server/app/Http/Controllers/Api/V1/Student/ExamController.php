@@ -133,6 +133,7 @@ class ExamController extends Controller
 
         if ($activeAttempt) {
             app(\App\Services\Realtime::class)->lifecycle($activeAttempt, 'active');
+            \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $activeAttempt);
             $elapsedSeconds = now()->diffInSeconds($activeAttempt->started_at);
             $totalSeconds = $exam->duration_minutes * 60;
             $timeRemaining = max(0, $totalSeconds - $elapsedSeconds);
@@ -191,6 +192,7 @@ class ExamController extends Controller
             'device_info' => $request->input('device_info'),
         ]);
         app(\App\Services\Realtime::class)->lifecycle($attempt, 'active');
+        \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $attempt);
 
         return response()->json([
             'success' => true,

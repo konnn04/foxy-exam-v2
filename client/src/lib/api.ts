@@ -97,6 +97,8 @@ export interface MonitoringConfig {
   max_paste_chars: number;
   track_keystroke_dynamics: boolean;
   ai_face_check: boolean;
+  /** the phone as a second camera */
+  extra_camera?: "off" | "optional" | "required";
 }
 
 export interface ApiEnvelope<T> {
@@ -561,6 +563,21 @@ export function sendOpLogBatch(input: {
   });
 }
 
+export interface MobileCameraLink {
+  url: string;
+  expires_at: string;
+  viewer: { url: string; token: string; room: string } | null;
+}
+
+export const issueMobileCamera = (examId: number) =>
+  request<{ success: boolean; data: MobileCameraLink }>(`/student/exams/${examId}/mobile-camera`, { method: "POST" });
+
+export function verifyMobileLayout(examId: number, frame: Blob) {
+  const body = new FormData();
+  body.append("frame", frame, "phone.jpg");
+  return request<{ ok: boolean; message: string; problem: string | null; skipped?: boolean }>(`/student/exams/${examId}/mobile-camera/verify`, { method: "POST", body });
+}
+
 export interface AiFrameResult {
   success: boolean;
   checked: boolean;
@@ -576,10 +593,10 @@ export function sendAiFrame(frame: Blob): Promise<AiFrameResult> {
   return request<AiFrameResult>("/student/ai/frame", { method: "POST", body });
 }
 
-export function attachAiEvidence(violationIds: number[], evidenceId: string) {
+export function attachAiEvidence(violationIds: number[], evidenceId: string, all: Record<string, string> = {}) {
   return request<{ success: boolean }>("/student/ai/evidence", {
     method: "POST",
-    body: JSON.stringify({ violation_ids: violationIds, evidence_id: evidenceId }),
+    body: JSON.stringify({ violation_ids: violationIds, evidence_id: evidenceId, evidence: all }),
   });
 }
 

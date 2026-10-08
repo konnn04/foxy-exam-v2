@@ -6,7 +6,7 @@ import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
-import { captureFrame, releaseEvidence } from "./evidence";
+import { captureFrame, collectEvidence, releaseEvidence } from "./evidence";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -144,8 +144,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         if (blob) {
           const res = await sendAiFrame(blob);
           if (res.violation_ids?.length) {
-            const id = await client.uploadEvidence(blob);
-            if (id) await attachAiEvidence(res.violation_ids, id);
+            const set = await collectEvidence(client, res.prohibited.length ? "PROHIBITED_DEVICE" : "LOOKING_AWAY", (cfgRef.current?.extra_camera ?? "off") !== "off", { camera: blob });
+            if (set.primary) await attachAiEvidence(res.violation_ids, set.primary, set.all);
           }
         }
       } catch {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -94,6 +95,54 @@ class Realtime
                 ],
             ], $secret),
         ];
+    }
+
+    // ------------------------------------------------------------------ phone as a second camera
+
+    private function lk(string $room, string $identity, string $name, array $grants, array $meta, int $ttl): ?array
+    {
+        $key = (string) config('services.realtime.livekit.api_key');
+        $secret = (string) config('services.realtime.livekit.api_secret');
+        $url = (string) config('services.realtime.livekit.url');
+        if ($key === '' || $secret === '' || $url === '') {
+            return null;
+        }
+        $now = time();
+
+        return [
+            'url' => $url,
+            'room' => $room,
+            'identity' => $identity,
+            'token' => $this->jwt([
+                'iss' => $key, 'sub' => $identity, 'name' => $name,
+                'nbf' => $now - 5, 'exp' => $now + max(60, $ttl),
+                'metadata' => json_encode($meta),
+                'video' => ['room' => $room, 'roomJoin' => true] + $grants,
+            ], $secret),
+        ];
+    }
+
+    public static function lobbyRoom(int $userId, int $examId): string
+    {
+        return "lobby-{$userId}-{$examId}";
+    }
+
+    /** The phone while the candidate is still in the lobby: it publishes its camera into a private room. */
+    public function phoneLobbyCredentials(User $user, Exam $exam): ?array
+    {
+        return $this->lk(self::lobbyRoom($user->id, $exam->id), 'phone', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => true, 'canPublishData' => false], ['role' => 'phone-lobby'], 3600);
+    }
+
+    /** The lobby of the computer: sees the phone preview and tells it when the exam has started. */
+    public function lobbyViewerCredentials(User $user, Exam $exam): ?array
+    {
+        return $this->lk(self::lobbyRoom($user->id, $exam->id), 'viewer-' . $user->id, $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => true], ['role' => 'lobby-viewer'], 3600);
+    }
+
+    /** The phone during the exam: same room as the candidate, identity attempt-N-mobile (the record service records it as camera2). */
+    public function phoneExamCredentials(ExamAttempt $attempt, int $ttl): ?array
+    {
+        return $this->lk('exam-' . $attempt->exam_id, 'attempt-' . $attempt->id . '-mobile', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => false, 'canPublishData' => false], ['oid' => (int) $attempt->exam->organization_id, 'role' => 'candidate'], $ttl);
     }
 
     /** LiveKit token for a proctor: hidden, subscribe-only, limited to the exam's room. */

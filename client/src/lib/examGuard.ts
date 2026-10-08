@@ -1,4 +1,4 @@
-import { captureFrame, evidenceDue, EVIDENCE_SOURCE } from "./evidence";
+import { collectEvidence, evidenceDue, EVIDENCE_SOURCE, type EvidenceSet } from "./evidence";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
@@ -83,6 +83,8 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const allowedApps = useRef<string[]>([]);
   const lastSeen = useRef(new Map<string, number>());
   const blockClipboard = useRef(true);
+  const extraCamera = useRef(false);
+  extraCamera.current = (config?.extra_camera ?? "off") !== "off";
   blockClipboard.current = config?.prevent_paste !== false;
   allowedApps.current = (config?.allowed_apps ?? []).map(procName);
 
@@ -100,13 +102,20 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
         // batched with everything else (about once a second); the original type is kept in details.
         // A picture of the moment (screen or camera) is taken now and attached when its upload finishes.
         const at = v.t;
-        const send = (evidence_id?: string) =>
-          rt.emit("violation", { violation_type: type, severity, details: { message, client_type: type, ...details }, ...(evidence_id ? { evidence_id } : {}) }, at);
-        const source = EVIDENCE_SOURCE[type];
-        if (source && evidenceDue(type)) {
-          void captureFrame(source)
-            .then((blob) => (blob ? rt.uploadEvidence(blob) : null))
-            .then((id) => send(id ?? undefined), () => send());
+        const send = (set?: EvidenceSet) =>
+          rt.emit(
+            "violation",
+            {
+              violation_type: type,
+              severity,
+              details: { message, client_type: type, ...details, ...(set && Object.keys(set.all).length ? { evidence: set.all } : {}) },
+              ...(set?.primary ? { evidence_id: set.primary } : {}),
+            },
+            at,
+          );
+        if (EVIDENCE_SOURCE[type] && evidenceDue(type)) {
+          void collectEvidence(rt, type, extraCamera.current)
+            .then((set) => send(set), () => send())
         } else send();
       } else {
         void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
@@ -169,6 +178,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     if (cfg) {
       allowedApps.current = (cfg.allowed_apps ?? []).map(procName);
       blockClipboard.current = cfg.prevent_paste !== false;
+      extraCamera.current = (cfg.extra_camera ?? "off") !== "off";
     }
     pasteCount.current = 0;
     setState({ ...INITIAL, active: true });

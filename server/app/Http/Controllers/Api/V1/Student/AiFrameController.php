@@ -65,12 +65,20 @@ class AiFrameController extends Controller
     /** POST /student/ai/evidence: attach an uploaded picture to the violations the last frame raised. */
     public function evidence(Request $request): JsonResponse
     {
-        $data = $request->validate(['violation_ids' => ['required', 'array', 'max:10'], 'violation_ids.*' => ['integer'], 'evidence_id' => ['required', 'string', 'max:64']]);
+        $data = $request->validate(['violation_ids' => ['required', 'array', 'max:10'], 'violation_ids.*' => ['integer'], 'evidence_id' => ['required', 'string', 'max:64'], 'evidence' => ['nullable', 'array', 'max:6'], 'evidence.*' => ['string', 'max:64']]);
         $attempt = AttemptResolver::for($request, false);
         if (!$attempt) {
             return response()->json(['success' => false], 404);
         }
-        $n = Violation::whereIn('id', $data['violation_ids'])->where('exam_attempt_id', $attempt->id)->whereNull('evidence_id')->update(['evidence_id' => $data['evidence_id']]);
+        $n = 0;
+        foreach (Violation::whereIn('id', $data['violation_ids'])->where('exam_attempt_id', $attempt->id)->whereNull('evidence_id')->get() as $v) {
+            $details = (array) $v->details;
+            if (!empty($data['evidence'])) {
+                $details['evidence'] = $data['evidence']; // screen / camera / phone pictures of the same moment
+            }
+            $v->update(['evidence_id' => $data['evidence_id'], 'details' => $details]);
+            $n++;
+        }
 
         return response()->json(['success' => true, 'attached' => $n]);
     }

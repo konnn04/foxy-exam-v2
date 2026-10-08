@@ -31,6 +31,9 @@ use Inertia\Inertia;
 |--------------------------------------------------------------------------
 */
 
+// Phone camera page: opened from the QR code in the exam lobby, no login (the token in the URL is the credential)
+Route::get('/m/camera/{token}', fn (string $token) => Inertia::render('Public/MobileCamera', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
+
 // 1. Landing Page (Trang chủ, Về chúng tôi, Dự án FoxyExam, Bảng giá)
 Route::get('/', function () {
     $plans = Plan::where('is_active', true)->get();
@@ -1057,6 +1060,7 @@ Route::middleware(['auth'])->group(function () {
             'number_questions_per_page' => ['nullable', 'integer'],
             'require_mic' => ['nullable', 'boolean'],
             'require_screen' => ['nullable', 'boolean'],
+            'extra_camera' => ['nullable', 'in:off,optional,required'],
             'allowed_apps_enabled' => ['nullable', 'boolean'],
             'allowed_apps' => ['nullable', 'array', 'max:30'],
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
@@ -1089,6 +1093,7 @@ Route::middleware(['auth'])->group(function () {
             $monitoringConfig['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
         $monitoringConfig['prevent_paste'] = $validated['prevent_paste'] ?? true;
+        $monitoringConfig['extra_camera'] = $validated['extra_camera'] ?? 'off';
         $monitoringConfig['require_screen'] = (bool) ($validated['require_screen'] ?? false);
         $monitoringConfig['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $questionSet->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];
@@ -1279,6 +1284,7 @@ Route::middleware(['auth'])->group(function () {
             'number_questions_per_page' => ['nullable', 'integer'],
             'require_mic' => ['nullable', 'boolean'],
             'require_screen' => ['nullable', 'boolean'],
+            'extra_camera' => ['nullable', 'in:off,optional,required'],
             'allowed_apps_enabled' => ['nullable', 'boolean'],
             'allowed_apps' => ['nullable', 'array', 'max:30'],
             'allowed_apps.*' => ['string', 'max:40', 'regex:/^[A-Za-z0-9._ -]+$/'],
@@ -1312,6 +1318,7 @@ Route::middleware(['auth'])->group(function () {
             $config['track_keystroke_dynamics'] = $validated['track_keystroke'] ?? true;
         }
         $config['prevent_paste'] = $validated['prevent_paste'] ?? true;
+        $config['extra_camera'] = $validated['extra_camera'] ?? 'off';
         $config['require_screen'] = (bool) ($validated['require_screen'] ?? false);
         $config['allowed_apps'] = ($validated['allowed_apps_enabled'] ?? false) && $qs && $qs->type === 'PROGRAMMING'
             ? array_values(array_unique(array_map('strtolower', $validated['allowed_apps'] ?? ['devenv', 'code']))) : [];

@@ -57,3 +57,15 @@ Config: `client/.env.example`. Verification of the batching client against a rea
 - "Chạy" mở terminal tích hợp (`Terminal.tsx`): chương trình chạy bằng trình biên dịch của máy với stdin/stdout nối ống, kết quả đẩy về cửa sổ qua sự kiện `runner://data`, `runner://exit`; thí sinh gõ dữ liệu ngay trong terminal. Không mở console của hệ điều hành. Lệnh Rust: `runner_session_start/write/close_stdin/kill`. Lưu ý C/C++ dùng `printf`/`scanf` bị đệm khi chạy qua ống; `cout`/`cin` tự xả trước khi đọc.
 - Đề bài, câu hỏi, đáp án hiển thị Markdown có GFM và công thức LaTeX (`$x^2$`, `$$...$$`); code có tô màu cú pháp (Prism). Server dùng cùng bộ ở trình soạn bài toán, xem trước câu hỏi và xem bài làm.
 - Có thể kéo thả đổi độ rộng: khung đề bài / code, chiều cao terminal (client) và cột của mọi bảng `FxList` (server), nhớ theo máy.
+
+## Camera mở rộng (điện thoại) và ảnh minh chứng
+
+Cấu hình kỳ thi `monitoring_config.extra_camera`: `off` | `optional` | `required`.
+
+1. Phòng chờ tự tạo liên kết (`POST /student/exams/{id}/mobile-camera`) và hiện mã QR. Token chỉ lưu dạng SHA-256 (`mobile_camera_tokens`), gắn với (sinh viên, kỳ thi) rồi gắn vào lượt thi khi bắt đầu; hết hạn khi nộp bài.
+2. Điện thoại mở `/m/camera/{token}`, bật camera và đổi token lấy thông tin LiveKit (`POST /api/v1/public/mobile-camera/{token}/exchange`). Trước giờ thi nó phát vào phòng riêng `lobby-{user}-{exam}`; phòng chờ của máy tính vào cùng phòng (chỉ xem) để hiện hình xem trước.
+3. Máy tính gửi ảnh từ điện thoại tới `POST /student/exams/{id}/mobile-camera/verify`: dịch vụ vật thể phải thấy người và laptop (bỏ qua nếu chưa có dịch vụ AI). Chế độ `required` khoá nút Bắt đầu tới khi đạt.
+4. Khi bắt đầu thi, máy tính gửi tin `go` qua kênh dữ liệu LiveKit; điện thoại đổi token lại và phát vào phòng thi `exam-{id}` với danh tính `attempt-{aid}-mobile` (không được xem ai khác). Record service ghi hình thành `camera2`. Nếu tin `go` mất, trang điện thoại tự kiểm tra lại mỗi 20 s khi còn ở phòng chờ.
+5. Trong giờ thi điện thoại gửi một ảnh nhỏ mỗi 20 s lên record service (`purpose: phone`, chỉ giữ 12 ảnh mới nhất). Khi có vi phạm, máy tính "nhận" ảnh mới nhất (≤ 90 s) thành minh chứng.
+
+Mỗi vi phạm có ảnh minh chứng (`details.evidence`): **màn hình**, **camera chính** và **camera phụ** (nếu dùng). `violations.evidence_id` là ảnh sát nhất với loại vi phạm. Trang phiên thi của giám thị hiện cả ba ảnh và có thêm trình phát video `camera2`.

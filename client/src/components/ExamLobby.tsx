@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, RefreshCw, ScanFace, ShieldAlert, Wifi, X } from "lucide-react";
+import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, QrCode, RefreshCw, ScanFace, ShieldAlert, Smartphone, Wifi, X } from "lucide-react";
 import { Badge, Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
+import { usePhoneCamera } from "../lib/phoneCamera";
 import { ApiError, getExam, getHealth, startExam, type ExamDetail } from "../lib/api";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
@@ -19,7 +20,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
 interface Check {
-  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "mic" | "screen";
+  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "phone" | "mic" | "screen";
   label: string;
   level: Level;
   detail: string;
@@ -27,7 +28,7 @@ interface Check {
   required: boolean;
 }
 
-const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "mic", "screen"];
+const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "phone", "mic", "screen"];
 
 const matchesBanned = (name: string) => {
   const n = name.toLowerCase().replace(/\.exe$/, "");
@@ -72,6 +73,9 @@ export default function ExamLobby({
   const wantCamera = Boolean(cfg?.ai_face_check);
   const wantMic = Boolean(cfg?.require_mic);
   const wantScreen = Boolean(cfg?.require_screen);
+  const wantPhone = (cfg?.extra_camera ?? "off") !== "off";
+  const needPhone = cfg?.extra_camera === "required";
+  const phone = usePhoneCamera(pending.id);
 
   const attachPreview = useCallback((s: MediaStream | null) => {
     if (video.current) video.current.srcObject = s;
@@ -290,6 +294,33 @@ export default function ExamLobby({
 
   useEffect(() => attachPreview(getLobbyMedia().camera), [checks.camera.level, attachPreview]);
 
+  useEffect(() => {
+    if (!wantPhone) return;
+    const bad = needPhone ? "fail" : "warn";
+    if (phone.link === "idle") set("phone", { level: needPhone ? "fail" : "idle", detail: "Nhấn “Tạo mã QR”, rồi quét bằng điện thoại", required: needPhone });
+    else if (phone.link === "error") set("phone", { level: bad, detail: phone.error || "Không tạo được liên kết", required: needPhone });
+    else if (phone.link === "waiting") set("phone", { level: bad, detail: "Đang chờ điện thoại — quét mã QR và bật camera", required: needPhone });
+    else if (phone.layout === "ok") set("phone", { level: "ok", detail: phone.layoutMessage || "Điện thoại đã kết nối, góc đặt phù hợp", required: needPhone });
+    else if (phone.layout === "bad") set("phone", { level: bad, detail: phone.layoutMessage, required: needPhone });
+    else set("phone", { level: "checking", detail: "Điện thoại đã kết nối — đang kiểm tra góc đặt…", required: needPhone });
+  }, [wantPhone, needPhone, phone.link, phone.layout, phone.layoutMessage, phone.error, set]);
+
+  // the link is created as soon as the exam is known to want a phone
+  const autoLink = useRef(false);
+  useEffect(() => {
+    if (wantPhone && phone.link === "idle" && !autoLink.current && detail) {
+      autoLink.current = true;
+      void phone.connect();
+    }
+  }, [wantPhone, phone, detail]);
+
+  // a phone that just connected gets its placement checked after a moment (time to put it down)
+  useEffect(() => {
+    if (phone.link !== "connected" || phone.layout !== "unknown") return;
+    const t = window.setTimeout(() => void phone.checkLayout(), 3000);
+    return () => window.clearTimeout(t);
+  }, [phone.link, phone.layout, phone.checkLayout]);
+
   const blockers = ORDER.map((id) => checks[id]).filter((c) => c.required && c.level !== "ok" && c.level !== "warn");
   const checking = ORDER.some((id) => checks[id].level === "checking");
   // a required check that only warned (e.g. dev bypass) does not block; "fail" and "idle" on required ones do
@@ -317,6 +348,7 @@ export default function ExamLobby({
       });
       clearPendingExam();
       startedRef.current = true;
+      if (wantPhone) await phone.announceStart(); // the phone moves to the exam room
       onStarted();
     } catch (e) {
       const text = e instanceof ApiError ? e.message : errorText(e, "Không vào được phòng thi.");
@@ -325,7 +357,7 @@ export default function ExamLobby({
     } finally {
       setStarting(false);
     }
-  }, [onStarted, pending.id, needScreen, shareScreen]);
+  }, [onStarted, pending.id, needScreen, shareScreen, wantPhone, phone]);
 
   // dev: "setup" bypass goes straight in as soon as the exam detail is known
   const auto = useRef(false);
@@ -389,6 +421,37 @@ export default function ExamLobby({
               </li>
             )}
             {wantCamera && <Row c={{ ...checks.face, required: needCamera }} icon={<ScanFace size={14} />} />}
+            {wantPhone && (
+              <Row
+                c={{ ...checks.phone, required: needPhone }}
+                icon={<Smartphone size={14} />}
+                action={
+                  phone.link === "idle" || phone.link === "error" ? (
+                    <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect()}>
+                      Tạo mã QR
+                    </Button>
+                  ) : phone.link === "connected" ? (
+                    <Button size="sm" loading={phone.layout === "checking"} onClick={() => void phone.checkLayout()}>
+                      Kiểm tra góc đặt
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
+            {wantPhone && phone.qr && phone.link !== "connected" && (
+              <li className="flex items-center gap-4 rounded-lg border border-line bg-surface p-3">
+                <img src={phone.qr} alt="Mã QR kết nối điện thoại" className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
+                <div className="min-w-0 space-y-1 text-[11px] leading-relaxed text-muted">
+                  <p className="text-xs font-medium text-fg">Quét bằng camera điện thoại</p>
+                  <p>1. Mở liên kết, cho phép camera.</p>
+                  <p>2. Đặt điện thoại nằm ngang ở góc bàn, thấy bạn và màn hình laptop.</p>
+                  <p>3. Cắm sạc, giữ màn hình sáng suốt giờ thi.</p>
+                  <button type="button" className="text-accent hover:underline" onClick={() => void phone.connect()}>
+                    Tạo mã mới
+                  </button>
+                </div>
+              </li>
+            )}
             {wantMic && <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />}
             {wantScreen && <Row
               c={{ ...checks.screen, required: needScreen }}
@@ -417,6 +480,12 @@ export default function ExamLobby({
           {wantCamera && (
             <div className="overflow-hidden rounded-xl border border-line bg-black">
               <video ref={video} autoPlay muted playsInline className="aspect-[4/3] w-full object-cover" />
+            </div>
+          )}
+          {wantPhone && phone.link === "connected" && (
+            <div className="overflow-hidden rounded-xl border border-line bg-black">
+              <video ref={phone.attach} autoPlay muted playsInline className="aspect-video w-full object-cover" />
+              <p className="bg-surface px-2.5 py-1 text-[10px] text-muted">Hình từ điện thoại</p>
             </div>
           )}
           {wantMic && <div className="rounded-xl border border-line bg-surface p-3">
@@ -454,6 +523,7 @@ function initial(): Record<Check["id"], Check> {
     apps: mk("apps", "Ứng dụng bị cấm", true),
     camera: mk("camera", "Camera", false),
     face: mk("face", "Nhận diện khuôn mặt", false),
+    phone: mk("phone", "Camera mở rộng (điện thoại)", false),
     mic: mk("mic", "Micro", false),
     screen: mk("screen", "Chia sẻ màn hình", false),
   };
