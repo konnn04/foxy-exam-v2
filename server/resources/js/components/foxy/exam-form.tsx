@@ -28,6 +28,7 @@ import {
 } from './ui';
 import { DIFFICULTY, initials } from './domain';
 import { useDialog } from './dialogs';
+import { SaveBar, discardChanges, useUnsavedGuard } from './save-bar';
 import { Combobox } from './combobox';
 import { DateTimeInput } from './datetime-input';
 import { StudentPicker } from './student-picker';
@@ -75,7 +76,9 @@ export interface ProctorOption {
 export interface ExamFormPageProps {
   user: any;
   teams: TeamItem[];
-  courses: { id: number; name: string; code: string; students_count?: number }[];
+  courses: { id: number; name: string; code: string; students_count?: number; faces_count?: number }[];
+  /** does each AI service answer a ping right now? */
+  aiStatus?: { face: boolean; objects: boolean };
   questionSets: ExamSetOption[];
   proctorOptions?: ProctorOption[];
   defaultCourseId?: number | null;
@@ -110,7 +113,7 @@ export const KIND_META: Record<ExamKind, { label: string; desc: string; icon: ty
 };
 
 export type MonLevel = 'none' | 'standard' | 'strict' | 'custom';
-type MonKey = 'prevent_tab_switch' | 'ai_face_check' | 'prevent_paste' | 'track_keystroke' | 'require_mic';
+type MonKey = 'prevent_tab_switch' | 'ai_face_check' | 'ai_identity' | 'ai_objects' | 'prevent_paste' | 'track_keystroke' | 'require_mic';
 const MON_KEYS: Record<ExamKind, MonKey[]> = {
   general: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'require_mic'],
   programming: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'track_keystroke'],
@@ -156,6 +159,10 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     require_mic: pick('require_mic', false),
     require_screen: pick('require_screen', false),
     extra_camera: pick<'off' | 'optional' | 'required'>('extra_camera', 'off'),
+    ai_identity: pick('ai_identity', false),
+    ai_objects: pick('ai_objects', false),
+    extra_camera_objects: pick('extra_camera_objects', false),
+    extra_camera_spot_check: pick('extra_camera_spot_check', false),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -188,7 +195,13 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
   };
   const flipMon = (k: MonKey, v: boolean) => {
     setMon('custom');
-    set(k, v);
+    setForm((f) => ({ ...f, [k]: v, ...(k === 'ai_face_check' && !v ? { ai_identity: false, ai_objects: false } : {}) }));
+    setDirty(true);
+  };
+  /** the phone camera: turning it off also turns its sub-options off */
+  const setExtraCamera = (v: 'off' | 'optional' | 'required') => {
+    setForm((f) => ({ ...f, extra_camera: v, ...(v === 'off' ? { extra_camera_objects: false, extra_camera_spot_check: false } : {}) }));
+    setDirty(true);
   };
 
   const done = [form.title.trim() && form.course_id ? 0 : -1, form.question_set_id ? 1 : -1].filter((i) => i >= 0);
@@ -206,6 +219,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     const data = { ...form, status: status ?? form.status };
     const url = exam ? `/admin/exams/${exam.id}/update` : '/admin/exams';
     router.post(url, data, {
+      preserveScroll: true,
       onError: (e) => {
         setErrors(e);
         if (e.title || e.course_id || e.duration_minutes || e.start_time || e.end_time || e.status) setStep(0);
@@ -216,7 +230,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     });
   };
 
-  return { kind, form, set, step, setStep, mon, applyLevel, flipMon, errors, processing, dirty, submit, sets, chosen, course, done, isEdit: !!exam };
+  return { kind, form, set, step, setStep, mon, applyLevel, flipMon, setExtraCamera, errors, processing, dirty, submit, sets, chosen, course, done, isEdit: !!exam };
 }
 
 export type ExamFormState = ReturnType<typeof useExamForm>;
@@ -254,11 +268,9 @@ export function ExamFormShell({
     if (ok) router.post(`/admin/exams/${exam.id}/delete`);
   };
 
-  const primary = exam ? (
-    <FxButton variant="primary" icon={Save} disabled={state.processing} onClick={() => state.submit()}>
-      Lưu thay đổi
-    </FxButton>
-  ) : (
+  useUnsavedGuard(state.dirty);
+  // editing: no save button until something changed; the floating bar below appears then
+  const primary = exam ? null : (
     <FxButton variant="primary" icon={CalendarCheck} disabled={state.processing} onClick={() => state.submit('PUBLISHED')}>
       Lên lịch kỳ thi
     </FxButton>
@@ -333,7 +345,7 @@ export function ExamFormShell({
       <StepTabs labels={steps} current={state.step} done={state.done} onChange={state.setStep} />
       {children}
       <StepFooter labels={steps} current={state.step} onChange={state.setStep} lastAction={primary} />
-
+      {exam && <SaveBar visible={state.dirty} processing={state.processing} onSave={() => state.submit()} onCancel={discardChanges} />}
     </AdminLayout>
   );
 }
@@ -502,7 +514,10 @@ export function ExamSetStep({ page, state }: { page: ExamFormPageProps; state: E
 
 /** Bước Giám sát — the toggles differ per kind. */
 export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; state: ExamFormState }) {
-  const { kind, form, mon, applyLevel, flipMon } = state;
+  const { kind, form, mon, applyLevel, flipMon, setExtraCamera } = state;
+  const ai = page.aiStatus ?? { face: true, objects: true };
+  const faces = page.courses.find((c) => c.id === Number(form.course_id));
+  const svc = (up: boolean) => <Pill size="sm" tone={up ? 'success' : 'danger'}>{up ? 'Dịch vụ sẵn sàng' : 'Dịch vụ không phản hồi'}</Pill>;
   const isCode = kind === 'programming';
   return (
     <div className="flex flex-col gap-4">
@@ -526,10 +541,36 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               { key: 'tab', label: 'Theo dõi chuyển tab / cửa sổ', desc: 'TAB_SWITCH · WINDOW_LOST_FOCUS', checked: form.prevent_tab_switch, onChange: (v) => flipMon('prevent_tab_switch', v) },
               {
                 key: 'face',
-                label: 'Xác thực khuôn mặt (AI)',
-                desc: page.quota && !page.quota.has_ai ? 'Gói hiện tại chưa bao gồm giám sát AI' : 'NO_FACE_DETECTED · FACE_MISMATCH · MULTIPLE_PEOPLE',
+                label: 'Giám sát bằng camera (MediaPipe)',
+                desc: 'Khuôn mặt, hướng đầu, ánh mắt, độ tập trung — phân tích ngay trên máy thí sinh, không cần dịch vụ AI',
                 checked: form.ai_face_check,
                 onChange: (v) => flipMon('ai_face_check', v),
+              },
+              {
+                key: 'identity',
+                indent: true,
+                label: 'Xác thực sinh viên (AI)',
+                badge: svc(ai.face),
+                desc: (
+                  <>
+                    So khuôn mặt với ảnh sinh trắc học đã đăng ký · FACE_MISMATCH.{' '}
+                    {faces ? `${faces.faces_count ?? 0}/${faces.students_count ?? 0} sinh viên của khóa đã đăng ký khuôn mặt; ai chưa có sẽ đăng ký ở phòng chờ.` : ''}
+                    {!ai.face && !form.ai_identity ? ' Cần dịch vụ phản hồi ping mới bật được.' : ''}
+                  </>
+                ),
+                checked: form.ai_identity,
+                disabled: !form.ai_face_check || (!ai.face && !form.ai_identity),
+                onChange: (v) => flipMon('ai_identity', v),
+              },
+              {
+                key: 'objects',
+                indent: true,
+                label: 'Giám sát vật cấm (AI)',
+                badge: svc(ai.objects),
+                desc: `Điện thoại, laptop, sách… trong khung camera · PROHIBITED_DEVICE.${!ai.objects && !form.ai_objects ? ' Cần dịch vụ phản hồi ping mới bật được.' : ''}`,
+                checked: form.ai_objects,
+                disabled: !form.ai_face_check || (!ai.objects && !form.ai_objects),
+                onChange: (v) => flipMon('ai_objects', v),
               },
               { key: 'paste', label: 'Chặn sao chép / dán', desc: 'Chặn copy, cut, paste, kéo thả văn bản — kể cả 1 ký tự · BULK_PASTE', checked: form.prevent_paste, onChange: (v: boolean) => flipMon('prevent_paste', v) },
               ...(isCode
@@ -542,14 +583,14 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
           />
           <div className="flex flex-col gap-2 border-t border-border py-3.5">
             <div>
-              <div className="text-[13px] font-medium">Camera mở rộng (điện thoại)</div>
-              <div className="text-xs text-muted-foreground">Thí sinh quét QR để dùng điện thoại làm camera thứ hai nhìn từ góc bàn; ảnh minh chứng có thêm ảnh từ điện thoại.</div>
+              <div className="text-sm font-medium">Camera mở rộng (điện thoại)</div>
+              <div className="text-xs text-muted-foreground">Thí sinh quét QR để dùng điện thoại làm camera thứ hai, đặt vuông góc với laptop. Hình hiện cạnh camera chính trong phòng thi; bắt buộc thì phải kết nối mới vào thi được.</div>
             </div>
             <Segmented
               className="max-w-[420px]"
               stretch
               value={form.extra_camera}
-              onChange={(v) => state.set('extra_camera', v)}
+              onChange={setExtraCamera}
               options={[
                 { value: 'off', label: 'Không dùng' },
                 { value: 'optional', label: 'Tùy chọn' },
@@ -557,6 +598,31 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               ]}
             />
           </div>
+          <ToggleList
+            items={[
+              {
+                key: 'cam2-objects',
+                indent: true,
+                label: 'Giám sát vật cấm qua camera phụ',
+                badge: svc(ai.objects),
+                desc: 'Nhận diện điện thoại, sách, laptop khác trong khung điện thoại',
+                checked: form.extra_camera_objects,
+                disabled: form.extra_camera === 'off' || (!ai.objects && !form.extra_camera_objects),
+                onChange: (v) => {
+                  state.set('extra_camera_objects', v);
+                },
+              },
+              {
+                key: 'cam2-spot',
+                indent: true,
+                label: 'Kiểm tra ngẫu nhiên',
+                desc: 'Thỉnh thoảng yêu cầu thí sinh nhìn vào camera phụ trong 10 giây; không làm sẽ ghi nhận vi phạm',
+                checked: form.extra_camera_spot_check,
+                disabled: form.extra_camera === 'off',
+                onChange: (v) => state.set('extra_camera_spot_check', v),
+              },
+            ]}
+          />
         </Panel>
         <Panel className="flex flex-[1_1_280px] flex-col gap-3">
           <PanelTitle title="FoxyClient" desc="Thí sinh làm bài qua ứng dụng desktop" />

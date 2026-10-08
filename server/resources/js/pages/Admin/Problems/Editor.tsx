@@ -1,3 +1,4 @@
+import { SaveBar, discardChanges, useUnsavedGuard } from '@/components/foxy/save-bar';
 import React, { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Plus, Send, Trash2 } from 'lucide-react';
@@ -116,6 +117,8 @@ export default function ProblemEditor({ user, teams, questionSet, problem }: Pro
     form.test_cases.some((t) => t.input_data && t.expected_output) ? 3 : -1,
   ].filter((i) => i >= 0);
 
+  useUnsavedGuard(dirty);
+
   const save = () => {
     if (!form.title.trim()) {
       setErrors({ title: 'Nhập tên bài.' });
@@ -180,9 +183,11 @@ export default function ProblemEditor({ user, teams, questionSet, problem }: Pro
           </>
         }
         actions={
-          <FxButton variant="primary" icon={Send} disabled={processing} onClick={save}>
-            {problem ? 'Lưu thay đổi' : 'Tạo bài'}
-          </FxButton>
+          problem ? undefined : (
+            <FxButton variant="primary" icon={Send} disabled={processing} onClick={save}>
+              Tạo bài
+            </FxButton>
+          )
         }
       />
 
@@ -389,11 +394,14 @@ export default function ProblemEditor({ user, teams, questionSet, problem }: Pro
         current={step}
         onChange={setStep}
         lastAction={
-          <FxButton variant="primary" icon={Send} disabled={processing} onClick={save}>
-            {problem ? 'Lưu thay đổi' : 'Tạo bài'}
-          </FxButton>
+          problem ? null : (
+            <FxButton variant="primary" icon={Send} disabled={processing} onClick={save}>
+              Tạo bài
+            </FxButton>
+          )
         }
       />
+      {problem && <SaveBar visible={dirty} processing={processing} onSave={save} onCancel={discardChanges} />}
     </AdminLayout>
   );
 }

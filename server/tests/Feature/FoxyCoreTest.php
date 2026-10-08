@@ -347,7 +347,7 @@ class FoxyCoreTest extends TestCase
             'max_attempts' => 3,
         ];
 
-        $this->post("/admin/exams/{$exam->id}/update", $payload)->assertRedirect('/admin/exams');
+        $this->post("/admin/exams/{$exam->id}/update", $payload)->assertRedirect()->assertSessionHas('success');
         $exam->refresh();
         $this->assertSame(3, $exam->max_attempts);
         $this->assertSame('2026-11-01 01:00:00', $exam->start_time->format('Y-m-d H:i:s'));

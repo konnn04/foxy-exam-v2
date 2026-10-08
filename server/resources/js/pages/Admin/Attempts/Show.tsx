@@ -35,7 +35,7 @@ export interface AttemptPayload {
   submitted_at: string | null;
   device_info: Record<string, unknown> | null;
   user: { name: string; username: string; email?: string | null };
-  exam: { id: number; title: string; code: string; type: string; duration_minutes: number };
+  exam: { id: number; title: string; code: string; type: string; duration_minutes: number; monitoring_config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null };
 }
 
 interface ViolationRow {
@@ -234,7 +234,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
-          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null} />
+          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null} config={attempt.exam.monitoring_config} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">
@@ -246,8 +246,8 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
               <span className="text-xs text-muted-foreground">Nhấn vào mốc để nhảy tới vi phạm</span>
             </div>
             <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-              <span>Gõ phím</span>
-              <div className="flex h-[22px] items-end gap-px">
+              {typing.length > 0 && <span>Gõ phím</span>}
+              {typing.length > 0 && <div className="flex h-[22px] items-end gap-px">
                 {bins.map((b, i) => (
                   <span
                     key={i}
@@ -256,7 +256,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                     style={{ height: `${Math.max(b.keys ? 8 : 4, (b.keys / maxKeys) * 100)}%`, opacity: b.keys || b.pastes ? 1 : 0.35 }}
                   />
                 ))}
-              </div>
+              </div>}
               <span>Vi phạm</span>
               <div className="relative h-[22px] rounded bg-surface">
                 {groups.map((g) => (
@@ -271,8 +271,8 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 ))}
                 {sel && <span className="absolute -bottom-1 -top-1 w-0.5 rounded bg-foreground" style={{ left: `${pos(sel.timestamp)}%` }} />}
               </div>
-              <span>Nộp bài</span>
-              <div className="relative h-3.5">
+              {submissions.length > 0 && <span>Nộp bài</span>}
+              {submissions.length > 0 && <div className="relative h-3.5">
                 {submissions.map((s) => (
                   <span
                     key={s.id}
@@ -281,7 +281,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                     style={{ left: `calc(${pos(s.t)}% - 5px)` }}
                   />
                 ))}
-              </div>
+              </div>}
             </div>
             {ticks.length > 0 && (
               <div className="flex justify-between pl-[84px] font-mono text-[11px] text-muted-foreground/70">

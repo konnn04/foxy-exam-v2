@@ -91,7 +91,7 @@ class CrudRoutesTest extends TestCase
             'name' => 'Lập trình C++ Chuyên sâu',
             'code' => 'CPP201_V2',
             'description' => 'Cập nhật môn học',
-        ])->assertRedirect('/admin/courses');
+        ])->assertRedirect()->assertSessionHas('success');
 
         $createdCourse->refresh();
         $this->assertEquals('Lập trình C++ Chuyên sâu', $createdCourse->name);

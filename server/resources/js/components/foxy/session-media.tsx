@@ -51,7 +51,21 @@ function Player({ rec, at, label, icon: Icon }: { rec: RecordingInfo | null; at:
 }
 
 /** Session video (camera + screen) that jumps to the selected violation, and the picture taken at that moment. */
-export function SessionMedia({ examId, attemptId, at, evidenceId, evidence: evidenceSet }: { examId: number; attemptId: number; at: string | null; evidenceId: string | null; evidence?: Record<string, string> | null }) {
+export function SessionMedia({
+  examId,
+  attemptId,
+  at,
+  evidenceId,
+  evidence: evidenceSet,
+  config,
+}: {
+  examId: number;
+  attemptId: number;
+  at: string | null;
+  evidenceId: string | null;
+  evidence?: Record<string, string> | null;
+  config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null;
+}) {
   const { items, state } = useAttemptRecordings(examId, attemptId);
   const atMs = at ? new Date(at).getTime() : null;
 
@@ -60,6 +74,15 @@ export function SessionMedia({ examId, attemptId, at, evidenceId, evidence: evid
     const sort = (k: string) => ready.filter((r) => r.kind === k).sort((a, b) => (a.started_at ?? a.created_at) - (b.started_at ?? b.created_at));
     return { camera: sort('camera'), screen: sort('screen'), camera2: sort('camera2') };
   }, [items]);
+  // a source is shown when it was recorded, or when the exam required it (a missing recording is then news);
+  // nothing is rendered for sources the exam never used, so reviewing a plain exam does not show empty boxes
+  const asked = { camera: !!config?.ai_face_check, screen: !!config?.require_screen, camera2: (config?.extra_camera ?? 'off') !== 'off' };
+  const tiles = ([
+    { key: 'camera', label: 'Camera', icon: Video },
+    { key: 'screen', label: 'Màn hình', icon: Monitor },
+    { key: 'camera2', label: 'Camera phụ', icon: Smartphone },
+  ] as const).filter((t) => state !== 'loading' && (byKind[t.key].length > 0 || (config ? asked[t.key] : t.key !== 'camera2')));
+
   // the three pictures of the violation moment: screen, main camera, phone camera (older violations have just one)
   const shots = ([
     ['screen', 'Màn hình'],
@@ -72,11 +95,13 @@ export function SessionMedia({ examId, attemptId, at, evidenceId, evidence: evid
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
-        <Player rec={pick(byKind.camera, atMs)} at={atMs} label="Camera" icon={Video} />
-        <Player rec={pick(byKind.screen, atMs)} at={atMs} label="Màn hình" icon={Monitor} />
-        {byKind.camera2.length > 0 && <Player rec={pick(byKind.camera2, atMs)} at={atMs} label="Camera phụ" icon={Smartphone} />}
-      </div>
+      {tiles.length > 0 && (
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
+          {tiles.map((t) => (
+            <Player key={t.key} rec={pick(byKind[t.key], atMs)} at={atMs} label={t.label} icon={t.icon} />
+          ))}
+        </div>
+      )}
       {state === 'disabled' && <div className="text-xs text-muted-foreground">Hệ thống ghi hình chưa được bật.</div>}
       {state === 'error' && <div className="text-xs text-danger-fg">Không tải được bản ghi của phiên này.</div>}
       {(shots.length > 0 || single) && (

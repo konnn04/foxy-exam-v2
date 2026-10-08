@@ -399,20 +399,36 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   );
 }
 
-export function ToggleList({
-  items,
-}: {
-  items: { key: string; label: string; desc?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }[];
-}) {
+export interface ToggleItem {
+  key: string;
+  label: string;
+  desc?: React.ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  /** a sub-option of the item above it: indented, and off + locked while its parent is off */
+  indent?: boolean;
+  badge?: React.ReactNode;
+}
+
+export function ToggleList({ items }: { items: ToggleItem[] }) {
   return (
     <div className="flex flex-col">
       {items.map((it, i) => (
         <div
           key={it.key}
-          className={cn('flex items-center gap-3 py-3', i < items.length - 1 && 'border-b border-border', it.disabled && 'opacity-50')}
+          className={cn(
+            'flex items-center gap-3 py-3',
+            i < items.length - 1 && 'border-b border-border',
+            it.indent && 'ml-5 border-l-2 border-l-border pl-4',
+            it.disabled && 'opacity-60',
+          )}
         >
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">{it.label}</div>
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+              {it.label}
+              {it.badge}
+            </div>
             {it.desc && <div className="mt-0.5 text-xs text-muted-foreground">{it.desc}</div>}
           </div>
           <Switch checked={it.checked} onChange={(v) => !it.disabled && it.onChange(v)} label={it.label} />

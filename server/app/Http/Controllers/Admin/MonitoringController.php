@@ -501,6 +501,7 @@ class MonitoringController extends Controller
                 'code' => $attempt->exam->code,
                 'type' => $attempt->exam->type,
                 'duration_minutes' => $attempt->exam->duration_minutes,
+                'monitoring_config' => $attempt->exam->monitoring_config,
             ],
         ];
     }

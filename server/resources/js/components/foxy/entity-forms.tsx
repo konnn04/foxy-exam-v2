@@ -2,6 +2,7 @@
  * Create & edit forms for Tổ chức, Khóa học, Người dùng.
  * Each Create/Edit page pair renders the same component, so both always look identical.
  */
+import { SaveBar, discardChanges, useDirty, useUnsavedGuard } from './save-bar';
 import React, { useState } from 'react';
 import { DateInput } from './datetime-input';
 import { router } from '@inertiajs/react';
@@ -31,6 +32,8 @@ function FormFrame({
   onDelete,
   main,
   aside,
+  edit = false,
+  dirty = false,
 }: {
   user: any;
   teams: TeamItem[];
@@ -47,7 +50,11 @@ function FormFrame({
   onDelete?: () => void;
   main: React.ReactNode;
   aside?: React.ReactNode;
+  /** editing an existing record: the save button lives in a bar that appears only when something changed */
+  edit?: boolean;
+  dirty?: boolean;
 }) {
+  useUnsavedGuard(dirty);
   return (
     <AdminLayout user={user} teams={teams} activeTeam={activeTeam} currentTab={tab} title={title} breadcrumbs={crumbs}>
       <PageHeader
@@ -62,9 +69,11 @@ function FormFrame({
                 Xóa
               </FxButton>
             )}
-            <FxButton variant="primary" icon={Save} disabled={processing} onClick={onSave}>
-              {saveLabel}
-            </FxButton>
+            {!edit && (
+              <FxButton variant="primary" icon={Save} disabled={processing} onClick={onSave}>
+                {saveLabel}
+              </FxButton>
+            )}
           </>
         }
       />
@@ -79,6 +88,7 @@ function FormFrame({
         {aside && <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">{aside}</div>}
         <button type="submit" hidden />
       </form>
+      {edit && <SaveBar visible={dirty} processing={processing} onSave={onSave} onCancel={discardChanges} saveLabel={saveLabel} />}
     </AdminLayout>
   );
 }
@@ -115,6 +125,7 @@ export function OrganizationForm({ user, teams, plans = [], organization }: { us
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState(false);
+  const { dirty, markSaved } = useDirty(form);
   const dialog = useDialog();
   const removeOrg = async () => {
     if (!organization) return;
@@ -133,6 +144,8 @@ export function OrganizationForm({ user, teams, plans = [], organization }: { us
   const save = () => {
     setProcessing(true);
     router.post(organization ? `/admin/organizations/${organization.id}/update` : '/admin/organizations', form, {
+      preserveScroll: true,
+      onSuccess: () => organization && markSaved(),
       onError: setErrors,
       onFinish: () => setProcessing(false),
     });
@@ -153,6 +166,8 @@ export function OrganizationForm({ user, teams, plans = [], organization }: { us
         saveLabel={organization ? 'Lưu thay đổi' : 'Tạo tổ chức'}
         onSave={save}
         processing={processing}
+        edit={!!organization}
+        dirty={dirty}
         onDelete={organization && !isRoot ? removeOrg : undefined}
         main={
           <>
@@ -269,6 +284,7 @@ export function CourseForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState(false);
+  const { dirty, markSaved } = useDirty(form);
   const dialog = useDialog();
   const removeCourse = async () => {
     if (!course) return;
@@ -283,7 +299,7 @@ export function CourseForm({
 
   const save = () => {
     setProcessing(true);
-    router.post(course ? `/admin/courses/${course.id}/update` : '/admin/courses', form, { onError: setErrors, onFinish: () => setProcessing(false) });
+    router.post(course ? `/admin/courses/${course.id}/update` : '/admin/courses', form, { preserveScroll: true, onSuccess: () => course && markSaved(), onError: setErrors, onFinish: () => setProcessing(false) });
   };
 
   return (
@@ -299,6 +315,8 @@ export function CourseForm({
         desc="Khóa học gom bộ đề, danh sách ghi danh và các kỳ thi của một môn."
         saveLabel={course ? 'Lưu thay đổi' : 'Tạo khóa học'}
         onSave={save}
+        edit={!!course}
+        dirty={dirty}
         processing={processing}
         onDelete={course ? removeCourse : undefined}
         main={
@@ -413,6 +431,7 @@ export function UserForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState(false);
+  const { dirty, markSaved } = useDirty(form);
   const dialog = useDialog();
 
   const isOrgRoot = (id: number) => {
@@ -438,7 +457,7 @@ export function UserForm({
   const save = () => {
     setProcessing(true);
     const url = target ? `/admin/users/${target.id}/update?org_id=${form.organization_id}` : `/admin/users?org_id=${form.organization_id}`;
-    router.post(url, { ...form, name: fullName || form.username }, { onError: setErrors, onFinish: () => setProcessing(false) });
+    router.post(url, { ...form, name: fullName || form.username }, { preserveScroll: true, onSuccess: () => target && markSaved(), onError: setErrors, onFinish: () => setProcessing(false) });
   };
 
   return (
@@ -454,6 +473,8 @@ export function UserForm({
         desc={`Thuộc tổ chức ${organizations.find((o) => o.id === Number(form.organization_id))?.name ?? scopeOrg.name}`}
         saveLabel={target ? 'Lưu thay đổi' : 'Tạo tài khoản'}
         onSave={save}
+        edit={!!target}
+        dirty={dirty}
         processing={processing}
         onDelete={target && !isSelf ? removeUser : undefined}
         main={

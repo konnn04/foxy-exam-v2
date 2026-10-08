@@ -1,3 +1,4 @@
+import { useUnsavedGuard } from '@/components/foxy/save-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Code, Copy, Download, Ellipsis, ListChecks, MonitorSmartphone, Pencil, Plus, Send, Trash2, Info, Pencil as Edit } from 'lucide-react';
@@ -73,13 +74,8 @@ export default function ShowQuestionSet({ user, teams, questionSet, courses, cla
     if (r) setDraft(draftOf(r.q));
   }, [classicalQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // leaving the page with unsaved changes
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  // leaving the page with unsaved changes (reload, close tab, any navigation)
+  useUnsavedGuard(dirty);
 
   const discardOk = async () =>
     !dirty ||

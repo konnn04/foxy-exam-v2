@@ -110,7 +110,7 @@ class PortalAndProctorTest extends TestCase
         $this->actingAs($admin)->post("/admin/exams/{$exam->id}/update", [
             'course_id' => $course->id, 'question_set_id' => $set->id, 'title' => 'Có giám thị', 'duration_minutes' => 60,
             'status' => 'DRAFT', 'proctor_ids' => [],
-        ])->assertRedirect('/admin/exams');
+        ])->assertRedirect()->assertSessionHas('success');
         $this->assertEquals([$admin->id], $exam->proctors()->pluck('users.id')->all());
 
         // the edit page pre-selects them

@@ -295,7 +295,7 @@ Route::middleware(['auth'])->group(function () {
             }
         }
 
-        return redirect('/admin/organizations');
+        return back()->with('success', 'Đã lưu tổ chức.');
     });
 
     Route::get('/admin/organizations/{id}', function (Request $request, $id) use ($getAdminCommonData, $checkIsRootAdmin) {
@@ -526,6 +526,11 @@ Route::middleware(['auth'])->group(function () {
                 'role' => $targetUser->role,
                 'status' => $targetUser->status,
                 'created_at' => $targetUser->created_at?->toIso8601String(),
+                'face' => $targetUser->role === 'STUDENT' ? [
+                    'enrolled' => \App\Support\FaceReference::has($targetUser),
+                    'locked' => $targetUser->face_locked_at !== null,
+                    'enrolled_at' => $targetUser->face_enrolled_at?->toIso8601String(),
+                ] : null,
                 'organization' => $targetUser->organization ? [
                     'id' => $targetUser->organization->id,
                     'name' => $targetUser->organization->name,
@@ -607,7 +612,7 @@ Route::middleware(['auth'])->group(function () {
         session()->put('foxy_active_org_id', $targetOrgId);
         cookie()->queue('foxy_active_org_id', (string)$targetOrgId, 60 * 24 * 30);
 
-        return redirect('/admin/users?org_id=' . $targetOrgId);
+        return back()->with('success', 'Đã lưu tài khoản.');
     });
 
     Route::post('/admin/users/{id}/delete', function (Request $request, $id) {
@@ -920,7 +925,7 @@ Route::middleware(['auth'])->group(function () {
             'teacher_id' => $validated['teacher_id'] ?? $course->teacher_id,
         ]);
 
-        return redirect('/admin/courses');
+        return back()->with('success', 'Đã lưu khóa học.');
     });
 
     Route::post('/admin/courses/{id}/delete', function ($id) {
@@ -935,9 +940,10 @@ Route::middleware(['auth'])->group(function () {
     // ==========================================
     // Shared data for the two exam forms (FoxyExam Screens v2): Thi phổ thông = CLASSICAL sets, Thi lập trình = PROGRAMMING sets.
     $examFormProps = function (int $orgId, string $setType) {
-        $courses = Course::where('organization_id', $orgId)->withCount('enrollments')->get(['id', 'name', 'code']);
+        $withFaces = ['enrollments', 'students as faces_count' => fn ($q) => $q->whereNotNull('users.face_enrolled_at')];
+        $courses = Course::where('organization_id', $orgId)->withCount($withFaces)->get(['id', 'name', 'code']);
         if ($courses->isEmpty()) {
-            $courses = Course::withCount('enrollments')->get(['id', 'name', 'code']);
+            $courses = Course::withCount($withFaces)->get(['id', 'name', 'code']);
         }
 
         $questionSets = QuestionSet::where('organization_id', $orgId)
@@ -984,8 +990,13 @@ Route::middleware(['auth'])->group(function () {
                 'name' => $c->name,
                 'code' => $c->code,
                 'students_count' => $c->enrollments_count,
+                'faces_count' => (int) ($c->faces_count ?? 0),
             ]),
             'questionSets' => $questionSets,
+            'aiStatus' => [
+                'face' => \App\Services\AiService::serviceOnline('face'),
+                'objects' => \App\Services\AiService::serviceOnline('objects'),
+            ],
             'quota' => [
                 'plan_name' => $quotaPlan->display_name ?? $quotaPlan->name,
                 'exams_used' => $quotaUsage->exams_created_count,
@@ -1351,7 +1362,7 @@ Route::middleware(['auth'])->group(function () {
             $exam->proctors()->sync($syncProctors($exam->organization_id, $validated['proctor_ids'] ?? [], Auth::id()));
         }
 
-        return redirect('/admin/exams');
+        return back()->with('success', 'Đã lưu kỳ thi.');
     });
 
     // Xoá 1 phiên thi (lượt làm bài) của thí sinh — đáp án, bài nộp, op-log và vi phạm
