@@ -2064,6 +2064,13 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/violations/bulk-review', [\App\Http\Controllers\Admin\MonitoringController::class, 'bulkReview']);
     Route::post('/attempts/{id}/void', [\App\Http\Controllers\Admin\MonitoringController::class, 'voidAttempt'])->whereNumber('id');
     Route::post('/violations/{id}/review', [\App\Http\Controllers\Admin\MonitoringController::class, 'review'])->whereNumber('id');
+    Route::get('/attempts/{id}/chat', [\App\Http\Controllers\Admin\AttemptChatController::class, 'index'])->whereNumber('id');
+    Route::post('/attempts/{id}/chat', [\App\Http\Controllers\Admin\AttemptChatController::class, 'store'])->whereNumber('id')->middleware('throttle:60,1');
+    Route::post('/attempts/{id}/violations', [\App\Http\Controllers\Admin\AttemptChatController::class, 'violation'])->whereNumber('id');
+    Route::get('/reports/{id}/export/attempts.csv', [\App\Http\Controllers\Admin\ExportController::class, 'attempts'])->whereNumber('id');
+    Route::get('/reports/{id}/export/violations.csv', [\App\Http\Controllers\Admin\ExportController::class, 'examViolations'])->whereNumber('id');
+    Route::get('/attempts/{id}/export/violations.csv', [\App\Http\Controllers\Admin\ExportController::class, 'attemptViolations'])->whereNumber('id');
+    Route::get('/attempts/{id}/export/chat.csv', [\App\Http\Controllers\Admin\ExportController::class, 'chat'])->whereNumber('id');
 });
 
 // 5. Lecturer portal: /lecturer/* is an alias of /admin/* (see PortalAlias / PortalRole); teachers only see the academic pages

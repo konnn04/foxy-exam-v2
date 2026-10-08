@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { router } from '@inertiajs/react';
-import { Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
+import { Download, Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
 import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
 import { formatDateTime, formatTime } from '@/lib/datetime';
 import AdminLayout from '@/layouts/AdminLayout';
@@ -106,6 +106,12 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
         }
         actions={
           <>
+            <a href={`/admin/reports/${exam.id}/export/attempts.csv`}>
+              <FxButton icon={Download}>CSV kết quả</FxButton>
+            </a>
+            <a href={`/admin/reports/${exam.id}/export/violations.csv`}>
+              <FxButton icon={Download}>CSV vi phạm</FxButton>
+            </a>
             <FxButton icon={Settings2} onClick={() => router.visit(`/admin/exams/${exam.id}`)}>
               Chi tiết kỳ thi
             </FxButton>

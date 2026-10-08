@@ -241,4 +241,34 @@ class Realtime
             Log::warning('realtime lifecycle notify failed', ['attempt' => $attempt->id, 'status' => $status, 'error' => $e->getMessage()]);
         }
     }
+
+    /** Push to ingest's internal signal endpoint: a command for the candidate or a live field for the proctors. Never throws. */
+    public function signal(ExamAttempt $attempt, array $payload): bool
+    {
+        if (!$this->enabled() || !config('services.realtime.ingest_internal_url')) {
+            return false;
+        }
+        try {
+            $body = json_encode(['attempt_id' => $attempt->id, 'exam_id' => $attempt->exam_id] + $payload);
+            [$ts, $sig] = $this->sign($body);
+
+            return Http::withHeaders(['X-Foxy-Timestamp' => $ts, 'X-Foxy-Signature' => $sig])
+                ->withBody($body, 'application/json')
+                ->connectTimeout(1)->timeout(2)
+                ->post(rtrim((string) config('services.realtime.ingest_internal_url'), '/') . '/internal/v1/signal')->successful();
+        } catch (\Throwable $e) {
+            Log::warning('realtime signal failed', ['attempt' => $attempt->id, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /** A chat message: the candidate gets it as a CHAT command, the proctors' hub row gets the new chat id. */
+    public function chat(ExamAttempt $attempt, \App\Models\AttemptMessage $message): void
+    {
+        if ($message->sender_role === 'PROCTOR') {
+            $this->signal($attempt, ['command' => ['id' => 'chat-' . $message->id, 'type' => 'CHAT', 'message' => $message->body, 'by' => $message->sender_id]]);
+        }
+        $this->signal($attempt, ['field' => 'cs', 'value' => $message->id]);
+    }
 }

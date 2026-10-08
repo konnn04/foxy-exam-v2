@@ -72,6 +72,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');
 
             Route::post('/realtime/session', [RealtimeController::class, 'session']);
+            Route::get('/attempts/{id}/chat', [\App\Http\Controllers\Api\V1\Student\AttemptChatController::class, 'index'])->whereNumber('id');
+            Route::post('/attempts/{id}/chat', [\App\Http\Controllers\Api\V1\Student\AttemptChatController::class, 'store'])->whereNumber('id')->middleware('throttle:30,1');
 
             // Anti-Cheat Telemetry & Keystroke Op-Log
             Route::post('/op-log', [TelemetryController::class, 'recordOpLog']);

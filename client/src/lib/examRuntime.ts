@@ -55,6 +55,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const [offlineFor, setOfflineFor] = useState(0);
   const [closeRequested, setCloseRequested] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [chatIn, setChatIn] = useState<{ id: string; message: string } | null>(null);
 
   const publisher = useRef<LiveKitPublisher | null>(null);
   const vision = useRef<FaceMonitor | null>(null);
@@ -85,6 +86,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           else if (cmd.type === "PAUSE") setPaused(true);
           else if (cmd.type === "RESUME") setPaused(false);
           else if (cmd.type === "FORCE_END") setEnded("force_ended");
+          else if (cmd.type === "CHAT") setChatIn({ id: cmd.id, message: cmd.message ?? "" });
         },
       }),
     [],
@@ -377,6 +379,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     mediaState,
     warning,
     dismissWarning: () => setWarning(null),
+    chatIn,
     paused,
     ended,
     begin,

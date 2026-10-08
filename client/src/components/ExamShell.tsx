@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
 import { Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
+import { ChatPanel } from "./ChatPanel";
 import { lockdownOn } from "../lib/examGuard";
 import { activeBypasses } from "../lib/dev";
 import { OFFLINE_LIMIT_S, type useExamRuntime } from "../lib/examRuntime";
@@ -114,6 +115,7 @@ export function ExamShell({
 
       <div className="flex min-h-0 flex-1">
         <div className="relative flex min-w-0 flex-1 flex-col">
+          <ChatPanel incoming={runtime.chatIn} />
           <div className={cx("flex min-h-0 flex-1 flex-col transition-[filter] duration-200", runtime.blurred && "pointer-events-none select-none blur-xl")}>{children}</div>
           {runtime.blurred && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">

@@ -18,6 +18,7 @@ import {
   violationLabel,
 } from '@/components/foxy/domain';
 import { SessionMedia } from '@/components/foxy/session-media';
+import { AttemptTools } from '@/components/foxy/attempt-tools';
 import { useMore } from '@/hooks/use-more';
 import { useDialog } from '@/components/foxy/dialogs';
 import { cn } from '@/lib/utils';
@@ -235,6 +236,8 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
           <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null} config={attempt.exam.monitoring_config} />
+
+          <AttemptTools attemptId={attempt.id} examId={attempt.exam.id} running={attempt.status === 'IN_PROGRESS'} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">

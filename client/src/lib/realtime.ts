@@ -17,7 +17,7 @@ export type RtEventType = "hb" | "violation" | "oplog" | "log" | "cmd_ack";
 
 export interface RtCommand {
   id: string;
-  type: "WARN" | "PAUSE" | "RESUME" | "FORCE_END";
+  type: "WARN" | "PAUSE" | "RESUME" | "FORCE_END" | "CHAT";
   message?: string;
   at: number;
 }

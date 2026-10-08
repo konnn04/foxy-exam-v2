@@ -592,6 +592,19 @@ export interface MobileViewer {
 /** Credentials to watch the student's linked phone; data is null when no phone was linked for this exam. */
 export const getMobileViewer = (examId: number) => request<{ success: boolean; data: MobileViewer | null }>(`/student/exams/${examId}/mobile-camera`);
 
+export interface ChatMessage {
+  id: number;
+  role: "PROCTOR" | "STUDENT";
+  name: string | null;
+  body: string;
+  at: string | null;
+}
+
+export const getAttemptChat = (attemptId: number, after = 0) => request<{ data: ChatMessage[] }>(`/student/attempts/${attemptId}/chat?after=${after}`);
+
+export const sendAttemptChat = (attemptId: number, body: string) =>
+  request<{ data: ChatMessage }>(`/student/attempts/${attemptId}/chat`, { method: "POST", body: JSON.stringify({ body }) });
+
 export interface FaceStatus {
   enrolled: boolean;
   locked: boolean;

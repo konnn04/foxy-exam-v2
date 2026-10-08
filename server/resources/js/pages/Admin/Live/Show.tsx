@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Activity, Ban, LayoutGrid, List, Megaphone, Radio, Search, Square, TriangleAlert } from 'lucide-react';
+import { Activity, Ban, LayoutGrid, List, Megaphone, MessageSquare, Radio, Search, Square, TriangleAlert } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { Dot, EmptyState, FxButton, Modal, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
@@ -11,6 +11,7 @@ import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
 import { useLiveVideo, type FeedSource } from '@/hooks/use-live-video';
 import { LiveFeed } from '@/components/foxy/live-feed';
 import { useDialog } from '@/components/foxy/dialogs';
+import { AttemptChat } from '@/components/foxy/attempt-chat';
 
 interface LiveAttempt {
   id: number;
@@ -114,6 +115,12 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
   const hubLive = rt.state === 'live';
   const video = useLiveVideo(exam.id, rt.state !== 'disabled');
   const [source, setSource] = useState<FeedSource>('camera');
+  const [chatFor, setChatFor] = useState<LiveAttempt | null>(null);
+  const [chatSeen, setChatSeen] = useState<Record<number, number>>({});
+  const openChat = (a: LiveAttempt) => {
+    setChatFor(a);
+    setChatSeen((m) => ({ ...m, [a.id]: rt.rows[a.id]?.chat_seq ?? 0 }));
+  };
 
   const warn = async (a: LiveAttempt) => {
     const msg = await dialog.prompt({ title: `Nhắc nhở ${a.name}`, label: 'Nội dung hiển thị trên máy thí sinh', initial: 'Hãy quay lại màn hình làm bài.' });
@@ -337,6 +344,10 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
                           <FxButton size="sm" icon={Megaphone} onClick={() => warn(s)}>
                             Nhắc
                           </FxButton>
+                          <FxButton size="sm" icon={MessageSquare} onClick={() => openChat(s)}>
+                            Chat
+                            {(rt.rows[s.id]?.chat_seq ?? 0) > (chatSeen[s.id] ?? 0) && <span className="ml-1 size-1.5 rounded-full bg-danger" />}
+                          </FxButton>
                           <FxButton size="sm" icon={Ban} className="text-danger-fg" onClick={() => suspend(s)}>
                             Đình chỉ
                           </FxButton>
@@ -430,6 +441,10 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
           </div>
         </Panel>
       </div>
+
+      <Modal open={chatFor !== null} onClose={() => setChatFor(null)} width={460} title={chatFor ? `Chat với ${chatFor.name}` : ''} desc="Tin nhắn được lưu lại trong phiên thi.">
+        {chatFor && <AttemptChat attemptId={chatFor.id} signal={rt.rows[chatFor.id]?.chat_seq} />}
+      </Modal>
 
       <Modal
         open={confirmEnd}
