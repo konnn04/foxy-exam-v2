@@ -51,6 +51,7 @@ func main() {
 		InternalSecret: []byte(config.Must("RT_INTERNAL_SECRET")),
 		LiveKitKey:     lkKey, LiveKitSecret: lkSecret,
 		Retention: time.Duration(config.Int("RECORD_RETENTION_DAYS", 0)) * 24 * time.Hour,
+		Cutter:    record.FFmpegCutter(config.Str("FFMPEG_PATH", "ffmpeg")),
 	}, db, store, eg, log, m)
 
 	go func() {

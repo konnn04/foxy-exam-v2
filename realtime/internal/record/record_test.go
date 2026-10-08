@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -49,6 +51,14 @@ func (f *fakeStore) Put(_ context.Context, key, _ string, body io.Reader, _ int6
 }
 func (f *fakeStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://s3.test/get/" + key, nil
+}
+func (f *fakeStore) Get(_ context.Context, key string) (io.ReadCloser, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.objects[key]; !ok {
+		return nil, errors.New("not found")
+	}
+	return io.NopCloser(strings.NewReader("video-bytes")), nil
 }
 func (f *fakeStore) Stat(_ context.Context, key string) (int64, error) {
 	f.mu.Lock()
@@ -430,7 +440,9 @@ func TestEvidenceContentIsStoredThroughTheService(t *testing.T) {
 
 func TestPhoneCameraIsRecordedFromItsPrivateRoomOnTheCoreRequest(t *testing.T) {
 	r := newRig(t, nil)
-	start := func(body map[string]any) (int, map[string]any) { return signedCall(r.h, "POST", "/internal/v1/egress/start", body) }
+	start := func(body map[string]any) (int, map[string]any) {
+		return signedCall(r.h, "POST", "/internal/v1/egress/start", body)
+	}
 
 	if code, _ := start(map[string]any{"exam_id": 2, "attempt_id": 5, "org_id": 4, "kind": "camera2"}); code != 400 {
 		t.Fatalf("camera2 without its private room must be refused, got %d", code)
@@ -489,4 +501,55 @@ func TestTrustedServicesStoreEvidenceWithASignedCall(t *testing.T) {
 	if len(r.st.objects) != 1 {
 		t.Fatalf("the picture must reach storage, got %v", r.st.objects)
 	}
+}
+
+func TestClipsAreCutOnceBoundedAndCached(t *testing.T) {
+	cuts := 0
+	r := newRig(t, func(c *Config) {
+		c.Cutter = func(_ context.Context, src, dst string, from, to float64) error {
+			cuts++
+			b, err := os.ReadFile(src)
+			if err != nil || string(b) != "video-bytes" {
+				t.Errorf("cutter must receive the stored video: %v %q", err, b)
+			}
+			return os.WriteFile(dst, []byte("clip"), 0o600)
+		}
+	})
+	r.webhook(t, trackPublished("exam-2", "attempt-5", "CAMERA"), lkSecret)
+	r.webhook(t, map[string]any{"event": "egress_ended", "egressInfo": map[string]any{
+		"egressId": "EG_b", "status": "EGRESS_COMPLETE",
+		"fileResults": []any{map[string]any{"filename": "x.mp4", "size": "10", "duration": "90000000000"}},
+	}}, lkSecret)
+	_, out := call(r.h, "GET", "/v1/exams/2/attempts/5/recordings", proctor(2), nil)
+	rec := out["recordings"].([]any)[0].(map[string]any)
+	id := rec["id"].(string)
+	// the recording's own bytes exist in the store
+	r.st.objects[objectKeyOf(t, r, id)] = 10
+
+	if code, o := call(r.h, "GET", "/v1/recordings/"+id+"/clip?from=10&to=40", proctor(2), nil); code != 200 || o["cached"] != false || o["url"] == "" {
+		t.Fatalf("first cut: %d %v", code, o)
+	}
+	if code, o := call(r.h, "GET", "/v1/recordings/"+id+"/clip?from=10&to=40", proctor(2), nil); code != 200 || o["cached"] != true || cuts != 1 {
+		t.Fatalf("second request must come from the cache: %d %v cuts=%d", code, o, cuts)
+	}
+	for _, q := range []string{"from=40&to=10", "from=-1&to=5", "from=0&to=500", "from=x&to=3", "from=200&to=210"} {
+		if code, _ := call(r.h, "GET", "/v1/recordings/"+id+"/clip?"+q, proctor(2), nil); code != 400 {
+			t.Fatalf("%s must be 400, got %d", q, code)
+		}
+	}
+	if code, _ := call(r.h, "GET", "/v1/recordings/"+id+"/clip?from=1&to=5", proctor(3), nil); code != 404 {
+		t.Fatalf("another exam's proctor must get 404, got %d", code)
+	}
+	if code, _ := call(r.h, "GET", "/v1/recordings/"+id+"/clip?from=1&to=5", candidate(5, 2), nil); code != 404 {
+		t.Fatalf("a candidate must not cut clips, got %d", code)
+	}
+}
+
+func objectKeyOf(t *testing.T, r *rig, id string) string {
+	t.Helper()
+	rec, err := r.srv.db.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rec.ObjectKey
 }

@@ -27,6 +27,7 @@ type Storage interface {
 	// Put stores an object streamed through this service (FoxyClient does not need to reach the storage endpoint).
 	Put(ctx context.Context, key, contentType string, body io.Reader, size int64) error
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
+	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Stat(ctx context.Context, key string) (size int64, err error)
 	Delete(ctx context.Context, key string) error
 }
@@ -82,6 +83,10 @@ func (s *S3Storage) PresignGet(ctx context.Context, key string, ttl time.Duratio
 	return u.String(), nil
 }
 
+func (s *S3Storage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	return s.internal.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+}
+
 func (s *S3Storage) Stat(ctx context.Context, key string) (int64, error) {
 	i, err := s.internal.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
 	if err != nil {
@@ -105,6 +110,7 @@ type Config struct {
 	UploadTTL      time.Duration
 	Retention      time.Duration // 0 = keep forever
 	MaxEvidence    int           // per attempt
+	Cutter         Cutter        // nil = clips disabled
 	Now            func() time.Time
 }
 
@@ -130,11 +136,14 @@ type Server struct {
 	eg  Egress
 	log *slog.Logger
 	m   *obs.Metrics
+
+	cut       Cutter
+	clipSlots chan struct{} // ffmpeg is heavy: a couple of cuts at a time
 }
 
 func New(cfg Config, db *DB, st Storage, eg Egress, log *slog.Logger, m *obs.Metrics) *Server {
 	cfg.defaults()
-	return &Server{cfg: cfg, db: db, st: st, eg: eg, log: log, m: m}
+	return &Server{cfg: cfg, db: db, st: st, eg: eg, log: log, m: m, cut: cfg.Cutter, clipSlots: make(chan struct{}, 2)}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -148,6 +157,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/exams/{eid}/recordings", s.handleListExam)
 	mux.HandleFunc("GET /v1/exams/{eid}/attempts/{aid}/recordings", s.handleListAttempt)
 	mux.HandleFunc("GET /v1/recordings/{id}/url", s.handleURL)
+	mux.HandleFunc("GET /v1/recordings/{id}/clip", s.handleClip)
 
 	mux.HandleFunc("POST /internal/v1/egress/start", s.handleStart)
 	mux.HandleFunc("POST /internal/v1/evidence", s.handleInternalEvidence)
