@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import { forwardRef } from "react";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 export { cx };
@@ -146,9 +146,7 @@ export function CodeTile({ code, className }: { code: string; className?: string
 export function BrandMark({ subtitle, compact }: { subtitle?: string; compact?: boolean }) {
   return (
     <div className={cx("flex min-w-0 items-center gap-2.5", compact && "justify-center")}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-white shadow-sm">
-        <GraduationCap size={18} />
-      </span>
+      <img src="/mark.png" alt="" className="h-9 w-9 shrink-0 object-contain" draggable={false} />
       <div className={cx("min-w-0 leading-tight", compact && "hidden")}>
         <p className="text-sm font-semibold text-fg">Foxy Exam</p>
         {subtitle && <p className="truncate text-[11px] text-muted">{subtitle}</p>}

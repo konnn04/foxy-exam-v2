@@ -93,7 +93,7 @@ export function OrgSwitcher({ active, canSwitch, isPlatform }: { active: TeamIte
   const brand = (
     <SidebarMenuButton size="lg" className={cn('gap-2 rounded-lg p-2 data-[state=open]:bg-sidebar-accent', !canSwitch && 'cursor-default')}>
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white">
-        <img src="/logo.png" alt="Foxy Exam" className="size-6 object-contain" />
+        <img src="/mark.png" alt="Foxy Exam" className="size-7 object-contain" />
       </div>
       <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
         <span className="text-sm font-semibold uppercase tracking-[0.02em]">Foxy Exam</span>
