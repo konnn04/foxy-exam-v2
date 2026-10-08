@@ -1,7 +1,7 @@
 import { diag } from "../lib/diag";
 import { Markdown } from "../components/Markdown";
 import { formatTime } from "../lib/datetime";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpenText, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, Loader2, Save, X } from "lucide-react";
 import { ConfirmModal, ExamShell } from "../components/ExamShell";
 import { Badge, Button, cx } from "../components/ui";
@@ -135,20 +135,45 @@ export default function ExamClassic() {
     return () => window.clearInterval(t);
   }, []);
 
-  const current = questions[index];
-  const parent = current?.parent_id ? questions.find((q) => q.id === current.parent_id) : null;
+  // A reading group is ONE page: its passage and every sub-question in order. Other questions are a page each.
+  const pages = useMemo(() => {
+    const out: ExamPage[] = [];
+    const used = new Set<number>();
+    for (const q of questions) {
+      if (used.has(q.id)) continue;
+      const group = q.type === "GROUP_QUESTION" ? q : q.parent_id ? questions.find((g) => g.id === q.parent_id && g.type === "GROUP_QUESTION") : undefined;
+      if (group) {
+        const kids = questions.filter((c) => c.parent_id === group.id).sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+        used.add(group.id);
+        kids.forEach((k) => used.add(k.id));
+        out.push({ key: group.id, group, items: kids });
+      } else {
+        used.add(q.id);
+        out.push({ key: q.id, group: null, items: [q] });
+      }
+    }
+    return out;
+  }, [questions]);
+  const page = pages[index];
+  const current = page?.items[0] ?? page?.group ?? undefined;
+  // question numbers follow the order the candidate sees them (passages are not numbered)
+  const numbers = useMemo(() => {
+    const m = new Map<number, number>();
+    pages.flatMap((pg) => pg.items).forEach((q, i) => m.set(q.id, i + 1));
+    return m;
+  }, [pages]);
 
-  const go = useCallback((i: number) => setIndex(Math.max(0, Math.min(questions.length - 1, i))), [questions.length]);
+  const go = useCallback((i: number) => setIndex(Math.max(0, Math.min(pages.length - 1, i))), [pages.length]);
   const toggleFlag = useCallback(
     () =>
-      current &&
+      page &&
       setFlags((prev) => {
         const next = new Set(prev);
-        if (next.has(current.id)) next.delete(current.id);
-        else next.add(current.id);
+        if (next.has(page.key)) next.delete(page.key);
+        else next.add(page.key);
         return next;
       }),
-    [current],
+    [page],
   );
 
   // Phím tắt: Alt+← / Alt+→ chuyển câu, F đánh dấu (khi không gõ chữ).
@@ -195,6 +220,7 @@ export default function ExamClassic() {
     return Boolean(a.answerContent?.trim());
   };
   const answeredCount = answerable.filter(isAnswered).length;
+  const pageAnswered = (pg: ExamPage) => pg.items.length > 0 && pg.items.every(isAnswered);
 
   /** Leave the room (submitted or not): stop everything, show the dashboard, then reload this window so no state survives. */
   async function leave() {
@@ -213,7 +239,7 @@ export default function ExamClassic() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime.ended]);
 
-  useEffect(() => runtime.setQuestion(questions[index]?.id ?? 0), [index, questions, runtime]);
+  useEffect(() => runtime.setQuestion(current?.id ?? 0), [current, runtime]);
 
   async function handleSubmit() {
     if (!session) return;
@@ -249,7 +275,7 @@ export default function ExamClassic() {
     );
   }
 
-  if (!session || loading || loadError || questions.length === 0) {
+  if (!session || loading || loadError || pages.length === 0 || !page) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-app text-sm text-muted">
         {loading && session ? (
@@ -275,89 +301,11 @@ export default function ExamClassic() {
     );
   }
 
-  const meta = TYPE_META[current.type];
-  const a = answers[current.id] ?? {};
-  const progress = answerable.length ? (answeredCount / answerable.length) * 100 : 0;
-
-  return (
-    <>
-      <ExamShell
-        title={session.exam.title}
-        subtitle={`${session.exam.code} · Lần thi #${session.attemptNumber}`}
-        remainingSeconds={timeRemaining}
-        onSubmit={() => setShowSubmit(true)}
-        runtime={runtime}
-        onLeave={leave}
-        toolbar={
-          <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-5 text-xs">
-            <span className="font-medium text-fg">
-              Câu {index + 1} / {questions.length}
-            </span>
-            <div className="h-1.5 w-32 overflow-hidden rounded-full bg-surface-3">
-              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="text-muted">
-              {answeredCount}/{answerable.length} đã trả lời
-            </span>
-            <div className="ml-2 flex items-center gap-1 overflow-x-auto">
-              <PagerButton onClick={() => go(index - 1)} disabled={index === 0}>
-                <ChevronLeft size={13} />
-              </PagerButton>
-              {questions.map((q, i) => (
-                <PagerButton key={q.id} onClick={() => go(i)} active={i === index} done={isAnswered(q)} flagged={flags.has(q.id)}>
-                  {i + 1}
-                </PagerButton>
-              ))}
-              <PagerButton onClick={() => go(index + 1)} disabled={index === questions.length - 1}>
-                <ChevronRight size={13} />
-              </PagerButton>
-            </div>
-            <div className="ml-auto flex gap-2">
-              <Button size="sm" icon={<LayoutGrid size={13} />} onClick={() => setShowGrid((v) => !v)}>
-                Danh sách câu
-              </Button>
-              <Button
-                size="sm"
-                icon={<Flag size={13} />}
-                onClick={toggleFlag}
-                className={flags.has(current.id) ? "border-warning/50 bg-warning-soft text-warning" : ""}
-              >
-                {flags.has(current.id) ? "Đã đánh dấu" : "Đánh dấu"}
-              </Button>
-            </div>
-          </div>
-        }
-      >
-        <div className="flex min-h-0 flex-1">
-          {showGrid && (
-            <aside className="w-56 shrink-0 overflow-y-auto border-r border-line bg-surface p-3">
-              <div className="grid grid-cols-4 gap-1.5">
-                {questions.map((q, i) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => go(i)}
-                    className={cx(
-                      "relative flex h-10 flex-col items-center justify-center rounded-lg border font-mono text-xs",
-                      i === index
-                        ? "border-accent bg-accent text-white"
-                        : isAnswered(q)
-                          ? "border-success/40 bg-success-soft text-success"
-                          : "border-line text-muted hover:bg-surface-3",
-                    )}
-                  >
-                    {i + 1}
-                    <span className="font-sans text-[8px] opacity-70">{TYPE_META[q.type].label.split(" ")[0]}</span>
-                    {flags.has(q.id) && <Flag size={9} className="absolute right-1 top-1 text-warning" />}
-                  </button>
-                ))}
-              </div>
-            </aside>
-          )}
-
-          <main className="min-w-0 flex-1 overflow-y-auto bg-app">
-            <div className="selectable mx-auto max-w-3xl px-8 py-7">
-              {parent && <GroupPassage parent={parent} />}
+  const renderQuestion = (current: ClassicalQuestionItem) => {
+    const meta = TYPE_META[current.type];
+    const a = answers[current.id] ?? {};
+    return (
+      <>
               {current.image && <img src={assetUrl(current.image) ?? ""} alt="" className="mb-4 max-h-72 rounded-xl border border-line object-contain" />}
 
               <div className="flex items-center gap-2">
@@ -365,7 +313,7 @@ export default function ExamClassic() {
                 {!!current.points && <span className="text-[11px] text-muted">{current.points} điểm</span>}
                 {current.type === "MULTIPLE_CHOICE" && <span className="text-[11px] text-muted">· chọn nhiều đáp án</span>}
               </div>
-              <h2 className="mt-3 text-[13px] font-semibold text-accent-fg">Câu {index + 1}</h2>
+              <h2 className="mt-3 text-[13px] font-semibold text-accent-fg">Câu {numbers.get(current.id)}</h2>
               {current.type !== "MULTIPLE_FILL_IN_BLANK" && <Markdown className="mt-1 text-[15px] font-medium text-fg">{current.content}</Markdown>}
 
               <div className="mt-5">
@@ -485,12 +433,98 @@ export default function ExamClassic() {
                   </div>
                 )}
 
-                {current.type === "GROUP_QUESTION" && (
-                  <p className="rounded-xl border border-dashed border-line-strong px-4 py-3 text-xs text-muted">
-                    Đây là đoạn đọc gốc — chuyển sang các câu tiếp theo để trả lời câu hỏi liên quan.
-                  </p>
-                )}
               </div>
+      </>
+    );
+  };
+
+  const progress = answerable.length ? (answeredCount / answerable.length) * 100 : 0;
+
+  return (
+    <>
+      <ExamShell
+        title={session.exam.title}
+        subtitle={`${session.exam.code} · Lần thi #${session.attemptNumber}`}
+        remainingSeconds={timeRemaining}
+        onSubmit={() => setShowSubmit(true)}
+        runtime={runtime}
+        onLeave={leave}
+        toolbar={
+          <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-5 text-xs">
+            <span className="font-medium text-fg">
+              {pageLabel(page, numbers)} / {answerable.length}
+            </span>
+            <div className="h-1.5 w-32 overflow-hidden rounded-full bg-surface-3">
+              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="text-muted">
+              {answeredCount}/{answerable.length} đã trả lời
+            </span>
+            <div className="ml-2 flex items-center gap-1 overflow-x-auto">
+              <PagerButton onClick={() => go(index - 1)} disabled={index === 0}>
+                <ChevronLeft size={13} />
+              </PagerButton>
+              {pages.map((pg, i) => (
+                <PagerButton key={pg.key} onClick={() => go(i)} active={i === index} done={pageAnswered(pg)} flagged={flags.has(pg.key)}>
+                  {pg.group ? `${numbers.get(pg.items[0]?.id ?? -1) ?? "§"}${pg.items.length > 1 ? "+" : ""}` : numbers.get(pg.items[0].id)}
+                </PagerButton>
+              ))}
+              <PagerButton onClick={() => go(index + 1)} disabled={index === pages.length - 1}>
+                <ChevronRight size={13} />
+              </PagerButton>
+            </div>
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" icon={<LayoutGrid size={13} />} onClick={() => setShowGrid((v) => !v)}>
+                Danh sách câu
+              </Button>
+              <Button
+                size="sm"
+                icon={<Flag size={13} />}
+                onClick={toggleFlag}
+                className={flags.has(page.key) ? "border-warning/50 bg-warning-soft text-warning" : ""}
+              >
+                {flags.has(page.key) ? "Đã đánh dấu" : "Đánh dấu"}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="flex min-h-0 flex-1">
+          {showGrid && (
+            <aside className="w-56 shrink-0 overflow-y-auto border-r border-line bg-surface p-3">
+              <div className="grid grid-cols-4 gap-1.5">
+                {pages.map((pg, i) => (
+                  <button
+                    key={pg.key}
+                    type="button"
+                    onClick={() => go(i)}
+                    className={cx(
+                      "relative flex h-10 flex-col items-center justify-center rounded-lg border font-mono text-xs",
+                      i === index
+                        ? "border-accent bg-accent text-white"
+                        : pageAnswered(pg)
+                          ? "border-success/40 bg-success-soft text-success"
+                          : "border-line text-muted hover:bg-surface-3",
+                    )}
+                  >
+                    {pageLabel(pg, numbers, true)}
+                    <span className="font-sans text-[8px] opacity-70">{pg.group ? "Đoạn đọc" : TYPE_META[pg.items[0].type].label.split(" ")[0]}</span>
+                    {flags.has(pg.key) && <Flag size={9} className="absolute right-1 top-1 text-warning" />}
+                  </button>
+                ))}
+              </div>
+            </aside>
+          )}
+
+          <main className="min-w-0 flex-1 overflow-y-auto bg-app">
+            <div className="selectable mx-auto max-w-3xl px-8 py-7">
+              {page.group && <GroupPassage parent={page.group} />}
+              {page.items.map((q) => (
+                <section key={q.id} className="mb-10 border-b border-line pb-8 last:mb-0 last:border-b-0">
+                  {renderQuestion(q)}
+                </section>
+              ))}
+              {page.items.length === 0 && <p className="rounded-xl border border-dashed border-line-strong px-4 py-3 text-xs text-muted">Đoạn đọc này chưa có câu hỏi.</p>}
             </div>
           </main>
         </div>
@@ -506,7 +540,7 @@ export default function ExamClassic() {
             </span>
             · Alt+← → chuyển câu · F đánh dấu
           </span>
-          <Button variant="primary" onClick={() => go(index + 1)} disabled={index === questions.length - 1}>
+          <Button variant="primary" onClick={() => go(index + 1)} disabled={index === pages.length - 1}>
             Câu sau <ChevronRight size={14} />
           </Button>
         </div>
@@ -665,6 +699,21 @@ function FillBlanks({
         ))}
     </div>
   );
+}
+
+interface ExamPage {
+  key: number;
+  group: ClassicalQuestionItem | null;
+  items: ClassicalQuestionItem[];
+}
+
+/** "Câu 3" or "Câu 7–9" for a reading group. */
+function pageLabel(pg: ExamPage, numbers: Map<number, number>, short = false): string {
+  const first = numbers.get(pg.items[0]?.id ?? -1);
+  const last = numbers.get(pg.items[pg.items.length - 1]?.id ?? -1);
+  if (first === undefined) return short ? "§" : "Đoạn đọc";
+  const range = last !== undefined && last !== first ? `${first}–${last}` : `${first}`;
+  return short ? range : `Câu ${range}`;
 }
 
 /** Shared passage of a GROUP_QUESTION: text, image or audio (limited plays, optional seeking). */
