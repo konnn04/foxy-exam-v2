@@ -1,8 +1,11 @@
 import { Activity, BookOpen, CalendarDays, CheckCircle2, ChevronRight, Clock, FileText, Monitor, Play, PlayCircle, Timer } from "lucide-react";
 import { Button, Card, CardHeader, Empty, cx } from "../../components/ui";
+import { useState } from "react";
+import { ReviewDialog } from "../../components/ReviewDialog";
 import { examState, fmtDate, fmtScore, fmtTime, fromNow, KIND_LABEL, KindIcon, type PageProps } from "./shared";
 
 export default function Dashboard({ data, loading, startingId, onStart, onNavigate, device }: PageProps) {
+  const [review, setReview] = useState<{ examId: number; attemptId: number; title: string } | null>(null);
   const name = data.me?.name ?? "";
   const stats = data.dashboard?.statistics;
 
@@ -129,8 +132,14 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
                       <p className="text-[11px] text-muted">
                         {fromNow(a.submitted_at ?? a.started_at)} · {a.course_name}
                         {a.score != null && ` · ${fmtScore(a.score)} điểm`}
+                        {a.score_hidden && " · điểm chưa công bố"}
                       </p>
                     </div>
+                    {a.can_review && (
+                      <button type="button" onClick={() => setReview({ examId: a.exam_id, attemptId: a.id, title: a.exam_title })} className="ml-auto shrink-0 text-[11px] text-accent hover:underline">
+                        Xem lại
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -143,6 +152,7 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
           )}
         </Card>
       </div>
+      {review && <ReviewDialog examId={review.examId} attemptId={review.attemptId} title={review.title} onClose={() => setReview(null)} />}
     </div>
   );
 }

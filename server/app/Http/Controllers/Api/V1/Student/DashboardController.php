@@ -60,7 +60,7 @@ class DashboardController extends Controller
 
         // Recent attempts by this student
         $recentAttempts = ExamAttempt::where('user_id', $user->id)
-            ->with(['exam:id,title,code,type,course_id', 'exam.course:id,name,code'])
+            ->with(['exam:id,title,code,type,course_id,monitoring_config', 'exam.course:id,name,code'])
             ->latest()
             ->take(5)
             ->get()
@@ -72,7 +72,9 @@ class DashboardController extends Controller
                 'course_name' => $att->exam?->course?->name,
                 'type' => $att->exam?->type,
                 'status' => $att->status,
-                'score' => $att->score,
+                'score' => ($att->exam?->monitoring_config['is_hide_score'] ?? false) ? null : $att->score,
+                'score_hidden' => (bool) ($att->exam?->monitoring_config['is_hide_score'] ?? false),
+                'can_review' => in_array($att->status, ['SUBMITTED', 'FORCE_ENDED'], true) && $att->voided_at === null && ($att->exam?->monitoring_config['is_allow_review'] ?? true),
                 'started_at' => $att->started_at?->toIso8601String(),
                 'submitted_at' => $att->submitted_at?->toIso8601String(),
             ]);

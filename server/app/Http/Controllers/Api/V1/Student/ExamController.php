@@ -454,7 +454,7 @@ class ExamController extends Controller
                 'attempt_id' => $attempt->id,
                 'status' => 'SUBMITTED',
                 'submitted_at' => $attempt->submitted_at->toIso8601String(),
-                'score' => $finalScore,
+                'score' => ($exam->monitoring_config['is_hide_score'] ?? false) ? null : $finalScore,
             ],
         ]);
     }
@@ -475,6 +475,10 @@ class ExamController extends Controller
         if ($attempt->status !== 'SUBMITTED' && $attempt->status !== 'FORCE_ENDED') {
             return response()->json(['success' => false, 'message' => 'Bài thi chưa nộp, không thể xem lại.'], 400);
         }
+        if (!($exam->monitoring_config['is_allow_review'] ?? true) || $attempt->voided_at !== null) {
+            return response()->json(['success' => false, 'message' => 'Kỳ thi này không cho xem lại bài làm.'], 403);
+        }
+        $hideScore = (bool) ($exam->monitoring_config['is_hide_score'] ?? false);
 
         $answers = ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)
             ->with(['question.answers'])
@@ -485,8 +489,8 @@ class ExamController extends Controller
                 'content' => $a->question?->content,
                 'explanation' => $a->question?->explanation,
                 'points' => $a->question?->points,
-                'score_earned' => $a->score,
-                'is_correct' => $a->is_correct,
+                'score_earned' => $hideScore ? null : $a->score,
+                'is_correct' => $hideScore ? null : $a->is_correct,
                 'selected_answer_id' => $a->answer_id,
                 'selected_answer_ids' => $a->selected_answer_ids,
                 'answer_content' => $a->answer_content,
@@ -521,7 +525,8 @@ class ExamController extends Controller
             'success' => true,
             'data' => [
                 'attempt_id' => $attempt->id,
-                'score' => $attempt->score,
+                'score' => $hideScore ? null : $attempt->score,
+                'score_hidden' => $hideScore,
                 'started_at' => $attempt->started_at?->toIso8601String(),
                 'submitted_at' => $attempt->submitted_at?->toIso8601String(),
                 'answers' => $answers,

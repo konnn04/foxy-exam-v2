@@ -250,6 +250,8 @@ export interface DashboardAttempt {
   type: ExamKind;
   status: string;
   score: number | null;
+  score_hidden?: boolean;
+  can_review?: boolean;
   started_at: string | null;
   submitted_at: string | null;
 }
@@ -528,6 +530,32 @@ export function saveQuestionAnswer(input: {
     },
   );
 }
+
+export interface ReviewAnswer {
+  question_id: number;
+  type: string;
+  content: string | null;
+  explanation: string | null;
+  points: number | null;
+  score_earned: number | null;
+  is_correct: boolean | null;
+  selected_answer_id: number | null;
+  selected_answer_ids: number[] | null;
+  answer_content: string | null;
+  reference: string | null;
+  feedback: string | null;
+  pending_review: boolean;
+  options: { id: number; content: string; is_correct: boolean }[] | null;
+}
+
+export interface AttemptReview {
+  attempt_id: number;
+  score: number | null;
+  score_hidden?: boolean;
+  answers: ReviewAnswer[];
+}
+
+export const getAttemptReview = (examId: number, attemptId: number) => request<{ data: AttemptReview }>(`/student/exams/${examId}/review/${attemptId}`);
 
 export function submitExamAttempt(examId: number, attemptId: number): Promise<{ success: boolean; message: string; data: any }> {
   return request<{ success: boolean; message: string; data: any }>(

@@ -214,4 +214,24 @@ class BiometricAndClipTest extends TestCase
         $this->actingAs($admin)->post("/admin/attempts/{$a->id}/grading", ['grades' => [['id' => 999999, 'score' => 1]]])->assertStatus(422);
         $this->actingAs($this->student())->get("/admin/attempts/{$a->id}/grading")->assertForbidden();
     }
+
+    public function test_review_and_score_visibility_follow_the_exam_settings(): void
+    {
+        $a = $this->attempt();
+        $a->update(['status' => 'SUBMITTED', 'submitted_at' => now(), 'score' => 7]);
+        $student = $this->student();
+        $exam = $a->exam;
+        $url = "/api/v1/student/exams/{$exam->id}/review/{$a->id}";
+
+        $this->actingAs($student, 'sanctum')->getJson($url)->assertOk()->assertJsonPath('data.score', 7);
+        $this->actingAs($student, 'sanctum')->getJson('/api/v1/student/dashboard')->assertOk()->assertJsonPath('data.recent_attempts.0.can_review', true);
+
+        $exam->update(['monitoring_config' => array_merge((array) $exam->monitoring_config, ['is_hide_score' => true])]);
+        $this->actingAs($student, 'sanctum')->getJson($url)->assertOk()->assertJsonPath('data.score', null)->assertJsonPath('data.score_hidden', true);
+        $this->actingAs($student, 'sanctum')->getJson('/api/v1/student/dashboard')->assertJsonPath('data.recent_attempts.0.score', null);
+
+        $exam->update(['monitoring_config' => array_merge((array) $exam->monitoring_config, ['is_allow_review' => false])]);
+        $this->actingAs($student, 'sanctum')->getJson($url)->assertStatus(403);
+        $this->actingAs($student, 'sanctum')->getJson('/api/v1/student/dashboard')->assertJsonPath('data.recent_attempts.0.can_review', false);
+    }
 }
