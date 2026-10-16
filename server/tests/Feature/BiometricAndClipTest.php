@@ -190,4 +190,28 @@ class BiometricAndClipTest extends TestCase
         $this->actingAs($admin)->getJson("/admin/attempts/{$a->id}/verify-chain")->assertJson(['ok' => false]);
         $this->actingAs($this->student())->getJson("/admin/attempts/{$a->id}/verify-chain")->assertForbidden();
     }
+
+    public function test_a_teacher_grades_an_essay_and_the_attempt_score_is_recomputed(): void
+    {
+        $a = $this->attempt();
+        $a->update(['status' => 'SUBMITTED', 'submitted_at' => now(), 'score' => 1]);
+        $admin = User::where('username', 'admin_hcmus')->first();
+        $set = \App\Models\QuestionSet::where('organization_id', $admin->organization_id)->first();
+        $essay = \App\Models\ClassicalQuestion::create(['question_set_id' => $set->id, 'type' => 'ESSAY', 'content' => 'Giải thích', 'points' => 5, 'difficulty' => 'EASY', 'created_by' => $admin->id]);
+        $auto = \App\Models\ExamAttemptAnswer::create(['exam_attempt_id' => $a->id, 'classical_question_id' => $essay->id, 'answer_content' => 'Bài viết', 'is_correct' => null, 'score' => 0]);
+
+        $this->actingAs($admin)->get("/admin/attempts/{$a->id}/grading")->assertOk();
+        $this->actingAs($admin)->get("/admin/attempts/{$a->id}")->assertOk()->assertInertia(fn ($p) => $p->where('attempt.pending_grading', 1));
+
+        $this->actingAs($admin)->post("/admin/attempts/{$a->id}/grading", ['grades' => [['id' => $auto->id, 'score' => 99, 'feedback' => 'Thiếu ý cuối']]])->assertRedirect();
+        $auto->refresh();
+        $this->assertEquals(5.0, $auto->score, 'a score above the maximum is capped');
+        $this->assertTrue($auto->is_correct);
+        $this->assertEquals('Thiếu ý cuối', $auto->feedback);
+        $this->assertEquals(5.0, $a->fresh()->score);
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $a->user_id, 'type' => 'graded']);
+
+        $this->actingAs($admin)->post("/admin/attempts/{$a->id}/grading", ['grades' => [['id' => 999999, 'score' => 1]]])->assertStatus(422);
+        $this->actingAs($this->student())->get("/admin/attempts/{$a->id}/grading")->assertForbidden();
+    }
 }

@@ -513,6 +513,8 @@ class MonitoringController extends Controller
             'submitted_at' => $attempt->submitted_at?->toIso8601String(),
             'device_info' => $attempt->device_info,
             'shared_device_with' => $this->sharedDevice($attempt),
+            'pending_grading' => \App\Models\ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->whereNull('is_correct')
+                ->whereHas('question', fn ($q) => $q->whereIn('type', \App\Http\Controllers\Admin\GradingController::MANUAL))->count(),
             'user' => [
                 'name' => $attempt->user?->name ?? 'Thí sinh',
                 'username' => $attempt->user?->username ?? '',

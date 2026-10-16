@@ -494,6 +494,7 @@ class ExamController extends Controller
                 'is_true' => $a->question?->type === 'TRUE_FALSE' ? (bool) $a->question->is_true : null,
                 'blanks' => $a->question?->type === 'MULTIPLE_FILL_IN_BLANK' ? ($a->question->settings['blanks'] ?? []) : null,
                 'reference' => $a->question?->type === 'SHORT_ANSWER' ? ($a->question->settings['reference'] ?? null) : null,
+                'feedback' => $a->feedback,
                 'pending_review' => $a->is_correct === null && in_array($a->question?->type, ['ESSAY', 'SHORT_ANSWER', 'MULTIPLE_FILL_IN_BLANK'], true),
                 'options' => $a->question?->answers->map(fn($opt) => [
                     'id' => $opt->id,

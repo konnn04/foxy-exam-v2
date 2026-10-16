@@ -18,6 +18,9 @@ class ExamAttemptAnswer extends Model
         'answer_content',
         'is_correct',
         'score',
+        'feedback',
+        'graded_by',
+        'graded_at',
     ];
 
     protected function casts(): array

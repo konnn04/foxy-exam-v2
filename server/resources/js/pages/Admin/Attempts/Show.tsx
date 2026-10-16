@@ -36,6 +36,7 @@ export interface AttemptPayload {
   started_at: string | null;
   submitted_at: string | null;
   device_info: Record<string, unknown> | null;
+  pending_grading?: number;
   shared_device_with?: { attempt_id: number; name: string | null; username: string | null }[];
   user: { name: string; username: string; email?: string | null };
   exam: { id: number; title: string; code: string; type: string; duration_minutes: number; monitoring_config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null };
@@ -276,6 +277,11 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             <FxButton variant={voided ? undefined : 'danger'} icon={voided ? Undo2 : Ban} onClick={toggleVoid}>
               {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
             </FxButton>
+            {(attempt.pending_grading ?? 0) > 0 && (
+              <FxButton variant="primary" onClick={() => router.visit(`/admin/attempts/${attempt.id}/grading`)}>
+                Chấm bài ({attempt.pending_grading})
+              </FxButton>
+            )}
             {isCode && (
               <FxButton variant="primary" icon={Code} onClick={() => router.visit(`/admin/attempts/${attempt.id}/submissions`)}>
                 Xem bài làm
