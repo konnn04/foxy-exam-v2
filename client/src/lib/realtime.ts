@@ -32,6 +32,9 @@ export interface HeartbeatState {
   /** 0..100 from the on-device face analysis */
   attention?: number;
   faces?: number;
+  /** 0..100 of the whole machine */
+  cpu?: number;
+  ram?: number;
 }
 
 interface QueuedEvent {

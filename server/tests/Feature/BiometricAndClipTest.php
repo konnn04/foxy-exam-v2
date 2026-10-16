@@ -146,4 +146,19 @@ class BiometricAndClipTest extends TestCase
         $this->actingAs($student, 'sanctum')->withHeader('X-Foxy-Attempt', (string) $a->id)->postJson('/api/v1/student/violation-clip', ['at_ms' => $at->getTimestampMs() + 60000] + $body)->assertStatus(404)->assertJsonPath('retry', true);
         $this->actingAs($student, 'sanctum')->withHeader('X-Foxy-Attempt', (string) $a->id)->postJson('/api/v1/student/violation-clip', ['clips' => ['camera' => 'bad id!'], 'type' => 'TAB_SWITCH', 'at_ms' => 1])->assertStatus(422);
     }
+
+    public function test_the_attempt_page_flags_candidates_who_started_from_the_same_machine(): void
+    {
+        $exam = Exam::where('code', 'FOXY-2026')->first();
+        $other = User::where('role', 'STUDENT')->where('id', '!=', $this->student()->id)->first();
+        $mk = fn (User $u, string $fp) => ExamAttempt::create(['exam_id' => $exam->id, 'user_id' => $u->id, 'attempt_number' => 1, 'status' => 'IN_PROGRESS', 'started_at' => now(), 'device_info' => ['fingerprint' => $fp, 'ip' => '1.2.3.4']]);
+        $a = $mk($this->student(), 'same-machine');
+        $mk($other, 'same-machine');
+        $admin = User::where('username', 'admin_hcmus')->first();
+
+        $page = $this->actingAs($admin)->get("/admin/attempts/{$a->id}")->assertOk();
+        $props = $page->viewData('page')['props'];
+        $this->assertEquals($other->username, $props['attempt']['shared_device_with'][0]['username']);
+        $this->assertEquals('1.2.3.4', $props['attempt']['device_info']['ip']);
+    }
 }

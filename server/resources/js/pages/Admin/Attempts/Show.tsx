@@ -36,6 +36,7 @@ export interface AttemptPayload {
   started_at: string | null;
   submitted_at: string | null;
   device_info: Record<string, unknown> | null;
+  shared_device_with?: { attempt_id: number; name: string | null; username: string | null }[];
   user: { name: string; username: string; email?: string | null };
   exam: { id: number; title: string; code: string; type: string; duration_minutes: number; monitoring_config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null };
 }
@@ -83,6 +84,39 @@ function groupViolations(list: ViolationRow[]): Group[] {
     }
   }
   return out;
+}
+
+function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; shared: NonNullable<AttemptPayload['shared_device_with']> }) {
+  if (!info) return null;
+  const rows: [string, unknown][] = [
+    ['Tên máy', info.hostname],
+    ['Hệ điều hành', info.os],
+    ['CPU', info.cpu_model ? `${info.cpu_model}${info.cores ? ` · ${info.cores} luồng` : ''}` : null],
+    ['RAM', info.ram_total_mb ? `${Math.round(Number(info.ram_total_mb) / 1024)} GB` : null],
+    ['Màn hình', info.screen],
+    ['Địa chỉ IP', info.ip],
+    ['Mã thiết bị', info.fingerprint ? String(info.fingerprint).slice(0, 12) : null],
+  ];
+  const shown = rows.filter(([, v]) => v);
+  if (shown.length === 0 && shared.length === 0) return null;
+  return (
+    <Panel className="flex flex-col gap-3 p-4">
+      <span className="font-semibold">Thiết bị thí sinh</span>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+        {shown.map(([k, v]) => (
+          <div key={k} className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">{k}</span>
+            <span className="break-words font-mono text-[13px]">{String(v)}</span>
+          </div>
+        ))}
+      </div>
+      {shared.length > 0 && (
+        <div className="rounded-lg border border-danger/40 bg-danger/10 p-2.5 text-[13px]">
+          Cùng một máy với {shared.map((s) => `${s.name ?? s.username} (${s.username})`).join(', ')} trong kỳ thi này.
+        </div>
+      )}
+    </Panel>
+  );
 }
 
 export function deviceLabel(d: Record<string, unknown> | null) {
@@ -263,6 +297,8 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             clipRange={((sel?.details as { clip_range?: { from_ms: number; to_ms: number } } | null)?.clip_range) ?? null}
             config={attempt.exam.monitoring_config}
           />
+
+          <DevicePanel info={attempt.device_info} shared={attempt.shared_device_with ?? []} />
 
           <AttemptTools attemptId={attempt.id} running={running} chatSeq={row?.chat_seq} />
 

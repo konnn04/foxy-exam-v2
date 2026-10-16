@@ -333,7 +333,7 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
                         <span>{s.state === 'done' ? 'đã nộp' : s.ops_per_min != null ? `${s.ops_per_min} op/m` : '— op/m'}</span>
                         <span>
                           {hubLive && s.hub
-                            ? `${s.hub.latency_ms ?? '—'} ms${s.hub.attention != null ? ` · tập trung ${s.hub.attention}%` : ''}${s.hub.faces != null && s.hub.faces !== 1 ? ` · ${s.hub.faces} mặt` : ''}${s.hub.camera === false ? ' · mất cam' : ''}${s.hub.screen === false ? ' · mất màn hình' : ''}`
+                            ? `${s.hub.latency_ms ?? '—'} ms${s.hub.attention != null ? ` · tập trung ${s.hub.attention}%` : ''}${s.hub.faces != null && s.hub.faces !== 1 ? ` · ${s.hub.faces} mặt` : ''}${s.hub.cpu != null ? ` · CPU ${s.hub.cpu}%` : ''}${s.hub.ram != null ? ` · RAM ${s.hub.ram}%` : ''}${s.hub.camera === false ? ' · mất cam' : ''}${s.hub.screen === false ? ' · mất màn hình' : ''}`
                             : s.last_activity_at
                               ? `sự kiện ${timeAgo(s.last_activity_at)}`
                               : ''}

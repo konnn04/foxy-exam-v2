@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "./config";
 import { getAuth } from "./authStore";
 import { getSession } from "./session";
+import { deviceInfo } from "./sysinfo";
 
 /**
  * Client gọi FoxyExam Core API. Toàn bộ type ở dưới lấy từ dữ liệu response
@@ -328,16 +329,10 @@ export interface StartExamData {
   };
 }
 
-export function startExam(examId: number): Promise<ApiEnvelope<StartExamData>> {
+export async function startExam(examId: number): Promise<ApiEnvelope<StartExamData>> {
   return request<ApiEnvelope<StartExamData>>(`/student/exams/${examId}/start`, {
     method: "POST",
-    body: JSON.stringify({
-      device_info: {
-        os: "windows",
-        app_version: "0.1.0-tauri",
-        screen: `${window.screen.width}x${window.screen.height}`,
-      },
-    }),
+    body: JSON.stringify({ device_info: await deviceInfo() }),
   });
 }
 

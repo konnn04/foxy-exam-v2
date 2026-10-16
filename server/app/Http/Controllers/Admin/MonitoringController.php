@@ -476,6 +476,19 @@ class MonitoringController extends Controller
         ]);
     }
 
+    /** Other candidates of the same exam that started from the same machine (same hashed machine id). */
+    private function sharedDevice(ExamAttempt $attempt): array
+    {
+        $fp = $attempt->device_info['fingerprint'] ?? null;
+        if (!$fp) {
+            return [];
+        }
+
+        return ExamAttempt::with('user:id,name,username')->where('exam_id', $attempt->exam_id)->where('user_id', '!=', $attempt->user_id)
+            ->where('device_info->fingerprint', $fp)->get()
+            ->map(fn ($a) => ['attempt_id' => $a->id, 'name' => $a->user?->name, 'username' => $a->user?->username])->unique('username')->values()->all();
+    }
+
     private function attemptPayload(ExamAttempt $attempt): array
     {
         return [
@@ -490,6 +503,7 @@ class MonitoringController extends Controller
             'started_at' => $attempt->started_at?->toIso8601String(),
             'submitted_at' => $attempt->submitted_at?->toIso8601String(),
             'device_info' => $attempt->device_info,
+            'shared_device_with' => $this->sharedDevice($attempt),
             'user' => [
                 'name' => $attempt->user?->name ?? 'Thí sinh',
                 'username' => $attempt->user?->username ?? '',

@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 mod monitor;
 mod runner;
+mod sys;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -64,6 +65,8 @@ pub fn run() {
             monitor::monitor_start,
             monitor::monitor_stop,
             monitor::monitor_keylog_drain,
+            sys::system_info,
+            sys::system_load,
             runner::runner_toolchains,
             runner::runner_run,
             runner::runner_session_start,

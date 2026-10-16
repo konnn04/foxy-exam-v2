@@ -10,6 +10,7 @@ import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, open
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { releaseEvidence } from "./evidence";
 import { startClipRecorder, stopClipRecorder } from "./clipRecorder";
+import { systemLoad } from "./sysinfo";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -73,6 +74,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const phoneEverLive = useRef(false);
   const lastPhoneLoss = useRef(0);
   const spotTimer = useRef<number | undefined>(undefined);
+  const loadTimer = useRef<number | undefined>(undefined);
   const spotTick = useRef<number | undefined>(undefined);
   const badSince = useRef<number | null>(null);
   const goodSince = useRef<number | null>(null);
@@ -237,6 +239,10 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       client.setState({ camera: !!media.camera, screen: !!media.screen });
       setCameraStream(media.camera);
       watchTracks();
+      window.clearInterval(loadTimer.current);
+      const sample = () => void systemLoad().then((l) => client.setState({ cpu: l.cpu, ram: l.ram })).catch(() => undefined);
+      sample();
+      loadTimer.current = window.setInterval(sample, 5000);
       if (cfgRef.current?.violation_clips && live) startClipRecorder({ camera: !!media.camera && !!cfgRef.current.ai_face_check, screen: !!media.screen });
 
       const lk = live ? client.livekit : null;
@@ -264,6 +270,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
 
   const end = useCallback(async () => {
     active.current = false;
+    window.clearInterval(loadTimer.current);
     window.clearTimeout(spotTimer.current);
     window.clearInterval(spotTick.current);
     setSpot(null);

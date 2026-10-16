@@ -189,7 +189,7 @@ class ExamController extends Controller
             'status' => 'IN_PROGRESS',
             'started_at' => now(),
             'session_token' => Str::random(40),
-            'device_info' => $request->input('device_info'),
+            'device_info' => array_merge((array) $request->input('device_info', []), ['ip' => $request->ip()]),
         ]);
         app(\App\Services\Realtime::class)->lifecycle($attempt, 'active');
         \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $attempt);
