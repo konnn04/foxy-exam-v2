@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Download, Flag, MessageSquare } from 'lucide-react';
+import { Download, Flag, MessageSquare, ShieldCheck } from 'lucide-react';
+import { useDialog } from './dialogs';
 import { Field, FxButton, FxSelect, FxTextarea, Modal, Panel } from './ui';
 import { AttemptChat } from './attempt-chat';
 
@@ -13,10 +14,22 @@ const SEVERITIES = [
 
 /** Chat with the candidate, a violation the proctor saw themselves, and the CSV downloads of one attempt. */
 export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: number; running: boolean; chatSeq?: number }) {
+  const dialog = useDialog();
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState('MEDIUM');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const verify = async () => {
+    try {
+      const res = await fetch(`/admin/attempts/${attemptId}/verify-chain`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+      const j = await res.json();
+      if (j.ok) dialog.toast.success(`Nhật ký vi phạm toàn vẹn (${j.checked} mục đã kiểm${j.unchained ? `, ${j.unchained} mục cũ chưa có chuỗi băm` : ''}).`);
+      else dialog.toast.error(`Nhật ký bị can thiệp: chuỗi băm đứt tại vi phạm #${j.broken_at}.`);
+    } catch {
+      dialog.toast.error('Không kiểm tra được.');
+    }
+  };
 
   const save = () => {
     setBusy(true);
@@ -44,6 +57,9 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
         <div className="flex-1" />
         <FxButton size="sm" icon={Flag} onClick={() => setOpen(true)}>
           Ghi vi phạm thủ công
+        </FxButton>
+        <FxButton size="sm" icon={ShieldCheck} onClick={verify}>
+          Kiểm tra toàn vẹn
         </FxButton>
         <a href={`/admin/attempts/${attemptId}/export/violations.csv`}>
           <FxButton size="sm" icon={Download}>

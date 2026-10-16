@@ -22,6 +22,7 @@ class Violation extends Model
         'client_event_id',
         'evidence_id',
         'voided',
+        'chain_hash',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class Violation extends Model
             if (!$v->is_reviewed && !$v->is_false_positive && !\App\Support\ViolationCatalog::needsReview((string) $v->violation_type)) {
                 $v->is_reviewed = true;
             }
+            $v->chain_hash = \App\Support\ViolationChain::forNew($v);
             if ($v->exam_attempt_id && ExamAttempt::whereKey($v->exam_attempt_id)->whereNotNull('voided_at')->exists()) {
                 $v->voided = true;
             }

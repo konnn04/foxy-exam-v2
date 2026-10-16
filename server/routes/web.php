@@ -2075,6 +2075,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
     Route::get('/attempts/{id}/submissions', [\App\Http\Controllers\Admin\MonitoringController::class, 'submissions'])->whereNumber('id');
     Route::post('/violations/bulk-review', [\App\Http\Controllers\Admin\MonitoringController::class, 'bulkReview']);
+    Route::get('/attempts/{id}/verify-chain', [\App\Http\Controllers\Admin\MonitoringController::class, 'verifyChain'])->whereNumber('id');
     Route::post('/attempts/{id}/void', [\App\Http\Controllers\Admin\MonitoringController::class, 'voidAttempt'])->whereNumber('id');
     Route::post('/violations/{id}/review', [\App\Http\Controllers\Admin\MonitoringController::class, 'review'])->whereNumber('id');
     Route::get('/attempts/{id}/chat', [\App\Http\Controllers\Admin\AttemptChatController::class, 'index'])->whereNumber('id');

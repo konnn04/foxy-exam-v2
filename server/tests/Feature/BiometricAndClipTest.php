@@ -169,4 +169,25 @@ class BiometricAndClipTest extends TestCase
         $this->assertSame(\App\Support\ProhibitedObjects::DEFAULT, MonitoringConfig::normalize($on + ['prohibited_labels' => ['nope']])['prohibited_labels']);
         $this->assertSame([], MonitoringConfig::normalize(['ai_face_check' => true, 'prohibited_labels' => ['book']])['prohibited_labels'], 'no object check, no list');
     }
+
+    public function test_the_violation_log_is_hash_chained_and_tampering_is_found(): void
+    {
+        $a = $this->attempt();
+        $admin = User::where('username', 'admin_hcmus')->first();
+        $mk = fn (string $t) => Violation::create(['exam_attempt_id' => $a->id, 'violation_type' => $t, 'severity' => 'LOW', 'details' => ['m' => 1], 'timestamp' => now()]);
+        $first = $mk('TAB_SWITCH');
+        $mk('BANNED_APP');
+        $third = $mk('SYSTEM_SHORTCUT');
+
+        $this->actingAs($admin)->getJson("/admin/attempts/{$a->id}/verify-chain")->assertOk()->assertJson(['ok' => true, 'checked' => 3]);
+        // details, reviews and clips change legitimately and are not part of the chain
+        $first->update(['details' => ['edited' => true], 'is_reviewed' => true]);
+        $this->actingAs($admin)->getJson("/admin/attempts/{$a->id}/verify-chain")->assertJson(['ok' => true]);
+
+        $third->update(['severity' => 'CRITICAL']);
+        $this->actingAs($admin)->getJson("/admin/attempts/{$a->id}/verify-chain")->assertJson(['ok' => false, 'broken_at' => $third->id]);
+        Violation::withoutGlobalScopes()->where('id', $first->id)->delete();
+        $this->actingAs($admin)->getJson("/admin/attempts/{$a->id}/verify-chain")->assertJson(['ok' => false]);
+        $this->actingAs($this->student())->getJson("/admin/attempts/{$a->id}/verify-chain")->assertForbidden();
+    }
 }

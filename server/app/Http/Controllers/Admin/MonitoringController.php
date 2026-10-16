@@ -350,6 +350,15 @@ class MonitoringController extends Controller
         ]);
     }
 
+    /** GET /admin/attempts/{id}/verify-chain — does the stored violation log still match its hash chain? */
+    public function verifyChain(int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+
+        return response()->json(\App\Support\ViolationChain::verify($attempt->id));
+    }
+
     /** POST /admin/violations/bulk-review — one decision for many violations of the same organization. */
     public function bulkReview(Request $request)
     {
