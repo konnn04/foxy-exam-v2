@@ -10,7 +10,7 @@ import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, FAILURE_TEXT, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
-import { frontalHint, isFrontal } from "../lib/vision-core";
+import { frontalHint, isFrontal, LivenessChallenge, livenessText, type FrameReading } from "../lib/vision-core";
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
 import { formatDateTime } from "../lib/datetime";
@@ -22,7 +22,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
 interface Check {
-  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "enroll" | "phone" | "mic" | "screen";
+  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "liveness" | "enroll" | "phone" | "mic" | "screen";
   label: string;
   level: Level;
   detail: string;
@@ -30,7 +30,7 @@ interface Check {
   required: boolean;
 }
 
-const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "enroll", "phone", "mic", "screen"];
+const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "liveness", "enroll", "phone", "mic", "screen"];
 
 const matchesBanned = (name: string) => {
   const n = name.toLowerCase().replace(/\.exe$/, "");
@@ -64,6 +64,7 @@ export default function ExamLobby({
   const [cameras, setCameras] = useState<CameraInfo[]>([]);
   const [cameraId, setCameraId] = useState<string>(() => getPreferredCamera() ?? "");
   const face = useRef<FaceMonitor | null>(null);
+  const liveFeed = useRef<((r: FrameReading) => void) | null>(null);
 
   const set = useCallback((id: Check["id"], patch: Partial<Check>) => setChecks((c) => ({ ...c, [id]: { ...c[id], ...patch } })), []);
 
@@ -100,6 +101,7 @@ export default function ExamLobby({
       let ok = false;
       const m = new FaceMonitor(
         (s) => {
+          liveFeed.current?.(s);
           if (isFrontal(s)) {
             seen += 1;
             missed = 0;
@@ -130,6 +132,31 @@ export default function ExamLobby({
     [set, stopFace],
   );
 
+  /** Liveness: blink twice and turn the head (random order, 10 s per step). Required when the exam checks identity. */
+  const startLiveness = useCallback(() => {
+    const challenge = new LivenessChallenge();
+    const required = Boolean(cfg?.ai_identity);
+    let lastText = "";
+    const show = (detail: string, level: Level = "checking") => set("liveness", { level, detail, required });
+    show(`Bước 1/2: ${livenessText(challenge.steps[0])}`);
+    liveFeed.current = (r) => {
+      const st = challenge.update(r, performance.now() / 1000);
+      if (st.done) {
+        liveFeed.current = null;
+        show("Đã xác nhận bạn là người thật", "ok");
+      } else if (st.failed) {
+        liveFeed.current = null;
+        show("Chưa đạt — nhấn “Thử lại” và làm đúng từng bước", "fail");
+      } else if (st.step) {
+        const text = `Bước ${challenge.steps.indexOf(st.step) + 1}/2: ${livenessText(st.step)}`;
+        if (text !== lastText) {
+          lastText = text;
+          show(text);
+        }
+      }
+    };
+  }, [cfg?.ai_identity, set]);
+
   const runCamera = useCallback(
     async (required: boolean, deviceId?: string) => {
       if (bypass("camera")) {
@@ -139,6 +166,8 @@ export default function ExamLobby({
       stopFace();
       set("camera", { level: "checking", detail: "Đang mở camera…", required });
       set("face", { level: "idle", detail: "Chờ camera", required });
+      liveFeed.current = null;
+      set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(cfg?.ai_identity) && required });
       try {
         stopStream(getLobbyMedia().camera);
         const s = await openCamera(deviceId ?? (cameraId || null));
@@ -157,6 +186,8 @@ export default function ExamLobby({
       } catch (e) {
         set("camera", { level: required ? "fail" : "warn", detail: FAILURE_TEXT[explain(e)], required });
         set("face", { level: "idle", detail: "Chờ camera", required });
+        liveFeed.current = null;
+        set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(cfg?.ai_identity) && required });
       }
     },
     [attachPreview, cameraId, set, stopFace, watchFace],
@@ -263,6 +294,7 @@ export default function ExamLobby({
     // the camera and microphone are opened only when the student asks, never silently on entering the lobby
     set("camera", { level: "idle", detail: reqCam ? "Bắt buộc — nhấn “Bật camera” để kiểm tra" : "Nhấn “Bật camera” để kiểm tra (không bắt buộc)", required: reqCam });
     set("face", { level: "idle", detail: "Bật camera để nhận diện khuôn mặt", required: reqCam });
+    set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(d?.monitoring_config?.ai_identity) && reqCam });
     if (d?.monitoring_config?.ai_identity) {
       try {
         const st = (await getFaceStatus()).data;
@@ -498,6 +530,19 @@ export default function ExamLobby({
               </li>
             )}
             {wantCamera && <Row c={{ ...checks.face, required: needCamera }} icon={<ScanFace size={14} />} />}
+            {wantCamera && (
+              <Row
+                c={{ ...checks.liveness, required: wantIdentity && needCamera }}
+                icon={<ScanFace size={14} />}
+                action={
+                  checks.liveness.level !== "ok" && checks.liveness.level !== "checking" ? (
+                    <Button size="sm" disabled={checks.face.level !== "ok"} onClick={startLiveness}>
+                      {checks.liveness.level === "fail" ? "Thử lại" : "Bắt đầu"}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
             {wantIdentity && (
               <Row
                 c={{ ...checks.enroll, required: true }}
@@ -655,6 +700,7 @@ function initial(): Record<Check["id"], Check> {
     apps: mk("apps", "Ứng dụng bị cấm", true),
     camera: mk("camera", "Camera", false),
     face: mk("face", "Nhận diện khuôn mặt", false),
+    liveness: mk("liveness", "Kiểm tra người thật", false),
     enroll: mk("enroll", "Khuôn mặt đã đăng ký", false),
     phone: mk("phone", "Camera mở rộng (điện thoại)", false),
     mic: mk("mic", "Micro", false),

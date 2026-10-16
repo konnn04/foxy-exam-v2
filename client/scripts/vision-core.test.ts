@@ -1,6 +1,6 @@
 // Run: npx vite-node scripts/vision-core.test.ts   (exits non-zero on failure)
 import assert from "node:assert/strict";
-import { AttentionTracker, attention, eyeAway, eyesClosed, faceRatio, headPose, isFrontal, isLookingAway, type FrameReading } from "../src/lib/vision-core";
+import { AttentionTracker, LivenessChallenge, attention, eyeAway, eyesClosed, faceRatio, headPose, isFrontal, isLookingAway, type FrameReading } from "../src/lib/vision-core";
 
 const reading = (o: Partial<FrameReading> = {}): FrameReading => ({ faces: 1, faceRatio: 0.4, yaw: 0, pitch: 0, eyeAway: 0, eyesClosed: 0, eyeX: 0, eyeY: 0, ...o });
 
@@ -74,3 +74,38 @@ const kinds = h.update(reading({ yaw: 50, eyeAway: 0.7 }), 7).map((e) => e.kind)
 assert.deepEqual(kinds, ["LOOKING_AWAY"]);
 
 console.log("vision-core ok");
+
+// liveness: blink twice + turn the head, in either order; a still face fails after the time limit
+{
+  const blinkTwice = (c: LivenessChallenge, t0: number) => {
+    let last = c.update(reading({ eyesClosed: 0 }), t0);
+    for (const [i, closed] of [1, 0, 1, 0].entries()) last = c.update(reading({ eyesClosed: closed ? 0.9 : 0.1 }), t0 + 0.2 * (i + 1));
+    return last;
+  };
+  const turn = (c: LivenessChallenge, t0: number) => {
+    c.update(reading({ yaw: 0 }), t0);
+    c.update(reading({ yaw: 35 }), t0 + 0.3);
+    return c.update(reading({ yaw: 5 }), t0 + 0.6);
+  };
+  for (const first of [0.1, 0.9]) {
+    const c = new LivenessChallenge(() => first);
+    const order = c.steps;
+    const s1 = order[0] === "blink" ? blinkTwice(c, 0) : turn(c, 0);
+    assert.equal(s1.done, false);
+    assert.equal(s1.step, order[1]);
+    const s2 = order[1] === "blink" ? blinkTwice(c, 2) : turn(c, 2);
+    assert.ok(s2.done && !s2.failed && s2.progress === 1, "both steps done");
+  }
+  const still = new LivenessChallenge(() => 0.1);
+  let st = still.update(reading(), 0);
+  for (let s = 1; s <= 11; s++) st = still.update(reading(), s);
+  assert.ok(st.failed && !st.done, "a face that never moves fails");
+  const two = new LivenessChallenge(() => 0.1);
+  two.update(reading({ faces: 2, eyesClosed: 0.9 }), 0);
+  assert.equal(two.update(reading({ faces: 2, eyesClosed: 0.1 }), 0.3).progress, 0, "nothing counts with two faces in view");
+  // a single blink is not enough
+  const one = new LivenessChallenge(() => 0.1);
+  for (const [i, closed] of [1, 0].entries()) one.update(reading({ eyesClosed: closed ? 0.9 : 0.1 }), 0.2 * i);
+  assert.equal(one.update(reading({ eyesClosed: 0.1 }), 1).step, "blink");
+}
+console.log("liveness ok");

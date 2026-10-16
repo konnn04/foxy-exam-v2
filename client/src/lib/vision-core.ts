@@ -168,3 +168,73 @@ export class AttentionTracker {
     return out;
   }
 }
+
+// ---------------------------------------------------------------- liveness (pre-exam "is this a real person")
+
+export type LivenessStep = "blink" | "turn";
+
+const STEP_TIME_S = 10;
+const BLINKS_NEEDED = 2;
+
+export interface LivenessState {
+  step: LivenessStep | null;
+  /** 0..1 over the whole challenge */
+  progress: number;
+  done: boolean;
+  failed: boolean;
+}
+
+/**
+ * A still photo or a printed face cannot blink twice and turn the head. The two steps come in random order, each
+ * with a time limit; the challenge only advances while exactly one face is in view.
+ *   blink  eyes closed (>= 0.6) then open (<= 0.3), twice
+ *   turn   head beyond 22 degrees to either side, then back to frontal
+ */
+export class LivenessChallenge {
+  readonly steps: LivenessStep[];
+  private index = 0;
+  private startedAt: number | null = null;
+  private closed = false;
+  private blinks = 0;
+  private turned = false;
+  private result: "running" | "done" | "failed" = "running";
+
+  constructor(random: () => number = Math.random) {
+    this.steps = random() < 0.5 ? ["blink", "turn"] : ["turn", "blink"];
+  }
+
+  update(r: FrameReading, now: number): LivenessState {
+    if (this.result === "running") {
+      this.startedAt ??= now;
+      if (now - this.startedAt > STEP_TIME_S) this.result = "failed";
+      else if (r.faces === 1) this.advance(r, now);
+    }
+    const done = this.result === "done";
+    return { step: done ? null : this.steps[this.index], progress: done ? 1 : this.index / this.steps.length, done, failed: this.result === "failed" };
+  }
+
+  private advance(r: FrameReading, now: number) {
+    const step = this.steps[this.index];
+    let finished = false;
+    if (step === "blink") {
+      if (r.eyesClosed >= 0.6) this.closed = true;
+      else if (r.eyesClosed <= 0.3 && this.closed) {
+        this.closed = false;
+        this.blinks += 1;
+      }
+      finished = this.blinks >= BLINKS_NEEDED;
+    } else {
+      if (Math.abs(r.yaw) >= 22) this.turned = true;
+      else if (this.turned && Math.abs(r.yaw) <= 12) finished = true;
+    }
+    if (!finished) return;
+    this.index += 1;
+    this.startedAt = now;
+    this.closed = false;
+    this.blinks = 0;
+    this.turned = false;
+    if (this.index >= this.steps.length) this.result = "done";
+  }
+}
+
+export const livenessText = (s: LivenessStep) => (s === "blink" ? "Chớp mắt 2 lần" : "Quay đầu sang một bên rồi nhìn thẳng lại");
