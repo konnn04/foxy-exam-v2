@@ -32,6 +32,9 @@ export const VIOLATION_LABEL: Record<string, string> = {
   GAZE_AWAY: 'Mắt liếc ra ngoài màn hình',
   SPOT_CHECK_FAILED: 'Không nhìn camera phụ khi được yêu cầu',
   PHONE_DISCONNECTED: 'Camera phụ (điện thoại) mất kết nối',
+  COPY_ATTEMPT: 'Cố sao chép nội dung đề',
+  SPEECH_DETECTED: 'Phát hiện tiếng nói',
+  MANUAL: 'Giám thị ghi nhận',
   FACE_TOO_FAR: 'Ngồi quá xa camera',
   CAMERA_LOST: 'Mất camera',
   SCREEN_SHARE_STOPPED: 'Dừng chia sẻ màn hình',
@@ -55,7 +58,7 @@ export const DETAIL_LABEL: Record<string, string> = {
 export const detailLabel = (k: string) => DETAIL_LABEL[k] ?? k;
 
 /** Violations that depend on AI / probability and wait for a proctor; everything else is confirmed on arrival. */
-export const NEEDS_REVIEW = ['FACE_MISMATCH', 'MULTIPLE_PEOPLE', 'NO_FACE_DETECTED', 'LOOKING_AWAY', 'GAZE_AWAY', 'FACE_TOO_FAR', 'PROHIBITED_DEVICE', 'SPOT_CHECK_FAILED'];
+export const NEEDS_REVIEW = ['FACE_MISMATCH', 'MULTIPLE_PEOPLE', 'NO_FACE_DETECTED', 'LOOKING_AWAY', 'GAZE_AWAY', 'FACE_TOO_FAR', 'PROHIBITED_DEVICE', 'SPOT_CHECK_FAILED', 'SPEECH_DETECTED'];
 export const violationLabel = (t?: string) => (t && VIOLATION_LABEL[t]) || t || 'Vi phạm';
 
 /** Groups used by the "Vi phạm theo loại" donut. */

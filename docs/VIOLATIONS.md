@@ -27,6 +27,9 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 | `BULK_PASTE` | HIGH / CRITICAL | Client onPaste | Dán nhiều hơn `max_paste_chars`; > 100 ký tự là CRITICAL (server) |
 | `CAMERA_LOST` | HIGH | Client, track `ended` | Camera tắt hoặc rút giữa giờ thi |
 | `PHONE_DISCONNECTED` | HIGH | LiveKit (người xem) | Camera phụ (điện thoại) mất kết nối giữa giờ thi |
+| `COPY_ATTEMPT` | LOW | Client | Cố sao chép / cắt nội dung (đã chặn) khi kỳ thi chặn sao chép |
+| `SPEECH_DETECTED` | MEDIUM | Client (micro) | Tiếng nói kéo dài ≥ 2,5 giây khi kỳ thi bật micro; cần giám thị duyệt |
+| `MANUAL` | theo giám thị | Giám thị | Vi phạm giám thị tự ghi trên trang phiên thi |
 | `SCREEN_SHARE_STOPPED` | HIGH | Client, track `ended` | Dừng chia sẻ màn hình giữa giờ thi |
 
 ## Chờ duyệt (AI / xác suất)

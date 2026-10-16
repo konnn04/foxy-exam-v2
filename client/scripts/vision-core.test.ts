@@ -109,3 +109,24 @@ console.log("vision-core ok");
   assert.equal(one.update(reading({ eyesClosed: 0.1 }), 1).step, "blink");
 }
 console.log("liveness ok");
+
+// speech gate: 2.5 s of voice-band energy triggers once, keyboard-like bursts and a noisy room do not
+{
+  const { SpeechGate } = await import("../src/lib/speech-core");
+  const g = new SpeechGate();
+  let t = 0;
+  let fired = 0;
+  for (let i = 0; i < 40; i++) fired += g.update({ voice: 0.003, total: 0.004 }, (t += 100)) ? 1 : 0; // quiet room
+  assert.equal(fired, 0);
+  for (let i = 0; i < 20; i++) fired += g.update({ voice: 0.2, total: 0.25 }, (t += 100)) ? 1 : 0; // 2 s of talking
+  assert.equal(fired, 0, "2 s is not enough");
+  for (let i = 0; i < 10; i++) fired += g.update({ voice: 0.2, total: 0.25 }, (t += 100)) ? 1 : 0;
+  assert.equal(fired, 1, "sustained speech fires once");
+  for (let i = 0; i < 60; i++) fired += g.update({ voice: 0.2, total: 0.25 }, (t += 100)) ? 1 : 0;
+  assert.equal(fired, 1, "cooldown");
+  const k = new SpeechGate();
+  let kf = 0;
+  for (let i = 0; i < 100; i++) kf += k.update(i % 10 === 0 ? { voice: 0.2, total: 0.6 } : { voice: 0.003, total: 0.004 }, i * 100) ? 1 : 0;
+  assert.equal(kf, 0, "short broadband clicks are not speech");
+  console.log("speech ok");
+}

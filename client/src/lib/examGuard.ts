@@ -1,5 +1,6 @@
 import { collectEvidence, evidenceDue, EVIDENCE_SOURCE, shootClip, type EvidenceSet } from "./evidence";
 import { clipRecorderActive } from "./clipRecorder";
+import { SpeechDetector } from "./speech";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
@@ -85,6 +86,8 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const lastSeen = useRef(new Map<string, number>());
   const blockClipboard = useRef(true);
   const extraCamera = useRef(false);
+  const micRequired = useRef(false);
+  micRequired.current = Boolean(config?.require_mic);
   extraCamera.current = (config?.extra_camera ?? "off") !== "off";
   blockClipboard.current = config?.prevent_paste !== false;
   allowedApps.current = (config?.allowed_apps ?? []).map(procName);
@@ -263,6 +266,32 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     events.forEach((n) => document.addEventListener(n, refuse, true));
     on(() => events.forEach((n) => document.removeEventListener(n, refuse, true)));
     clipboardHandled.current = handled;
+
+    // right click is refused (no violation: it is only a way to reach copy / inspect); a refused copy or cut is reported
+    const noMenu = (e: Event) => e.preventDefault();
+    document.addEventListener("contextmenu", noMenu, true);
+    on(() => document.removeEventListener("contextmenu", noMenu, true));
+    const copyAttempt = (e: Event) => blockClipboard.current && record("COPY_ATTEMPT", "LOW", e.type === "cut" ? "Cố cắt nội dung — đã chặn" : "Cố sao chép nội dung — đã chặn");
+    document.addEventListener("copy", copyAttempt, true);
+    document.addEventListener("cut", copyAttempt, true);
+    on(() => {
+      document.removeEventListener("copy", copyAttempt, true);
+      document.removeEventListener("cut", copyAttempt, true);
+    });
+
+    // an inspector docked to the window shrinks the page area compared with the window itself
+    const devtools = window.setInterval(() => {
+      if (!activeRef.current) return;
+      if (window.outerWidth - window.innerWidth > 200 || window.outerHeight - window.innerHeight > 260) record("DEVTOOLS_OPENED", "HIGH", "Phát hiện công cụ kiểm tra (DevTools) đang mở");
+    }, 3000);
+    on(() => window.clearInterval(devtools));
+
+    // sustained speech when the exam asks for the microphone; only the level is analysed, nothing is recorded or sent
+    if (micRequired.current) {
+      const speech = new SpeechDetector();
+      void speech.start(() => record("SPEECH_DETECTED", "MEDIUM", "Phát hiện tiếng nói kéo dài")).catch(() => undefined);
+      on(() => speech.stop());
+    }
 
     const flushTimer = window.setInterval(() => void flushKeylog(), KEYLOG_FLUSH_MS);
     on(() => window.clearInterval(flushTimer));

@@ -30,6 +30,7 @@ var ViolationTypes = map[string]bool{
 	// detected by FoxyClient itself
 	"BANNED_APP": true, "MULTIPLE_MONITORS": true, "CAPTURE_DEVICE": true, "DEVICE_CHANGED": true, "SYSTEM_SHORTCUT": true, "APP_NOT_ALLOWED": true,
 	"LOOKING_AWAY": true, "GAZE_AWAY": true, "SPOT_CHECK_FAILED": true, "PHONE_DISCONNECTED": true, "FACE_TOO_FAR": true, "CAMERA_LOST": true, "SCREEN_SHARE_STOPPED": true, "OFFLINE_TOO_LONG": true,
+	"COPY_ATTEMPT": true, "SPEECH_DETECTED": true,
 }
 
 var Severities = map[string]bool{"LOW": true, "MEDIUM": true, "HIGH": true, "CRITICAL": true}

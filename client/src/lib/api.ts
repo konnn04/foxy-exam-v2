@@ -657,7 +657,9 @@ export type ViolationType =
   | "FACE_TOO_FAR"
   | "CAMERA_LOST"
   | "SCREEN_SHARE_STOPPED"
-  | "OFFLINE_TOO_LONG";
+  | "OFFLINE_TOO_LONG"
+  | "COPY_ATTEMPT"
+  | "SPEECH_DETECTED";
 
 export type ViolationSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
