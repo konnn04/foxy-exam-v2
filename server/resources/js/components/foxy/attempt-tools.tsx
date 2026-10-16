@@ -66,6 +66,11 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
             CSV vi phạm
           </FxButton>
         </a>
+        <a href={`/admin/attempts/${attemptId}/export/oplog.csv`}>
+          <FxButton size="sm" icon={Download}>
+            CSV Op-Log
+          </FxButton>
+        </a>
         <a href={`/admin/attempts/${attemptId}/export/chat.csv`}>
           <FxButton size="sm" icon={Download}>
             CSV chat

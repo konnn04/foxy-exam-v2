@@ -115,4 +115,33 @@ class ExportController extends Controller
 
         return $this->csv("chat-phien-{$attempt->id}.csv", ['Thời điểm', 'Vai trò', 'Người gửi', 'Nội dung'], $rows);
     }
+
+    /** One row per exam of the active organization: the overview a department head wants in a spreadsheet. */
+    public function exams(): StreamedResponse
+    {
+        abort_unless(in_array(Auth::user()?->role, ['SUPER_ADMIN', 'ORG_ADMIN', 'TEACHER'], true), 403);
+        $rows = Exam::where('organization_id', $this->tenant->current()->id)->with('course:id,name,code')->withCount('attempts')->orderByDesc('id')->cursor()
+            ->map(function ($e) {
+                $done = ExamAttempt::where('exam_id', $e->id)->whereIn('status', ['SUBMITTED', 'FORCE_ENDED'])->whereNull('voided_at');
+
+                return [
+                    $e->code, $e->title, $e->course?->name, $e->status, self::when($e->start_time), self::when($e->end_time), $e->attempts_count,
+                    (clone $done)->count(), round((float) (clone $done)->avg('score'), 2),
+                    Violation::whereHas('attempt', fn ($q) => $q->where('exam_id', $e->id))->count(),
+                    ExamAttempt::where('exam_id', $e->id)->where('is_flagged', true)->count(),
+                ];
+            });
+
+        return $this->csv('tong-quan-ky-thi.csv', ['Mã phòng', 'Kỳ thi', 'Khóa học', 'Trạng thái', 'Bắt đầu', 'Kết thúc', 'Số lượt thi', 'Đã nộp', 'Điểm trung bình', 'Vi phạm', 'Bị gắn cờ'], $rows);
+    }
+
+    /** Typing activity of an attempt (Op-Log batches): who typed and pasted how much, and when. */
+    public function oplog(int $attemptId): StreamedResponse
+    {
+        $attempt = $this->attempt($attemptId);
+        $rows = \App\Models\EditOpLog::where('exam_attempt_id', $attempt->id)->orderBy('created_at')->cursor()
+            ->map(fn ($l) => [self::when($l->created_at), $l->keystroke_count, $l->paste_event_count, json_encode($l->synthetic_flags ?? [], JSON_UNESCAPED_UNICODE)]);
+
+        return $this->csv("op-log-phien-{$attempt->id}.csv", ['Thời điểm', 'Số phím', 'Số lần dán', 'Dấu hiệu'], $rows);
+    }
 }

@@ -116,6 +116,10 @@ class AttemptChatTest extends TestCase
         $this->assertStringContainsString('student01', $this->actingAs($admin)->get("/admin/reports/{$examId}/export/attempts.csv")->streamedContent());
         $this->assertStringContainsString('TAB_SWITCH', $this->actingAs($admin)->get("/admin/reports/{$examId}/export/violations.csv")->streamedContent());
 
+        \App\Models\EditOpLog::create(['exam_attempt_id' => $a->id, 'keystroke_count' => 12, 'paste_event_count' => 1, 'client_event_id' => 'x1']);
+        $this->assertStringContainsString('12', $this->actingAs($admin)->get("/admin/attempts/{$a->id}/export/oplog.csv")->streamedContent());
+        $this->assertStringContainsString('FOXY-2026', $this->actingAs($admin)->get('/admin/reports/export/exams.csv')->streamedContent());
+
         $this->actingAs(User::where('username', 'student01')->first())->get("/admin/attempts/{$a->id}/export/chat.csv")->assertForbidden();
     }
 }

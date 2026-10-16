@@ -1,9 +1,9 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
-import { Eye, ClipboardList } from 'lucide-react';
+import { ClipboardList, Download, Eye } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { IconButton, PageHeader, Pill } from '@/components/foxy/ui';
+import { FxButton, IconButton, PageHeader, Pill } from '@/components/foxy/ui';
 import { FxList } from '@/components/foxy/fx-list';
 import { hhmm } from '@/components/foxy/domain';
 import { EXAM_STATUS } from '@/components/foxy/exam-form';
@@ -33,6 +33,11 @@ export default function LiveIndex({ user, teams, exams }: { user: any; teams: Te
       <PageHeader
         title="Giám sát kỳ thi"
         desc={`${running} kỳ thi đang có thí sinh trong phòng · ${pending} vi phạm chờ duyệt. Chọn một kỳ thi để xem dashboard, danh sách phiên thi và nhật ký từng thí sinh.`}
+        actions={
+          <a href="/admin/reports/export/exams.csv">
+            <FxButton icon={Download}>CSV tổng quan kỳ thi</FxButton>
+          </a>
+        }
       />
       <FxList
         rows={exams}

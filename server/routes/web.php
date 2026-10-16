@@ -2086,6 +2086,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/reports/{id}/export/attempts.csv', [\App\Http\Controllers\Admin\ExportController::class, 'attempts'])->whereNumber('id');
     Route::get('/reports/{id}/export/violations.csv', [\App\Http\Controllers\Admin\ExportController::class, 'examViolations'])->whereNumber('id');
     Route::get('/attempts/{id}/export/violations.csv', [\App\Http\Controllers\Admin\ExportController::class, 'attemptViolations'])->whereNumber('id');
+    Route::get('/reports/export/exams.csv', [\App\Http\Controllers\Admin\ExportController::class, 'exams']);
+    Route::get('/attempts/{id}/export/oplog.csv', [\App\Http\Controllers\Admin\ExportController::class, 'oplog'])->whereNumber('id');
     Route::get('/attempts/{id}/export/chat.csv', [\App\Http\Controllers\Admin\ExportController::class, 'chat'])->whereNumber('id');
 });
 
