@@ -11,11 +11,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
 import ExamLobby from "../components/ExamLobby";
+import { clearAnswerQueue, flushAnswers, onQueueChange, pendingAnswers, queueAnswer } from "../lib/answerQueue";
 import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
   ApiError,
   finishExam,
-  saveQuestionAnswer,
   submitExamAttempt,
   takeExam,
   assetUrl,
@@ -195,19 +195,14 @@ export default function ExamClassic() {
     setSaveState("saving");
     window.clearTimeout(saveTimers.current[questionId]);
     saveTimers.current[questionId] = window.setTimeout(() => {
-      saveQuestionAnswer({
+      queueAnswer({
         examId: session.exam.id,
         attemptId: session.attemptId,
         questionId,
         answerId: next.answerId,
         selectedAnswerIds: next.selectedAnswerIds,
         answerContent: next.answerContent || undefined,
-      })
-        .then(() => {
-          setSaveState("idle");
-          setSavedAt(formatTime(new Date(), true));
-        })
-        .catch(() => setSaveState("error"));
+      });
     }, 400);
   }
 
@@ -241,12 +236,38 @@ export default function ExamClassic() {
 
   useEffect(() => runtime.setQuestion(current?.id ?? 0), [current, runtime]);
 
+  // save indicator follows the queue: waiting answers = "saving" (or the error state while offline)
+  useEffect(() => {
+    const sync = () => {
+      const n = pendingAnswers();
+      if (n === 0) {
+        setSaveState((s) => (s === "saving" || s === "error" ? "idle" : s));
+        setSavedAt(formatTime(new Date(), true));
+      } else setSaveState(navigator.onLine ? "saving" : "error");
+    };
+    const off = onQueueChange(sync);
+    const online = () => sync();
+    window.addEventListener("offline", online);
+    window.addEventListener("online", online);
+    return () => {
+      off();
+      window.removeEventListener("offline", online);
+      window.removeEventListener("online", online);
+    };
+  }, []);
+
   async function handleSubmit() {
     if (!session) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      // answers still waiting for the network must reach the server before the paper is closed
+      if (!(await flushAnswers())) {
+        setSubmitError(`Còn ${pendingAnswers()} câu trả lời chưa lưu được lên máy chủ (mất mạng?). Kiểm tra kết nối rồi nộp lại, bài làm vẫn được giữ trên máy.`);
+        return;
+      }
       await submitExamAttempt(session.exam.id, session.attemptId);
+      clearAnswerQueue();
       await finishExam().catch(() => {});
       clearSession();
       setShowSubmit(false);
