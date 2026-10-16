@@ -30,6 +30,7 @@ class AgentController extends Controller
                 'ai_objects' => !empty($cfg['ai_face_check']) && !empty($cfg['ai_objects']),
                 'ai_identity' => !empty($cfg['ai_face_check']) && !empty($cfg['ai_identity']),
                 'extra_camera_objects' => $phone && !empty($cfg['extra_camera_objects']),
+                'prohibited_labels' => \App\Support\ProhibitedObjects::clean($cfg['prohibited_labels'] ?? []),
             ],
             'has_reference' => FaceReference::has($a->user),
         ];

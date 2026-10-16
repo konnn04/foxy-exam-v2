@@ -113,6 +113,20 @@ export const KIND_META: Record<ExamKind, { label: string; desc: string; icon: ty
 };
 
 export type MonLevel = 'none' | 'standard' | 'strict' | 'custom';
+const PROHIBITED_OBJECTS: [string, string][] = [
+  ['cell phone', 'Điện thoại'],
+  ['laptop', 'Laptop'],
+  ['book', 'Sách, tài liệu'],
+  ['remote', 'Điều khiển'],
+  ['tv', 'Màn hình / TV'],
+  ['keyboard', 'Bàn phím rời'],
+  ['mouse', 'Chuột'],
+  ['backpack', 'Ba lô'],
+  ['handbag', 'Túi xách'],
+  ['scissors', 'Kéo'],
+];
+const PROHIBITED_DEFAULT = ['cell phone', 'laptop', 'book', 'remote', 'tv'];
+
 type MonKey = 'prevent_tab_switch' | 'ai_face_check' | 'ai_identity' | 'ai_objects' | 'prevent_paste' | 'track_keystroke' | 'require_mic';
 const MON_KEYS: Record<ExamKind, MonKey[]> = {
   general: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'require_mic'],
@@ -164,6 +178,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     extra_camera_objects: pick('extra_camera_objects', false),
     extra_camera_spot_check: pick('extra_camera_spot_check', false),
     violation_clips: pick('violation_clips', false),
+    prohibited_labels: pick<string[]>('prohibited_labels', PROHIBITED_DEFAULT),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -590,6 +605,29 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               },
             ]}
           />
+          {(form.ai_objects || form.extra_camera_objects) && (
+            <div className="flex flex-col gap-2 border-t border-border py-3.5">
+              <div>
+                <div className="text-sm font-medium">Vật bị cấm trong kỳ thi này</div>
+                <div className="text-xs text-muted-foreground">Chỉ những vật được chọn mới bị báo PROHIBITED_DEVICE. Bỏ chọn hết thì dùng bộ mặc định.</div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {PROHIBITED_OBJECTS.map(([value, label]) => {
+                  const on = form.prohibited_labels.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => state.set('prohibited_labels', on ? form.prohibited_labels.filter((x: string) => x !== value) : [...form.prohibited_labels, value])}
+                      className={`rounded-full border px-3 py-1 text-xs transition ${on ? 'border-primary bg-primary/10 font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-col gap-2 border-t border-border py-3.5">
             <div>
               <div className="text-sm font-medium">Camera mở rộng (điện thoại)</div>

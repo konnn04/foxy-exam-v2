@@ -127,9 +127,9 @@ class FakeAI:
         self.embeddings: list[tuple[int, np.ndarray | None]] = []
         self.calls = {"prohibited": 0, "embedding": 0}
 
-    async def prohibited(self, jpeg):
+    async def prohibited(self, jpeg, labels=()):
         self.calls["prohibited"] += 1
-        return self.labels
+        return {k: v for k, v in self.labels.items() if not labels or k in labels}
 
     async def embedding(self, jpeg):
         self.calls["embedding"] += 1
@@ -164,6 +164,19 @@ async def test_a_phone_in_view_for_two_seconds_becomes_a_violation_with_a_pictur
     vtype, severity, details, evidence = core.violations[0]
     assert (vtype, severity, evidence) == ("PROHIBITED_DEVICE", "HIGH", "ev1")
     assert details["evidence"] == {"camera": "ev1"} and details["labels"] == ["cell phone"] and details["source"] == "agent:objects"
+
+
+@pytest.mark.asyncio
+async def test_only_the_exams_own_prohibited_classes_are_reported():
+    p, core, ai, run, _ = pipeline(prohibited_labels=("book",))
+    ai.labels = {"cell phone": 0.9}
+    await run(n=4)
+    assert core.violations == [], "a phone is allowed in an exam that only prohibits books"
+
+    p2, core2, ai2, run2, _ = pipeline(prohibited_labels=("book",))
+    ai2.labels = {"cell phone": 0.9, "book": 0.8}
+    await run2(n=2)
+    assert [v[2]["labels"] for v in core2.violations] == [["book"]]
 
 
 @pytest.mark.asyncio

@@ -22,6 +22,8 @@ class AttemptInfo:
     ai_identity: bool
     extra_camera_objects: bool
     has_reference: bool
+    # classes this exam treats as prohibited; empty = whatever the object service flags by default
+    prohibited_labels: tuple[str, ...] = ()
 
     @staticmethod
     def parse(d: dict) -> "AttemptInfo":
@@ -30,6 +32,7 @@ class AttemptInfo:
             attempt_id=int(d["attempt_id"]), exam_id=int(d["exam_id"]), user_id=int(d["user_id"]), org_id=int(d.get("org_id", 0)),
             running=bool(d.get("running")), ai_objects=bool(c.get("ai_objects")), ai_identity=bool(c.get("ai_identity")),
             extra_camera_objects=bool(c.get("extra_camera_objects")), has_reference=bool(d.get("has_reference")),
+            prohibited_labels=tuple(str(x) for x in (c.get("prohibited_labels") or ())),
         )
 
 
@@ -89,13 +92,13 @@ class AI:
         self.http = http or httpx.AsyncClient(timeout=6.0)
         self.headers = {"X-AI-Token": cfg.ai_token} if cfg.ai_token else {}
 
-    async def prohibited(self, jpeg: bytes) -> dict[str, float]:
-        """Prohibited labels in the picture with their best score."""
+    async def prohibited(self, jpeg: bytes, labels: tuple[str, ...] = ()) -> dict[str, float]:
+        """Prohibited labels in the picture with their best score. `labels` is the exam's own list (default: the service's)."""
         r = await self.http.post(f"{self.cfg.object_url}/v1/detect", params={"min_score": 0.5}, files={"frame": ("f.jpg", jpeg, "image/jpeg")}, headers=self.headers)
         if r.status_code != 200:
             return {}
         out = r.json()
-        flagged = set(out.get("prohibited", []))
+        flagged = set(labels) if labels else set(out.get("prohibited", []))
         best: dict[str, float] = {}
         for o in out.get("objects", []):
             if o["label"] in flagged:

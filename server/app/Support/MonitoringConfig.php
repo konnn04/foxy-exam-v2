@@ -21,6 +21,8 @@ final class MonitoringConfig
         'extra_camera_objects' => ['nullable', 'boolean'],
         'extra_camera_spot_check' => ['nullable', 'boolean'],
         'violation_clips' => ['nullable', 'boolean'],
+        'prohibited_labels' => ['nullable', 'array', 'max:20'],
+        'prohibited_labels.*' => ['string', 'in:cell phone,laptop,book,remote,tv,keyboard,mouse,backpack,handbag,scissors'],
     ];
 
     /** Copies the AI / extra-camera options of a validated request into the config and applies the dependencies. */
@@ -29,6 +31,8 @@ final class MonitoringConfig
         foreach (['ai_identity', 'ai_objects', 'extra_camera_objects', 'extra_camera_spot_check', 'violation_clips'] as $k) {
             $config[$k] = (bool) ($validated[$k] ?? false);
         }
+
+        $config['prohibited_labels'] = (array) ($validated['prohibited_labels'] ?? []);
 
         return self::normalize($config);
     }
@@ -44,6 +48,8 @@ final class MonitoringConfig
         $c['extra_camera_objects'] = $extra !== 'off' && !empty($c['extra_camera_objects']);
         $c['extra_camera_spot_check'] = $extra !== 'off' && !empty($c['extra_camera_spot_check']);
 
+        // which objects count as prohibited: only meaningful when an object check is on
+        $c['prohibited_labels'] = $c['ai_objects'] || $c['extra_camera_objects'] ? ProhibitedObjects::clean($c['prohibited_labels'] ?? []) : [];
         $c['violation_clips'] = ($camera || !empty($c['require_screen'])) && !empty($c['violation_clips']);
 
         return $c;

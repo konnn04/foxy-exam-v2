@@ -59,7 +59,7 @@ class Pipeline:
         evidence_key = "phone" if source == "phone" else "camera"
 
         if (info.extra_camera_objects if source == "phone" else info.ai_objects):
-            found = await self.ai.prohibited(jpeg)
+            found = await self.ai.prohibited(jpeg, info.prohibited_labels)
             for label in st.objects.update(set(found), now):
                 await self._raise(info, "PROHIBITED_DEVICE", "HIGH", jpeg, evidence_key, now, {
                     "message": ("Camera phụ phát hiện vật cấm: " if source == "phone" else "Phát hiện vật cấm: ") + label,

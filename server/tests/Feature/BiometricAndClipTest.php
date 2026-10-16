@@ -161,4 +161,12 @@ class BiometricAndClipTest extends TestCase
         $this->assertEquals($other->username, $props['attempt']['shared_device_with'][0]['username']);
         $this->assertEquals('1.2.3.4', $props['attempt']['device_info']['ip']);
     }
+
+    public function test_prohibited_classes_are_per_exam_and_fall_back_to_the_default_set(): void
+    {
+        $on = ['ai_face_check' => true, 'ai_objects' => true];
+        $this->assertSame(['book'], MonitoringConfig::normalize($on + ['prohibited_labels' => ['book', 'spaceship', 'book']])['prohibited_labels']);
+        $this->assertSame(\App\Support\ProhibitedObjects::DEFAULT, MonitoringConfig::normalize($on + ['prohibited_labels' => ['nope']])['prohibited_labels']);
+        $this->assertSame([], MonitoringConfig::normalize(['ai_face_check' => true, 'prohibited_labels' => ['book']])['prohibited_labels'], 'no object check, no list');
+    }
 }
