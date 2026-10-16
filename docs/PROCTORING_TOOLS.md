@@ -68,3 +68,16 @@ Camera, màn hình, camera phụ chạy trên **một đồng hồ chung** (play
 
 Bảng `user_notifications`; `App\Support\Notify::to()/staff()`. Chuông ở thanh trên của trang quản trị tải khi mở trang, khi cửa sổ lấy lại focus và khi mở menu
 (không có kênh push tới trang quản trị, không dùng timer). Hiện phát sinh từ: yêu cầu đổi khuôn mặt và quyết định duyệt.
+
+## Bổ sung
+
+- **Chấm tay** `/admin/attempts/{id}/grading`: các câu tự luận, trả lời ngắn, điền chỗ trống chờ chấm; điểm bị chặn ở mức tối đa của câu, tổng điểm của phiên được tính lại
+  (câu tự chấm + chấm tay + bài lập trình), sinh viên được thông báo và thấy nhận xét trong *Xem lại*.
+- **Xem lại của sinh viên**: `is_allow_review = false` chặn hẳn (403), `is_hide_score = true` ẩn điểm tổng, điểm từng câu và đúng/sai trong Dashboard, nộp bài và xem lại.
+- **Chuỗi băm nhật ký vi phạm**: mỗi vi phạm lưu `chain_hash = sha256(hash_trước | phiên | loại | mức độ | giây | client_event_id)`; chi tiết, duyệt và clip không nằm trong chuỗi vì đổi được hợp lệ.
+  `GET /admin/attempts/{id}/verify-chain` báo `ok` hoặc vi phạm đầu tiên bị đứt.
+- **Thiết bị**: Rust `system_info` / `system_load`; CPU/RAM gửi theo heartbeat 5 giây. Trang phiên thi hiện tên máy, hệ điều hành, CPU, RAM, IP, mã thiết bị (băm) và cảnh báo
+  nếu cùng mã với thí sinh khác trong kỳ thi.
+- **Vật cấm theo kỳ thi**: `monitoring_config.prohibited_labels` (10 lớp COCO ở `App\Support\ProhibitedObjects`); bỏ chọn hết = bộ mặc định.
+- **Liveness**: `LivenessChallenge` trong `vision-core.ts` (kiểm thử bằng `npx vite-node scripts/vision-core.test.ts`).
+- **Hàng đợi bài làm offline**: `answerQueue.ts`, giữ trong localStorage, chỉ gửi câu trả lời mới nhất của mỗi câu, gửi lại khi có mạng, trước khi nộp bài phải gửi hết.
