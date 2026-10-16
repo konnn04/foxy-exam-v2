@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import TitleBar from "../components/TitleBar";
 import { ConsentGate } from "../components/ConsentGate";
+import { LangSwitch } from "../components/LangSwitch";
 import { Badge, BrandMark, Button, CodeTile, Empty, Input, Placeholder, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
@@ -270,6 +271,7 @@ export default function Auth() {
           <p className="mt-4 font-mono text-[10px] text-subtle">
             {version && `v${version} · `}Windows x64 · Tauri 2
           </p>
+          <LangSwitch className="mt-2" />
         </aside>
 
         {/* Cột phải */}
