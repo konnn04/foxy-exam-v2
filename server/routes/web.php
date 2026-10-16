@@ -34,6 +34,15 @@ use Inertia\Inertia;
 // Phone camera page: opened from the QR code in the exam lobby, no login (the token in the URL is the credential)
 Route::get('/m/camera/{token}', fn (string $token) => Inertia::render('Public/MobileCamera', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
 
+Route::get('/m/face/{token}', fn (string $token) => Inertia::render('Public/FaceEnroll', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
+Route::get('/biometric-policy', fn () => Inertia::render('Public/BiometricPolicy', ['version' => \App\Support\BiometricPolicy::VERSION, 'sections' => \App\Support\BiometricPolicy::sections()]));
+
+// the bell (staff, web session)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+    Route::post('/notifications/read', [\App\Http\Controllers\NotificationController::class, 'read']);
+});
+
 // 1. Landing Page (Trang chủ, Về chúng tôi, Dự án FoxyExam, Bảng giá)
 Route::get('/', function () {
     $plans = Plan::where('is_active', true)->get();
@@ -2053,6 +2062,10 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/users/{id}/face/delete', [\App\Http\Controllers\Admin\FaceController::class, 'destroy'])->whereNumber('id');
     Route::post('/users/{id}/face/lock', [\App\Http\Controllers\Admin\FaceController::class, 'lock'])->whereNumber('id');
     Route::get('/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'index']);
+    Route::get('/faces', [\App\Http\Controllers\Admin\FaceManagementController::class, 'index']);
+    Route::post('/faces/bulk', [\App\Http\Controllers\Admin\FaceManagementController::class, 'bulk']);
+    Route::post('/faces/lock-all', [\App\Http\Controllers\Admin\FaceManagementController::class, 'lockAll']);
+    Route::post('/faces/requests/{id}', [\App\Http\Controllers\Admin\FaceManagementController::class, 'decide'])->whereNumber('id');
     Route::get('/exams/{id}/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'show'])->whereNumber('id');
     Route::post('/exams/{id}/end', [\App\Http\Controllers\Admin\MonitoringController::class, 'end'])->whereNumber('id');
     Route::get('/exams/{id}/realtime', [\App\Http\Controllers\Admin\MonitoringController::class, 'realtime'])->whereNumber('id');

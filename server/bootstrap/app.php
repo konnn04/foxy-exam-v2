@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnforceContextScope::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
+        $middleware->alias(['biometric' => \App\Http\Middleware\RequireBiometricConsent::class]);
         $middleware->validateCsrfTokens(except: [
             'oauth/token',
         ]);

@@ -1,0 +1,33 @@
+# Việc cần làm sau các thay đổi gần đây
+
+## Máy chủ (Coolify)
+
+1. **Redeploy** `core` (Laravel) để chạy migration mới: `…000014`–`000021` (hủy phiên, loại sinh viên khỏi kỳ thi, `mobile_camera_tokens`, khuôn mặt,
+   `attempt_messages`, đồng ý sinh trắc học + yêu cầu đổi + token QR, `user_notifications`).
+2. Redeploy `ingest`, `hub`, `record` (Go): có endpoint `/internal/v1/signal`, trường CPU/RAM, sửa lỗi mất delta khi phòng vừa mở, cắt clip.
+   Image `record` cần ffmpeg — build lại image, không chỉ restart.
+3. Biến môi trường cho app (đã có trong compose, kiểm tra giá trị): `RT_RECORD_INTERNAL_URL`, `AI_FACE_URL`, `AI_OBJECT_URL`, `AI_AGENT_URL`, `AI_TOKEN`,
+   `RT_INTERNAL_SECRET`, `RT_JWT_SECRET`. Tuỳ chọn: `BIOMETRIC_CONSENT_REQUIRED` (mặc định true), `FFMPEG_PATH` cho `record`.
+4. **Dịch vụ AI** (`ai/face-service`, `ai/object-service`, `ai/supervisor-agent`) chạy ở máy riêng (ngoài compose), core gọi tới được; agent cần
+   LiveKit URL/key và địa chỉ core + `RT_INTERNAL_SECRET`. Thêm URL `/webhook` của agent vào danh sách webhook của LiveKit.
+5. LiveKit: giữ port-forward 7881/7882 (media); webhook của record vẫn như cũ.
+6. **Đổi mật khẩu seed** (admin, giảng viên, sinh viên mẫu) — mật khẩu mặc định yếu.
+7. Kiểm tra bucket S3: clip của client được lưu như bằng chứng (`evidence/…`), giới hạn 600 tệp/lượt thi và 60 MB/tệp.
+
+## Client (máy thí sinh)
+
+- Build lại bản mới (`pnpm tauri dev` khởi động lại, hoặc `pnpm tauri build`): có màn đồng ý sinh trắc học, chat, quay clip, QR đăng ký khuôn mặt, icon mới.
+- `pnpm sync:mediapipe` nếu thư mục wasm/model chưa có.
+- WebView2 phải hỗ trợ `MediaRecorder` webm (Windows 10/11 hiện đại đều có).
+
+## Cấu hình theo kỳ thi
+
+- Bật **Quay clip quanh vi phạm** ở bước Giám sát của kỳ thi (cần camera hoặc chia sẻ màn hình).
+- Camera mở rộng: chọn *Tùy chọn* hoặc *Bắt buộc* nếu muốn điện thoại làm camera phụ.
+
+## Kiểm thử thủ công nên làm một lần
+
+1. Đăng nhập client → thấy màn đồng ý → bỏ tick thì nút bị khoá → đồng ý mới vào được; đăng nhập lần nữa → hỏi lại.
+2. Thí sinh vào thi, giám thị mở `/admin/attempts/{id}`: số vi phạm tự tăng không cần F5; chat hai chiều; ghi vi phạm thủ công.
+3. Gây một vi phạm (Alt+Tab) khi bật clip: sau ~10 giây vi phạm có clip camera + màn hình.
+4. Phòng chờ: *Đăng ký bằng điện thoại* → quét QR → ảnh về máy tính. Khuôn mặt đã khoá → *Xin đổi* → duyệt ở `/admin/faces`.

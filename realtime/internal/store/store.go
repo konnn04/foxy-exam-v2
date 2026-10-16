@@ -169,7 +169,7 @@ func (s *Store) PushCommand(ctx context.Context, aid, eid int64, c events.Comman
 }
 
 // SignalFields are the only live fields the core may set through the internal API.
-var SignalFields = map[string]bool{"cs": true} // cs = id of the newest chat message of the attempt
+var SignalFields = map[string]bool{"cs": true, "ev": true} // cs = id of the newest chat message, ev = id of the violation that just got evidence (a clip)
 
 // Signal publishes one live field of an attempt to the proctors' hubs (the core uses it for "new chat message").
 func (s *Store) Signal(ctx context.Context, aid, eid int64, field string, value any, now time.Time) error {

@@ -16,6 +16,7 @@ export interface LiveRow {
   cpu?: number;
   ram?: number;
   chat_seq?: number;
+  ev_seq?: number;
   last_seen_ms: number;
   violations: number;
   last_violation?: { type: string; severity: string; ts: number };

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Bell, ChevronRight, Search } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Search } from 'lucide-react';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { type TeamItem } from '@/components/team-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { FxSidebar } from '@/components/foxy/fx-sidebar';
+import { NotificationBell } from '@/components/foxy/notification-bell';
 import { initials } from '@/components/foxy/domain';
 import { useTenant } from '@/hooks/use-tenant';
 import type { NavTab } from '@/types/navigation';
@@ -97,15 +98,7 @@ export default function AdminLayout({ user, currentTab = 'overview', title, brea
                 <span className="min-w-0 flex-1 truncate">Tìm kỳ thi, thí sinh, bài toán…</span>
                 <kbd className="rounded border border-border px-[5px] py-px font-mono text-[11px]">⌘K</kbd>
               </div>
-              <button
-                type="button"
-                title="Vi phạm chờ duyệt"
-                onClick={() => router.visit('/admin/live')}
-                className="relative flex size-9 cursor-pointer items-center justify-center rounded-lg hover:bg-muted"
-              >
-                <Bell className="size-4" />
-                <span className="absolute right-[9px] top-2 size-[7px] rounded-full border-2 border-background bg-danger" />
-              </button>
+              <NotificationBell />
             </>
           )}
           <ThemeToggle className="size-9 rounded-lg" />

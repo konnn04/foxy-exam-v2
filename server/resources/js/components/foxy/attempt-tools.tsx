@@ -3,7 +3,6 @@ import { router } from '@inertiajs/react';
 import { Download, Flag, MessageSquare } from 'lucide-react';
 import { Field, FxButton, FxSelect, FxTextarea, Modal, Panel } from './ui';
 import { AttemptChat } from './attempt-chat';
-import { useLiveRoom } from '@/hooks/use-live-room';
 
 const SEVERITIES = [
   { value: 'LOW', label: 'Thấp' },
@@ -13,8 +12,7 @@ const SEVERITIES = [
 ];
 
 /** Chat with the candidate, a violation the proctor saw themselves, and the CSV downloads of one attempt. */
-export function AttemptTools({ attemptId, examId, running }: { attemptId: number; examId: number; running: boolean }) {
-  const room = useLiveRoom(examId, running);
+export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: number; running: boolean; chatSeq?: number }) {
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState('MEDIUM');
   const [message, setMessage] = useState('');
@@ -58,7 +56,7 @@ export function AttemptTools({ attemptId, examId, running }: { attemptId: number
           </FxButton>
         </a>
       </div>
-      <AttemptChat attemptId={attemptId} signal={room.rows[attemptId]?.chat_seq} canSend={running} />
+      <AttemptChat attemptId={attemptId} signal={chatSeq} canSend={running} />
 
       <Modal
         open={open}

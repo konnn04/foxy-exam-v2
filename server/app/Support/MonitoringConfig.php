@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
  *
  *   ai_face_check  (camera + on-device MediaPipe)   -> ai_identity (face service), ai_objects (object service)
  *   extra_camera   (phone: off | optional | required) -> extra_camera_objects, extra_camera_spot_check
+ *   violation_clips (client records ~10 s of camera + screen around a violation) -> needs the camera check or the screen share
  */
 final class MonitoringConfig
 {
@@ -19,12 +20,13 @@ final class MonitoringConfig
         'ai_objects' => ['nullable', 'boolean'],
         'extra_camera_objects' => ['nullable', 'boolean'],
         'extra_camera_spot_check' => ['nullable', 'boolean'],
+        'violation_clips' => ['nullable', 'boolean'],
     ];
 
     /** Copies the AI / extra-camera options of a validated request into the config and applies the dependencies. */
     public static function fromRequest(array $config, array $validated): array
     {
-        foreach (['ai_identity', 'ai_objects', 'extra_camera_objects', 'extra_camera_spot_check'] as $k) {
+        foreach (['ai_identity', 'ai_objects', 'extra_camera_objects', 'extra_camera_spot_check', 'violation_clips'] as $k) {
             $config[$k] = (bool) ($validated[$k] ?? false);
         }
 
@@ -37,10 +39,12 @@ final class MonitoringConfig
         $c['ai_identity'] = $camera && !empty($c['ai_identity']);
         $c['ai_objects'] = $camera && !empty($c['ai_objects']);
 
-        $extra = in_array($c['extra_camera'] ?? 'off', ['off', 'optional', 'required'], true) ? $c['extra_camera'] : 'off';
+        $extra = in_array($c['extra_camera'] ?? 'off', ['off', 'optional', 'required'], true) ? ($c['extra_camera'] ?? 'off') : 'off';
         $c['extra_camera'] = $extra;
         $c['extra_camera_objects'] = $extra !== 'off' && !empty($c['extra_camera_objects']);
         $c['extra_camera_spot_check'] = $extra !== 'off' && !empty($c['extra_camera_spot_check']);
+
+        $c['violation_clips'] = ($camera || !empty($c['require_screen'])) && !empty($c['violation_clips']);
 
         return $c;
     }

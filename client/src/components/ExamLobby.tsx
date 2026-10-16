@@ -3,7 +3,8 @@ import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, QrCode, RefreshCw
 import { Badge, Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { usePhoneCamera } from "../lib/phoneCamera";
-import { ApiError, enrollFace, getExam, getFaceStatus, getHealth, startExam, type ExamDetail } from "../lib/api";
+import { ApiError, enrollFace, getExam, getFaceChange, getFacePhoneLink, getFaceStatus, getHealth, requestFaceChange, startExam, type ExamDetail } from "../lib/api";
+import QRCode from "qrcode";
 import { captureFrame } from "../lib/evidence";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
@@ -332,6 +333,57 @@ export default function ExamLobby({
     return () => window.clearTimeout(t);
   }, [phone.link, phone.layout, phone.checkLayout]);
 
+  // face enrolment from the phone: a single-use QR; the lobby checks the status (every few seconds, only while the QR is open)
+  const [faceQr, setFaceQr] = useState<string | null>(null);
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeReason, setChangeReason] = useState("");
+  const [changeState, setChangeState] = useState<string | null>(null);
+
+  useEffect(() => {
+    getFaceChange()
+      .then((r) => r.data && setChangeState(r.data.status === "PENDING" ? "Đã gửi yêu cầu đổi khuôn mặt, đang chờ giảng viên duyệt." : r.data.status === "REJECTED" ? `Yêu cầu đổi bị từ chối${r.data.note ? `: ${r.data.note}` : "."}` : null))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!faceQr) return;
+    const t = window.setInterval(() => {
+      void getFaceStatus()
+        .then((r) => {
+          if (!r.data.enrolled) return;
+          setFaceQr(null);
+          set("enroll", { level: "ok", detail: "Đã đăng ký khuôn mặt từ điện thoại", required: true });
+        })
+        .catch(() => {});
+    }, 3000);
+    const stop = window.setTimeout(() => setFaceQr(null), 10 * 60_000);
+    return () => {
+      window.clearInterval(t);
+      window.clearTimeout(stop);
+    };
+  }, [faceQr, set]);
+
+  const openPhoneEnroll = useCallback(async () => {
+    try {
+      const r = await getFacePhoneLink();
+      setFaceQr(await QRCode.toDataURL(r.data.url, { margin: 1, width: 264 }));
+    } catch (e) {
+      void dialog.alert({ title: "Chưa tạo được mã QR", text: errorText(e, "Thử lại sau."), tone: "danger" });
+    }
+  }, []);
+
+  const sendChange = useCallback(async () => {
+    try {
+      const r = await requestFaceChange(changeReason.trim());
+      setChangeOpen(false);
+      setChangeReason("");
+      setChangeState("Đã gửi yêu cầu đổi khuôn mặt, đang chờ giảng viên duyệt.");
+      void dialog.alert({ title: "Đã gửi yêu cầu", text: r.message, tone: "success" });
+    } catch (e) {
+      void dialog.alert({ title: "Chưa gửi được yêu cầu", text: errorText(e, "Thử lại sau."), tone: "danger" });
+    }
+  }, [changeReason]);
+
   const enroll = useCallback(async () => {
     setEnrolling(true);
     try {
@@ -452,12 +504,54 @@ export default function ExamLobby({
                 icon={<ScanFace size={14} />}
                 action={
                   checks.enroll.level !== "ok" ? (
-                    <Button size="sm" loading={enrolling} disabled={checks.face.level !== "ok"} onClick={() => void enroll()}>
-                      Đăng ký
+                    <span className="flex gap-1.5">
+                      <Button size="sm" loading={enrolling} disabled={checks.face.level !== "ok"} onClick={() => void enroll()}>
+                        Đăng ký
+                      </Button>
+                      <Button size="sm" icon={<Smartphone size={12} />} onClick={() => void openPhoneEnroll()}>
+                        Bằng điện thoại
+                      </Button>
+                    </span>
+                  ) : (
+                    <Button size="sm" onClick={() => setChangeOpen((o) => !o)}>
+                      Xin đổi
                     </Button>
-                  ) : undefined
+                  )
                 }
               />
+            )}
+            {wantIdentity && faceQr && (
+              <li className="flex items-center gap-4 rounded-lg border border-line bg-surface p-3">
+                <img src={faceQr} alt="Mã QR đăng ký khuôn mặt bằng điện thoại" className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
+                <div className="min-w-0 space-y-1 text-[11px] leading-relaxed text-muted">
+                  <p className="text-xs font-medium text-fg">Quét bằng camera điện thoại</p>
+                  <p>Nhìn thẳng vào camera trước, mặt rõ, đủ sáng. Mã dùng một lần, hết hạn sau 10 phút. Ảnh về máy tự cập nhật ở đây.</p>
+                  <button type="button" className="text-accent hover:underline" onClick={() => void openPhoneEnroll()}>
+                    Tạo mã mới
+                  </button>
+                </div>
+              </li>
+            )}
+            {wantIdentity && changeState && <li className="rounded-lg border border-line bg-surface px-3 py-2 text-[11px] text-muted">{changeState}</li>}
+            {wantIdentity && changeOpen && checks.enroll.level === "ok" && (
+              <li className="space-y-2 rounded-lg border border-line bg-surface p-3">
+                <p className="text-xs font-medium text-fg">Lý do muốn đổi khuôn mặt tham chiếu</p>
+                <textarea
+                  value={changeReason}
+                  maxLength={500}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  className="h-16 w-full rounded-md border border-line bg-surface-2 p-2 text-xs text-fg outline-none"
+                  placeholder="Ví dụ: ảnh cũ chụp thiếu sáng, tôi đã đổi kiểu tóc…"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="primary" disabled={changeReason.trim().length < 5} onClick={() => void sendChange()}>
+                    Gửi yêu cầu
+                  </Button>
+                  <Button size="sm" onClick={() => setChangeOpen(false)}>
+                    Huỷ
+                  </Button>
+                </div>
+              </li>
             )}
             {wantPhone && (
               <Row

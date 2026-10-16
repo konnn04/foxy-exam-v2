@@ -1,6 +1,6 @@
-import { ExternalLink, FastForward, Image as ImageIcon, Monitor, Pause, Play, Rewind, Scissors, Smartphone, Video } from 'lucide-react';
+import { FastForward, Maximize2, Image as ImageIcon, Monitor, Pause, Play, Rewind, Scissors, Smartphone, Video } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FeedPlaceholder } from '@/components/foxy/ui';
+import { Modal } from '@/components/foxy/ui';
 import { useAttemptRecordings, type RecordingInfo } from '@/hooks/use-recordings';
 
 const LEAD_IN_S = 3;
@@ -87,12 +87,11 @@ function Player({
           )}
         </div>
       ) : (
-        <FeedPlaceholder label={rec ? (rec.status === 'recording' ? 'đang ghi…' : 'bản ghi chưa sẵn sàng') : 'không có bản ghi'}>
-          <span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/60 px-2 py-[3px] text-xs font-semibold text-white">
-            <Icon className="size-3" />
-            {label}
-          </span>
-        </FeedPlaceholder>
+        <div className="flex h-12 items-center gap-2 px-3 text-xs text-white/70">
+          <Icon className="size-3.5" />
+          <span className="font-semibold text-white">{label}</span>
+          <span>{rec ? (rec.status === 'recording' ? 'đang ghi…' : 'bản ghi chưa sẵn sàng') : 'không có bản ghi'}</span>
+        </div>
       )}
     </div>
   );
@@ -110,6 +109,8 @@ export function SessionMedia({
   at,
   evidenceId,
   evidence: evidenceSet,
+  clips,
+  clipRange,
   config,
 }: {
   examId: number;
@@ -117,12 +118,15 @@ export function SessionMedia({
   at: string | null;
   evidenceId: string | null;
   evidence?: Record<string, string> | null;
+  clips?: Record<string, string> | null;
+  clipRange?: { from_ms: number; to_ms: number } | null;
   config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null;
 }) {
   const { items, state, clip } = useAttemptRecordings(examId, attemptId);
   const atMs = at ? new Date(at).getTime() : null;
   const [clock, setClock] = useState<Clock>({ t: null, playing: false, rate: 1 });
   const [clipError, setClipError] = useState('');
+  const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
 
   // choosing another violation moves the shared clock to just before it, paused
   useEffect(() => {
@@ -169,6 +173,14 @@ export function SessionMedia({
   ] as const)
     .map(([k, label]) => ({ k, label, rec: items.find((r) => r.id === (evidenceSet?.[k] ?? null) && r.url) }))
     .filter((x) => x.rec);
+  const clipList = ([
+    ['camera', 'camera'],
+    ['screen', 'màn hình'],
+  ] as const)
+    .flatMap(([k, label]) => {
+      const rec = items.find((r) => r.id === (clips?.[k] ?? null) && r.url);
+      return rec ? [{ key: k as string, label: label as string, rec }] : [];
+    });
   const single = shots.length === 0 ? items.find((r) => r.id === evidenceId && r.url) : undefined;
 
   return (
@@ -216,23 +228,42 @@ export function SessionMedia({
       {clipError && <div className="text-xs text-danger-fg">{clipError}</div>}
       {state === 'disabled' && <div className="text-xs text-muted-foreground">Hệ thống ghi hình chưa được bật.</div>}
       {state === 'error' && <div className="text-xs text-danger-fg">Không tải được bản ghi của phiên này.</div>}
-      {(shots.length > 0 || single) && (
+      {(shots.length > 0 || single || clipList.length > 0) && (
         <div className="overflow-hidden rounded-[10px] border border-border">
           <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground">
             <ImageIcon className="size-3.5" />
-            Ảnh minh chứng lúc vi phạm
+            Minh chứng lúc vi phạm
+            <span className="ml-auto">bấm ảnh để phóng to</span>
           </div>
-          <div className="grid gap-px bg-border" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
-            {(shots.length > 0 ? shots.map((x) => ({ key: x.k, label: x.label, rec: x.rec! })) : [{ key: 'one', label: 'Minh chứng', rec: single! }]).map((x) => (
-              <a key={x.key} href={x.rec.url} target="_blank" rel="noreferrer" className="group relative block bg-black">
-                <img src={x.rec.url} alt={x.label} className="aspect-[16/10] w-full object-contain" />
-                <span className="absolute left-2 top-2 rounded bg-black/65 px-2 py-0.5 text-[11px] font-semibold text-white">{x.label}</span>
-                <ExternalLink className="absolute bottom-2 right-2 size-3.5 text-white opacity-0 group-hover:opacity-100" />
-              </a>
+          <div className="flex flex-wrap gap-3 p-3">
+            {(shots.length > 0 ? shots.map((x) => ({ key: x.k, label: x.label, rec: x.rec! })) : single ? [{ key: 'one', label: 'Minh chứng', rec: single }] : []).map((x) => (
+              <button key={x.key} type="button" onClick={() => setZoom({ url: x.rec.url!, label: x.label })} className="group relative h-24 w-40 overflow-hidden rounded-lg border border-border bg-black">
+                <img src={x.rec.url} alt={x.label} className="size-full object-cover" />
+                <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{x.label}</span>
+                <Maximize2 className="absolute bottom-1 right-1 size-3.5 text-white opacity-0 group-hover:opacity-100" />
+              </button>
+            ))}
+            {clipList.map((c) => (
+              <div key={c.key} className="w-56">
+                <video
+                  src={c.rec.url}
+                  controls
+                  preload="metadata"
+                  className="aspect-video w-full rounded-lg bg-black object-contain"
+                  onLoadedMetadata={(e) => {
+                    // the clip starts before the violation: jump to the moment itself (a bit earlier for context)
+                    if (clipRange && atMs !== null && Number.isFinite(e.currentTarget.duration)) e.currentTarget.currentTime = Math.max(0, (atMs - clipRange.from_ms) / 1000 - 2);
+                  }}
+                />
+                <div className="mt-0.5 text-[11px] text-muted-foreground">Clip {c.label} (5 giây trước và sau)</div>
+              </div>
             ))}
           </div>
         </div>
       )}
+      <Modal open={zoom !== null} onClose={() => setZoom(null)} width={1100} title={zoom?.label ?? ''}>
+        {zoom && <img src={zoom.url} alt={zoom.label} className="max-h-[75vh] w-full rounded-lg bg-black object-contain" />}
+      </Modal>
     </div>
   );
 }

@@ -15,6 +15,7 @@ export type NavTab =
   | 'saas-plans'
   | 'billing'
   | 'settings'
+  | 'faces'
   | 'live';
 
 export interface TeamItem {

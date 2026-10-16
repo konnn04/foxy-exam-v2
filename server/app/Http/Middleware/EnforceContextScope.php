@@ -39,6 +39,7 @@ class EnforceContextScope
         'classical-questions' => 'academic',
         'programming-problems' => 'academic',
         'live' => 'academic',
+        'faces' => 'academic',
         'attempts' => 'academic',
         'violations' => 'academic',
         'reports' => 'academic',

@@ -1,4 +1,5 @@
-import { collectEvidence, evidenceDue, EVIDENCE_SOURCE, type EvidenceSet } from "./evidence";
+import { collectEvidence, evidenceDue, EVIDENCE_SOURCE, shootClip, type EvidenceSet } from "./evidence";
+import { clipRecorderActive } from "./clipRecorder";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
@@ -117,6 +118,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
           void collectEvidence(rt, type, extraCamera.current)
             .then((set) => send(set), () => send())
         } else send();
+        if (severity !== "LOW" && clipRecorderActive()) void shootClip(rt, type, at).catch(() => undefined);
       } else {
         void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
           console.error("[guard] Báo vi phạm lỗi:", err),

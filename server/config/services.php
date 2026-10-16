@@ -49,6 +49,9 @@ return [
     ],
 
     // Realtime plane (Go services in /realtime). Leave RT_JWT_SECRET empty to run without it.
+    // the candidate must agree to biometric processing in every login (tests switch it off except their own)
+    'biometric_consent' => (bool) env('BIOMETRIC_CONSENT_REQUIRED', true),
+
     'realtime' => [
         'jwt_secret' => env('RT_JWT_SECRET'),
         'internal_secret' => env('RT_INTERNAL_SECRET'),

@@ -105,6 +105,8 @@ export interface MonitoringConfig {
   /** sub-options of the phone camera */
   extra_camera_objects?: boolean;
   extra_camera_spot_check?: boolean;
+  /** the client records ~10 s of camera + screen around a violation and uploads them */
+  violation_clips?: boolean;
 }
 
 export interface ApiEnvelope<T> {
@@ -592,6 +594,9 @@ export interface MobileViewer {
 /** Credentials to watch the student's linked phone; data is null when no phone was linked for this exam. */
 export const getMobileViewer = (examId: number) => request<{ success: boolean; data: MobileViewer | null }>(`/student/exams/${examId}/mobile-camera`);
 
+export const attachViolationClip = (body: { type: string; at_ms: number; clips: { camera?: string; screen?: string }; from_ms: number; to_ms: number }) =>
+  request<{ success: boolean }>("/student/violation-clip", { method: "POST", body: JSON.stringify(body) });
+
 export interface ChatMessage {
   id: number;
   role: "PROCTOR" | "STUDENT";
@@ -604,6 +609,19 @@ export const getAttemptChat = (attemptId: number, after = 0) => request<{ data: 
 
 export const sendAttemptChat = (attemptId: number, body: string) =>
   request<{ data: ChatMessage }>(`/student/attempts/${attemptId}/chat`, { method: "POST", body: JSON.stringify({ body }) });
+
+export interface BiometricPolicy {
+  version: string;
+  sections: { title: string; body: string }[];
+  url: string;
+}
+
+export const getBiometricPolicy = () => request<{ data: BiometricPolicy }>("/public/biometric-policy", {}, { auth: false });
+export const getBiometricStatus = () => request<{ data: { accepted: boolean; version: string } }>("/student/biometric");
+export const acceptBiometric = () => request<{ success: boolean }>("/student/biometric/consent", { method: "POST", body: JSON.stringify({ agree: true }) });
+export const requestFaceChange = (reason: string) => request<{ success: boolean; message: string }>("/student/face/change-request", { method: "POST", body: JSON.stringify({ reason }) });
+export const getFaceChange = () => request<{ data: { status: "PENDING" | "APPROVED" | "REJECTED"; reason: string; note: string | null } | null }>("/student/face/change-request");
+export const getFacePhoneLink = () => request<{ data: { url: string; expires_at: string } }>("/student/face/phone-link", { method: "POST" });
 
 export interface FaceStatus {
   enrolled: boolean;

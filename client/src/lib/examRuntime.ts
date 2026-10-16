@@ -9,6 +9,7 @@ import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { releaseEvidence } from "./evidence";
+import { startClipRecorder, stopClipRecorder } from "./clipRecorder";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
 
@@ -236,6 +237,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       client.setState({ camera: !!media.camera, screen: !!media.screen });
       setCameraStream(media.camera);
       watchTracks();
+      if (cfgRef.current?.violation_clips && live) startClipRecorder({ camera: !!media.camera && !!cfgRef.current.ai_face_check, screen: !!media.screen });
 
       const lk = live ? client.livekit : null;
       if (lk && (media.camera || media.screen)) {
@@ -278,6 +280,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     await client.stop();
     await publisher.current?.disconnect();
     publisher.current = null;
+    stopClipRecorder();
     releaseEvidence();
     releaseLobbyMedia();
     setCameraStream(null);

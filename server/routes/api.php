@@ -29,6 +29,12 @@ Route::prefix('v1')->group(function () {
     });
 
     // 2. Student Authentication
+    Route::get('/public/biometric-policy', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'policy']);
+    Route::prefix('public/face-enroll/{token}')->middleware('throttle:30,1')->group(function () {
+        Route::post('/info', [\App\Http\Controllers\Api\Public\FaceEnrollPhoneController::class, 'info']);
+        Route::post('/submit', [\App\Http\Controllers\Api\Public\FaceEnrollPhoneController::class, 'submit']);
+    });
+
     Route::post('/auth/login', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login']);
     Route::post('/student/login', [AuthController::class, 'studentLogin']);
 
@@ -50,7 +56,7 @@ Route::prefix('v1')->group(function () {
 
             // Exams Flow
             Route::get('/exams/{exam}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'show']);
-            Route::post('/exams/{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start']);
+            Route::post('/exams/{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->middleware('biometric');
             Route::get('/exams/{exam}/take/{attempt}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'take']);
             Route::post('/exams/{exam}/take/{attempt}/save-answer', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer']);
             Route::post('/exams/{exam}/submit/{attempt}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'submit']);
@@ -64,20 +70,28 @@ Route::prefix('v1')->group(function () {
             // Realtime plane: tokens + URLs for batched telemetry, evidence upload and LiveKit
             // Face reference photo (self-enrolment from the camera)
             Route::get('/face', [\App\Http\Controllers\Api\V1\Student\FaceEnrollmentController::class, 'status']);
-            Route::post('/face/enroll', [\App\Http\Controllers\Api\V1\Student\FaceEnrollmentController::class, 'enroll'])->middleware('throttle:10,1');
+            Route::post('/face/enroll', [\App\Http\Controllers\Api\V1\Student\FaceEnrollmentController::class, 'enroll'])->middleware(['biometric', 'throttle:10,1']);
+            Route::get('/biometric', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'status']);
+            Route::post('/biometric/consent', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'accept'])->middleware('throttle:20,1');
+            Route::post('/face/change-request', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'requestChange'])->middleware(['biometric', 'throttle:10,1']);
+            Route::get('/face/change-request', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'changeStatus']);
+            Route::post('/face/phone-link', [\App\Http\Controllers\Api\V1\Student\BiometricController::class, 'phoneLink'])->middleware(['biometric', 'throttle:10,1']);
+            Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+            Route::post('/notifications/read', [\App\Http\Controllers\NotificationController::class, 'read']);
 
             // Phone as an extra camera (link + QR in the lobby, layout check)
-            Route::post('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'issue'])->middleware('throttle:20,1');
+            Route::post('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'issue'])->middleware(['biometric', 'throttle:20,1']);
             Route::get('/exams/{exam}/mobile-camera', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'viewer']);
             Route::post('/exams/{exam}/mobile-camera/verify', [\App\Http\Controllers\Api\V1\Student\MobileCameraController::class, 'verify'])->middleware('throttle:20,1');
 
-            Route::post('/realtime/session', [RealtimeController::class, 'session']);
+            Route::post('/realtime/session', [RealtimeController::class, 'session'])->middleware('biometric');
             Route::get('/attempts/{id}/chat', [\App\Http\Controllers\Api\V1\Student\AttemptChatController::class, 'index'])->whereNumber('id');
             Route::post('/attempts/{id}/chat', [\App\Http\Controllers\Api\V1\Student\AttemptChatController::class, 'store'])->whereNumber('id')->middleware('throttle:30,1');
 
             // Anti-Cheat Telemetry & Keystroke Op-Log
             Route::post('/op-log', [TelemetryController::class, 'recordOpLog']);
             Route::post('/violation', [TelemetryController::class, 'recordViolation']);
+            Route::post('/violation-clip', [\App\Http\Controllers\Api\V1\Student\ViolationClipController::class, 'attach'])->middleware('throttle:60,1');
 
             // Code Submissions
             Route::post('/submit', [SubmissionController::class, 'submitCode']);

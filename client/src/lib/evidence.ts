@@ -1,5 +1,6 @@
 import { getLobbyMedia } from "./lobbyMedia";
-import type { ViolationType } from "./api";
+import { attachViolationClip, ApiError, type ViolationType } from "./api";
+import { captureClip } from "./clipRecorder";
 import type { RealtimeClient } from "./realtime";
 
 /** Which picture proves a violation: what was on the screen, or who was in front of the camera. */
@@ -95,4 +96,28 @@ export async function collectEvidence(rt: RealtimeClient, type: ViolationType, w
   if (phoneId) all.phone = phoneId;
   const first = EVIDENCE_SOURCE[type];
   return { primary: (first && all[first]) || all.screen || all.camera || all.phone, all };
+}
+
+const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
+/**
+ * Takes the clip around a violation (5 s before, 5 s after), uploads it and tells the core which violation it belongs to.
+ * The violation was reported long before (it never waits for this), so the attach is retried while the core has not
+ * stored it yet.
+ */
+export async function shootClip(rt: RealtimeClient, type: ViolationType, at: number): Promise<void> {
+  const clip = await captureClip();
+  if (!clip) return;
+  const [camera, screen] = await Promise.all([clip.camera ? rt.uploadEvidence(clip.camera) : null, clip.screen ? rt.uploadEvidence(clip.screen) : null]);
+  const clips = { ...(camera ? { camera } : {}), ...(screen ? { screen } : {}) };
+  if (!camera && !screen) return;
+  for (let i = 0; i < 4; i++) {
+    try {
+      await attachViolationClip({ type, at_ms: at, clips, from_ms: clip.fromMs, to_ms: clip.toMs });
+      return;
+    } catch (e) {
+      if (!(e instanceof ApiError) || e.status !== 404) return;
+      await sleep(3000);
+    }
+  }
 }

@@ -12,6 +12,7 @@ import {
   Library,
   LogOut,
   Package,
+  ScanFace,
   ShieldAlert,
   SlidersHorizontal,
   Users,
@@ -77,6 +78,7 @@ function navFor(can: Capabilities, isPlatform: boolean, pending: number): { labe
         { id: 'exams' as NavTab, label: 'Kỳ thi', icon: ClipboardList, href: '/admin/exams' },
         { id: 'problem-banks' as NavTab, label: 'Ngân hàng đề', icon: Library, href: '/admin/problem-banks' },
         { id: 'live' as NavTab, label: 'Giám sát kỳ thi', icon: Eye, href: '/admin/live', count: pending },
+        { id: 'faces' as NavTab, label: 'Khuôn mặt', icon: ScanFace, href: '/admin/faces' },
       ],
     },
   ];

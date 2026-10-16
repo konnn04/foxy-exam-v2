@@ -163,6 +163,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     ai_objects: pick('ai_objects', false),
     extra_camera_objects: pick('extra_camera_objects', false),
     extra_camera_spot_check: pick('extra_camera_spot_check', false),
+    violation_clips: pick('violation_clips', false),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -195,7 +196,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
   };
   const flipMon = (k: MonKey, v: boolean) => {
     setMon('custom');
-    setForm((f) => ({ ...f, [k]: v, ...(k === 'ai_face_check' && !v ? { ai_identity: false, ai_objects: false } : {}) }));
+    setForm((f) => ({ ...f, [k]: v, ...(k === 'ai_face_check' && !v ? { ai_identity: false, ai_objects: false, ...(f.require_screen ? {} : { violation_clips: false }) } : {}) }));
     setDirty(true);
   };
   /** the phone camera: turning it off also turns its sub-options off */
@@ -579,6 +580,14 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                   ]
                 : [{ key: 'mic', label: 'Bật micro', desc: 'Phát hiện tiếng nói · bắt buộc cho phần Nói', checked: form.require_mic, onChange: (v: boolean) => flipMon('require_mic', v) }]),
               { key: 'screen', label: 'Bắt buộc chia sẻ màn hình', desc: 'Dừng chia sẻ giữa giờ thi thì bài bị che cho tới khi bật lại', checked: form.require_screen, onChange: (v: boolean) => state.set('require_screen', v) },
+              {
+                key: 'clips',
+                label: 'Quay clip quanh vi phạm',
+                desc: 'Máy thí sinh tự quay khoảng 10 giây (5 giây trước, 5 giây sau) camera và màn hình rồi tải lên. Cần bật camera hoặc chia sẻ màn hình',
+                checked: form.violation_clips,
+                disabled: !form.ai_face_check && !form.require_screen,
+                onChange: (v: boolean) => state.set('violation_clips', v),
+              },
             ]}
           />
           <div className="flex flex-col gap-2 border-t border-border py-3.5">

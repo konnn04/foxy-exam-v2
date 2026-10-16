@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, CircleCheck, Code, RotateCcw, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
+import { Ban, CircleCheck, Code, RotateCcw, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, FxButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
@@ -19,6 +19,7 @@ import {
 } from '@/components/foxy/domain';
 import { SessionMedia } from '@/components/foxy/session-media';
 import { AttemptTools } from '@/components/foxy/attempt-tools';
+import { useLiveRoom } from '@/hooks/use-live-room';
 import { useMore } from '@/hooks/use-more';
 import { useDialog } from '@/components/foxy/dialogs';
 import { cn } from '@/lib/utils';
@@ -93,16 +94,33 @@ export function deviceLabel(d: Record<string, unknown> | null) {
 
 export default function AttemptShow({ user, teams, attempt, violations, typing, submissions }: Props) {
   const initialId = useMemo(() => {
+    // nothing is opened by default: the detail (and its pictures) shows only for a violation the reviewer picks
     const q = typeof window !== 'undefined' ? Number(new URLSearchParams(window.location.search).get('violation')) : 0;
-    return violations.some((v) => v.id === q) ? q : violations.find((v) => !v.is_reviewed)?.id ?? violations[0]?.id ?? 0;
+    return violations.some((v) => v.id === q) ? q : 0;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const dialog = useDialog();
   const groups = useMemo(() => groupViolations(violations), [violations]);
   const [selId, setSelId] = useState(initialId);
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState<Set<number>>(new Set());
-  const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId)) ?? groups[0];
+  const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId));
   const sel = selGroup?.head;
+
+  // live: the hub reports every change of this attempt (status, new violation, evidence or clip arriving, chat), so the page
+  // refreshes its data from the server only when something happened instead of polling
+  const running = attempt.status === 'IN_PROGRESS';
+  const room = useLiveRoom(attempt.exam.id, running);
+  const row = room.rows[attempt.id];
+  const signature = row ? `${row.status}:${row.violations}:${row.ev_seq ?? 0}` : '';
+  const lastSignature = useRef(signature);
+  useEffect(() => {
+    if (!signature || signature === lastSignature.current) {
+      lastSignature.current = signature || lastSignature.current;
+      return;
+    }
+    lastSignature.current = signature;
+    router.reload({ only: ['attempt', 'violations', 'typing', 'submissions'] });
+  }, [signature]);
   const voided = attempt.voided_at !== null;
   const more = useMore(groups.length, 40);
 
@@ -141,9 +159,9 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const decide = (decision: 'confirmed' | 'false_positive' | 'pending') => {
     if (!sel) return;
     setBusy(true);
-    const idx = groups.indexOf(selGroup);
+    const idx = groups.indexOf(selGroup!);
     review(
-      selGroup.rows.map((v) => v.id),
+      selGroup!.rows.map((v) => v.id),
       decision,
       () => decision !== 'pending' && groups[idx + 1] && setSelId(groups[idx + 1].head.id),
     );
@@ -235,9 +253,18 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
-          <SessionMedia examId={attempt.exam.id} attemptId={attempt.id} at={sel?.timestamp ?? null} evidenceId={sel?.evidence_id ?? null} evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null} config={attempt.exam.monitoring_config} />
+          <SessionMedia
+            examId={attempt.exam.id}
+            attemptId={attempt.id}
+            at={sel?.timestamp ?? null}
+            evidenceId={sel?.evidence_id ?? null}
+            evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null}
+            clips={((sel?.details as { clips?: Record<string, string> } | null)?.clips) ?? null}
+            clipRange={((sel?.details as { clip_range?: { from_ms: number; to_ms: number } } | null)?.clip_range) ?? null}
+            config={attempt.exam.monitoring_config}
+          />
 
-          <AttemptTools attemptId={attempt.id} examId={attempt.exam.id} running={attempt.status === 'IN_PROGRESS'} />
+          <AttemptTools attemptId={attempt.id} running={running} chatSeq={row?.chat_seq} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">
@@ -303,13 +330,16 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 </Pill>
                 <span className="flex-1 text-[15px] font-semibold">
                   {violationLabel(sel.type)}
-                  {selGroup.rows.length > 1 && (
+                  {selGroup!.rows.length > 1 && (
                     <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
-                      ×{selGroup.rows.length} · {clockOffset(attempt.started_at, sel.timestamp)} → {clockOffset(attempt.started_at, selGroup.last.timestamp)}
+                      ×{selGroup.rows.length} · {clockOffset(attempt.started_at, sel.timestamp)} → {clockOffset(attempt.started_at, selGroup!.last.timestamp)}
                     </span>
                   )}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">{sel.type}</span>
+                <button type="button" onClick={() => setSelId(0)} className="rounded p-1 text-muted-foreground hover:bg-muted" title="Đóng chi tiết" aria-label="Đóng chi tiết">
+                  <X className="size-4" />
+                </button>
               </div>
               <div className="flex flex-col gap-3.5 p-4">
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))' }}>
@@ -356,6 +386,10 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                   </FxButton>
                 </div>
               </div>
+            </Panel>
+          ) : violations.length > 0 ? (
+            <Panel>
+              <EmptyState icon={ShieldAlert} title="Chọn một vi phạm để xem chi tiết" desc="Bấm vào vi phạm ở danh sách bên phải hoặc mốc trên dòng thời gian: ảnh minh chứng, clip và thao tác duyệt sẽ hiện ở đây." />
             </Panel>
           ) : (
             <Panel>

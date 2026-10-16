@@ -18,13 +18,14 @@ import {
   WifiOff,
 } from "lucide-react";
 import TitleBar from "../components/TitleBar";
+import { ConsentGate } from "../components/ConsentGate";
 import { Badge, BrandMark, Button, CodeTile, Empty, Input, Placeholder, cx } from "../components/ui";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
-import { ApiError, getHealth, getMe, getPublicOrganizations, login, type PublicOrganization } from "../lib/api";
+import { ApiError, getBiometricStatus, getHealth, getMe, getPublicOrganizations, login, type PublicOrganization } from "../lib/api";
 import { clearAuth, getAuth, getRecentOrgs, pushRecentOrg, saveAuth, type RecentOrg } from "../lib/authStore";
 
-type Phase = "form" | "resuming" | "resume-error";
+type Phase = "form" | "resuming" | "resume-error" | "consent";
 type Step = 1 | 2;
 
 const normalize = (s: string) =>
@@ -105,6 +106,28 @@ export default function Auth() {
     if (step === 2) userRef.current?.focus();
   }, [step]);
 
+  async function enter() {
+    await setAuthenticated(true);
+    await switchWindow(AppWindow.Main);
+  }
+
+  /** Biometric consent is per login: false until the student ticks it for this token. */
+  async function consentGiven(): Promise<boolean> {
+    try {
+      return (await getBiometricStatus()).data.accepted;
+    } catch {
+      return false;
+    }
+  }
+
+  function declineConsent() {
+    clearAuth();
+    void setAuthenticated(false);
+    setStep(1);
+    setPhase("form");
+    setError("Bạn cần đồng ý chính sách dữ liệu sinh trắc học để dùng FoxyExam.");
+  }
+
   async function resume() {
     if (resuming.current) return;
     const auth = getAuth();
@@ -117,8 +140,11 @@ export default function Auth() {
     try {
       const me = await getMe();
       saveAuth({ ...auth, user: me.data });
-      await setAuthenticated(true);
-      await switchWindow(AppWindow.Main);
+      if (!(await consentGiven())) {
+        setPhase("consent");
+        return;
+      }
+      await enter();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         clearAuth();
@@ -198,8 +224,11 @@ export default function Auth() {
       pushRecentOrg(saved);
       setRecent(getRecentOrgs());
       setPassword("");
-      await setAuthenticated(true);
-      await switchWindow(AppWindow.Main);
+      if (!(await consentGiven())) {
+        setPhase("consent");
+        return;
+      }
+      await enter();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Đăng nhập thất bại, vui lòng thử lại.");
     } finally {
@@ -251,6 +280,8 @@ export default function Auth() {
               Đang khôi phục phiên đăng nhập…
             </div>
           )}
+
+          {phase === "consent" && <ConsentGate onAccepted={() => void enter()} onDeclined={declineConsent} />}
 
           {phase === "resume-error" && (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">

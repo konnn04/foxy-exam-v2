@@ -87,6 +87,7 @@ type View struct {
 	Faces         *int   `json:"faces,omitempty"`
 	CPU           *int   `json:"cpu,omitempty"` // 0..100 of the candidate's machine
 	RAM           *int   `json:"ram,omitempty"`
+	EvSeq         int64  `json:"ev_seq,omitempty"` // moves when a violation gets more evidence (a clip arrived): proctor pages refresh
 	ChatSeq       int64  `json:"chat_seq,omitempty"` // id of the newest chat message: the proctor UI fetches what it has not seen
 	LastSeenMS    int64  `json:"last_seen_ms"`
 	Violations    int    `json:"violations"`
@@ -172,6 +173,8 @@ func (a *attState) apply(f map[string]string) {
 			a.RAM = &n
 		case "cs":
 			a.ChatSeq = atoi(v)
+		case "ev":
+			a.EvSeq = atoi(v)
 		case "v":
 			a.Violations = int(atoi(v))
 		case "lv":
