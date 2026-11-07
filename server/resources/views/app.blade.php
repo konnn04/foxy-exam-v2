@@ -8,10 +8,10 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <title inertia>{{ config('app.name', 'Exam Guard') }}</title>
 
-        <!-- Typography (FoxyExam Screens v2): Instrument Sans + JetBrains Mono; Archivo for the landing page -->
+        <!-- Typography: Be Vietnam Pro + Instrument Sans + JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Scripts & Styles -->
         <script>
