@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Download,
   Laptop,
@@ -36,6 +37,7 @@ interface DownloadPageProps {
 }
 
 export default function DownloadPage({ release }: DownloadPageProps) {
+  const { lang, t } = useLanguage();
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
 
   const defaultRelease: ReleaseProps = {
@@ -60,22 +62,26 @@ export default function DownloadPage({ release }: DownloadPageProps) {
     setTimeout(() => setCopiedSha(null), 2000);
   };
 
+  const heroBadge = t.download.heroBadge.replace('{version}', rel.version);
+  const candidateBullet2 = t.download.candidateBullet2.replace('{size}', rel.exe_size_mb);
+  const adminBullet2 = t.download.adminBullet2.replace('{size}', rel.msi_size_mb);
+
   return (
     <PublicLayout>
-      <Head title="Tải ứng dụng - Exam Guard" />
+      <Head title={t.download.metaTitle} />
 
       {/* Hero */}
       <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Bản phát hành chính thức {rel.version} (Mới nhất) · Dành cho Windows
+            {heroBadge}
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Tải ứng dụng giám sát thi Exam Guard
+            {t.download.heroTitle}
           </h1>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            Phần mềm bảo vệ môi trường thi an toàn dành cho thí sinh làm bài thi trực tuyến và quản trị viên phòng máy trường đại học.
+            {t.download.heroDesc}
           </p>
         </div>
       </section>
@@ -92,29 +98,29 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                     <Laptop className="w-6 h-6" />
                   </div>
                   <span className="text-xs font-bold text-blue-600 uppercase bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
-                    DÀNH CHO THÍ SINH
+                    {t.download.candidateBadge}
                   </span>
                 </div>
 
                 <h2 className="text-xl font-bold text-slate-900 mb-2">
-                  Ứng dụng thí sinh cho máy tính cá nhân
+                  {t.download.candidateTitle}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
-                  Dành cho sinh viên tự trang bị máy tính xách tay cá nhân tham gia bài kiểm tra tại nhà hoặc tại lớp học.
+                  {t.download.candidateDesc}
                 </p>
 
                 <div className="space-y-2.5 mb-8 text-xs sm:text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Tương thích với Windows 10 và Windows 11 (64-bit)</span>
+                    <span>{t.download.candidateBullet1}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Bộ cài đặt siêu nhẹ: <strong>{rel.exe_size_mb}</strong>, cài đặt tức thì</span>
+                    <span>{candidateBullet2}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Tự động giải phóng hoàn toàn tài nguyên sau khi nộp bài</span>
+                    <span>{t.download.candidateBullet3}</span>
                   </div>
                 </div>
               </div>
@@ -127,7 +133,7 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                   <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801" />
                   </svg>
-                  <span>Tải ứng dụng Windows (.exe)</span>
+                  <span>{t.download.candidateBtn}</span>
                   <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
                 </a>
 
@@ -143,7 +149,7 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                       type="button"
                       onClick={() => copyToClipboard(rel.exe_sha256, 'exe')}
                       className="text-blue-600 hover:text-blue-800 shrink-0 flex items-center gap-0.5"
-                      title="Sao chép mã SHA-256"
+                      title={t.download.copyShaTooltip}
                     >
                       {copiedSha === 'exe' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
@@ -160,29 +166,29 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                     <Building2 className="w-6 h-6" />
                   </div>
                   <span className="text-xs font-bold text-slate-600 uppercase bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                    DÀNH CHO QUẢN TRỊ VIÊN
+                    {t.download.adminBadge}
                   </span>
                 </div>
 
                 <h2 className="text-xl font-bold text-slate-900 mb-2">
-                  Gói cài đặt đồng loạt cho phòng máy trường
+                  {t.download.adminTitle}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
-                  Dành cho cán bộ quản trị công nghệ thông tin triển khai hàng loạt trên hàng trăm máy tính phòng thực hành.
+                  {t.download.adminDesc}
                 </p>
 
                 <div className="space-y-2.5 mb-8 text-xs sm:text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Định dạng cài đặt chuẩn Windows Installer (.msi)</span>
+                    <span>{t.download.adminBullet1}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Dung lượng gọn nhẹ: <strong>{rel.msi_size_mb}</strong>, cài âm thầm GPO</span>
+                    <span>{adminBullet2}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Hỗ trợ cấu hình trước địa chỉ máy chủ khảo thí nội bộ</span>
+                    <span>{t.download.adminBullet3}</span>
                   </div>
                 </div>
               </div>
@@ -195,7 +201,7 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                   <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801" />
                   </svg>
-                  <span>Tải bản phòng máy (.msi)</span>
+                  <span>{t.download.adminBtn}</span>
                   <Download className="w-4 h-4" />
                 </a>
 
@@ -211,7 +217,7 @@ export default function DownloadPage({ release }: DownloadPageProps) {
                       type="button"
                       onClick={() => copyToClipboard(rel.msi_sha256, 'msi')}
                       className="text-blue-600 hover:text-blue-800 shrink-0 flex items-center gap-0.5"
-                      title="Sao chép mã SHA-256"
+                      title={t.download.copyShaTooltip}
                     >
                       {copiedSha === 'msi' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
@@ -228,10 +234,10 @@ export default function DownloadPage({ release }: DownloadPageProps) {
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              Yêu cầu phần cứng và hệ thống
+              {t.download.sysReqTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Kiểm tra thiết bị để bảo đảm bài thi diễn ra thuận lợi nhất
+              {t.download.sysReqDesc}
             </p>
           </div>
 
@@ -239,24 +245,24 @@ export default function DownloadPage({ release }: DownloadPageProps) {
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
               <h3 className="font-bold text-slate-900 text-sm mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
-                Cấu hình tối thiểu
+                {t.download.minReqTitle}
               </h3>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600">
                 <li className="flex items-center gap-2.5">
                   <Monitor className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Hệ điều hành: Windows 10 (64-bit) bản 1909 trở lên</span>
+                  <span>{t.download.minOS}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Cpu className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Bộ xử lý: Intel Core i3 (thế hệ 4 trở lên) hoặc AMD tương đương</span>
+                  <span>{t.download.minCPU}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <HardDrive className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Bộ nhớ RAM: Tối thiểu 4 GB RAM còn trống</span>
+                  <span>{t.download.minRAM}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Wifi className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Đường truyền: Tốc độ mạng ổn định từ 2 Mbps trở lên</span>
+                  <span>{t.download.minNet}</span>
                 </li>
               </ul>
             </div>
@@ -264,24 +270,24 @@ export default function DownloadPage({ release }: DownloadPageProps) {
             <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-xs ring-1 ring-blue-100">
               <h3 className="font-bold text-blue-900 text-sm mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
-                Cấu hình đề nghị để trải nghiệm tốt nhất
+                {t.download.recReqTitle}
               </h3>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
                 <li className="flex items-center gap-2.5">
                   <Monitor className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Hệ điều hành: Windows 11 (64-bit) cập nhật mới nhất</span>
+                  <span>{t.download.recOS}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Cpu className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Bộ xử lý: Intel Core i5 (thế hệ 8 trở lên) hoặc AMD Ryzen 5</span>
+                  <span>{t.download.recCPU}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <HardDrive className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Bộ nhớ RAM: 8 GB RAM trở lên</span>
+                  <span>{t.download.recRAM}</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Wifi className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Đường truyền: Mạng dây cáp hoặc Wi-Fi 5GHz từ 10 Mbps</span>
+                  <span>{t.download.recNet}</span>
                 </li>
               </ul>
             </div>
@@ -294,10 +300,10 @@ export default function DownloadPage({ release }: DownloadPageProps) {
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              Hướng dẫn 3 bước chuẩn bị trước giờ thi
+              {t.download.stepsTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Quy trình nhanh chóng, chỉ mất dưới 2 phút thao tác
+              {t.download.stepsDesc}
             </p>
           </div>
 
@@ -306,9 +312,9 @@ export default function DownloadPage({ release }: DownloadPageProps) {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 1
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Tải và mở ứng dụng</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">{t.download.step1Title}</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Tải tệp cài đặt về máy tính và khởi chạy. Nếu xuất hiện thông báo Windows SmartScreen, chọn "More info" rồi nhấn "Run anyway".
+                {t.download.step1Desc}
               </p>
             </div>
 
@@ -316,9 +322,9 @@ export default function DownloadPage({ release }: DownloadPageProps) {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Cấp quyền và quét mã QR</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">{t.download.step2Title}</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Cho phép ứng dụng sử dụng webcam và micro. Dùng điện thoại quét mã QR hiển thị trên màn hình để thiết lập camera phụ.
+                {t.download.step2Desc}
               </p>
             </div>
 
@@ -326,9 +332,9 @@ export default function DownloadPage({ release }: DownloadPageProps) {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 3
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Nhập mã phòng và làm bài</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">{t.download.step3Title}</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Nhập mã ca thi do cán bộ coi thi cung cấp. Màn hình tự động chuyển sang chế độ làm bài thi an toàn và bắt đầu tính giờ.
+                {t.download.step3Desc}
               </p>
             </div>
           </div>

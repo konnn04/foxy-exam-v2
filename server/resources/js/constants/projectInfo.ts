@@ -53,6 +53,21 @@ export const ADVISORS: Advisor[] = [
   },
 ];
 
+export const ADVISORS_EN: Advisor[] = [
+  {
+    name: 'MSc. Nguyen Trung Hau',
+    title: 'Lecturer',
+    role: 'Economic & Business Faculty Advisor',
+    department: 'Faculty of Information Technology, Ho Chi Minh City Open University',
+  },
+  {
+    name: 'MSc. Duong Huu Thanh',
+    title: 'Lecturer',
+    role: 'Technical & Engineering Faculty Advisor',
+    department: 'Faculty of Information Technology, Ho Chi Minh City Open University',
+  },
+];
+
 export const TEAM_MEMBERS: TeamMember[] = [
   {
     name: 'Lê Minh Khôi',
@@ -103,6 +118,59 @@ export const TEAM_MEMBERS: TeamMember[] = [
     phone: '0387 631 476',
     duties: 'Lập mô hình tài chính kế toán, hạch toán định phí và biến phí phục vụ, quản trị rủi ro pháp lý và quy chuẩn dữ liệu sinh trắc học.',
     badge: 'TÀI CHÍNH & RỦI RO',
+  },
+];
+
+export const TEAM_MEMBERS_EN: TeamMember[] = [
+  {
+    name: 'Le Minh Khoi',
+    mssv: '2351050084',
+    role: 'Project Leader & Operations Lead',
+    department: 'Information Technology',
+    email: 'minkhoi.dev@gmail.com',
+    phone: '0387 291 237',
+    duties: 'Lead on-device AI research (MobileFaceNet, YOLOX), orchestrates pilot exam operations, and handles incident management.',
+    badge: 'TEAM LEADER & OPERATIONS',
+    isLeader: true,
+  },
+  {
+    name: 'Nguyen Thanh Trieu',
+    mssv: '2251052127',
+    role: 'Technical & Infrastructure Lead',
+    department: 'Information Technology',
+    email: 'trieukon1011@gmail.com',
+    phone: '0772 816 986',
+    duties: 'Architects OS-level Kiosk lockdown client, SFU signaling server, stress testing, and edge computer vision inference pipelines.',
+    badge: 'SYSTEMS & INFRASTRUCTURE',
+  },
+  {
+    name: 'Cao Do Huyen Tran',
+    mssv: '2454050030',
+    role: 'Data Privacy & Legal Lead',
+    department: 'Information Technology',
+    email: '2454050030tran@ou.edu.vn',
+    duties: 'Formulates Data Protection Impact Assessment (DPIA), Data Processing Agreements (DPA), legal compliance, and entity incorporation.',
+    badge: 'PRIVACY & LEGAL COMPLIANCE',
+  },
+  {
+    name: 'Le Phan Huyen Trang',
+    mssv: '2454052084',
+    role: 'Business Development & Partnerships',
+    department: 'Information Technology',
+    email: 'huyentrang11k6@gmail.com',
+    phone: '0868 772 951',
+    duties: 'Liaises with university faculties, coordinates pilot trial rollouts, user interviews, institutional quotations, and B2B marketing.',
+    badge: 'BUSINESS & PARTNERSHIPS',
+  },
+  {
+    name: 'Pham Thi Diem Kieu',
+    mssv: '2551050116',
+    role: 'Finance & Risk Governance Lead',
+    department: 'Information Technology',
+    email: 'kiiz602103@gmail.com',
+    phone: '0387 631 476',
+    duties: 'Builds financial unit economics, tracks fixed and variable operational costs, and manages biometric data risk governance.',
+    badge: 'FINANCE & RISK GOVERNANCE',
   },
 ];
 
@@ -228,6 +296,132 @@ export const OFFICIAL_PRICING = {
       'Bảo trì định kỳ và cập nhật thuật toán 12 tháng',
       'Tích hợp sâu Single Sign-On (SSO / CAS / SAML)',
       'Tùy biến thương hiệu và quy chế khảo thí riêng',
+    ],
+  },
+};
+
+export const OFFICIAL_PRICING_EN = {
+  // Pay-per-class
+  perClass: [
+    {
+      title: 'Compact Class',
+      scale: 'Up to 50 students',
+      price: '300,000',
+      unit: 'VND / class / session',
+      perStudent: '6,000 VND / student',
+      desc: 'Ideal for midterm quizzes, small module tests, or online oral assessments.',
+      popular: false,
+      ctaText: 'Register Single Session',
+      features: [
+        'Concurrent proctoring for up to 50 students',
+        'Fullscreen OS-level kiosk lockdown',
+        'Dual camera (webcam + secondary phone)',
+        'Violation alert delivery in ≤ 2 seconds',
+        'Realtime online technical standby during exam',
+      ],
+    },
+    {
+      title: 'Standard Class',
+      scale: 'Up to 100 students',
+      price: '500,000',
+      unit: 'VND / class / session',
+      perStudent: '5,000 VND / student',
+      desc: 'Optimized for standard university lecture classes and regular department exams.',
+      popular: true,
+      ctaText: 'Choose Standard Class',
+      features: [
+        'Concurrent proctoring for up to 100 students',
+        'Full 4-tier anti-cheat defense architecture',
+        'Edge AI detection for phones and earphones',
+        'Automated evidence clip segmentation',
+        'Dedicated remote standby engineer during session',
+      ],
+    },
+    {
+      title: 'Extended Exam',
+      scale: 'Up to 300 students',
+      price: '1,350,000',
+      unit: 'VND / class / session',
+      perStudent: '4,500 VND / student',
+      desc: 'Designed for large combined cohorts, campus certifications, and foreign language tests.',
+      popular: false,
+      ctaText: 'Register Extended Exam',
+      features: [
+        'Concurrent proctoring for up to 300 students',
+        'Multi-proctor role-based permission management',
+        'Prioritized SFU high-definition video bandwidth',
+        'Incident audit report with cryptographic SHA-256',
+        'Official electronic contract & VAT invoice',
+      ],
+    },
+  ],
+
+  // Semester packages
+  semester: [
+    {
+      title: 'Semester Pack S',
+      scale: 'Department or Small Faculty',
+      price: '15,000,000',
+      unit: 'VND / semester',
+      perStudent: '20 classes (up to 2,000 attempts)',
+      desc: 'Faculty autonomously schedules 20 course modules; extra attempts at 5,500 - 7,000 VND.',
+      popular: false,
+      ctaText: 'Select Semester S',
+      features: [
+        'Quota of 20 classes (up to 100 students / class)',
+        'Unlimited instructor & proctor accounts',
+        '12-month secure incident video archiving',
+        'Comprehensive faculty training & onboarding',
+        'End-of-term institutional assessment report',
+      ],
+    },
+    {
+      title: 'Semester Pack M',
+      scale: 'Large Faculty or Mid-sized College',
+      price: '32,500,000',
+      unit: 'VND / semester',
+      perStudent: '50 classes (up to 5,000 attempts)',
+      desc: 'Covers full midterm and final exam seasons for an entire faculty, cutting 70% costs.',
+      popular: true,
+      ctaText: 'Select Semester M',
+      features: [
+        'Quota of 50 classes (up to 100 students / class)',
+        'Roster sync via Excel & standard REST API',
+        'Continuous technical standby during all exam slots',
+        'Service Level Agreement (SLA) commitment',
+        'Streamlined bidding under Decree 214/2025/ND-CP',
+      ],
+    },
+    {
+      title: 'Semester Pack L',
+      scale: 'Campus-wide / University',
+      price: '60,000,000',
+      unit: 'VND / semester',
+      perStudent: '10,000 attempts all-inclusive',
+      desc: 'Unit cost drops to 6,000 VND/attempt (overage at 5,500 VND). Ideal for distance learning.',
+      popular: false,
+      ctaText: 'Inquire Semester L',
+      features: [
+        'Quota of 10,000 exam attempts per semester',
+        'Native direct integration with Moodle LMS / Canvas',
+        'Full biometric data privacy under Decree 13/2023',
+        'On-site engineer or dedicated VIP virtual queue',
+        '30% early-adopter rebate for first 3 institutions',
+      ],
+    },
+  ],
+
+  // Private On-premise
+  onPremise: {
+    title: 'Private On-Premise Deployment',
+    setupFee: '30,000,000 VND (Initial Deployment Fee)',
+    maintenanceFee: '70,000,000 VND / year (Maintenance & AI Updates)',
+    desc: 'Installed directly into your university internal data center. Exam papers and biometric streams never leave your firewall.',
+    features: [
+      'Self-hosted on dedicated campus server cluster',
+      'Scheduled maintenance & 12-month model updates',
+      'Deep Single Sign-On (SSO / CAS / SAML) integration',
+      'Custom institutional branding & exam bylaws',
     ],
   },
 };

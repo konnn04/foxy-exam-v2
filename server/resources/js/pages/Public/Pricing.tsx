@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Check,
   Shield,
@@ -14,7 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { OFFICIAL_PRICING } from '@/constants/projectInfo';
+import { OFFICIAL_PRICING, OFFICIAL_PRICING_EN } from '@/constants/projectInfo';
 
 interface PlanProps {
   id: number;
@@ -31,9 +32,12 @@ interface PricingPageProps {
 }
 
 export default function Pricing({ plans = [] }: PricingPageProps) {
+  const { lang, t } = useLanguage();
   const [billingCycle, setBillingCycle] = useState<'per_session' | 'semester'>('per_session');
 
-  const defaultSessionPlans = OFFICIAL_PRICING.perClass.map((p) => ({
+  const pricingSource = lang === 'vi' ? OFFICIAL_PRICING : OFFICIAL_PRICING_EN;
+
+  const sessionPlans = pricingSource.perClass.map((p) => ({
     title: p.title,
     badge: p.scale.toUpperCase(),
     price: p.price,
@@ -45,7 +49,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
     ctaText: p.ctaText,
   }));
 
-  const semesterPlans = OFFICIAL_PRICING.semester.map((p) => ({
+  const semesterPlans = pricingSource.semester.map((p) => ({
     title: p.title,
     badge: p.scale.toUpperCase(),
     price: p.price,
@@ -59,20 +63,20 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
 
   return (
     <PublicLayout>
-      <Head title="Bảng giá và gói dịch vụ - Exam Guard" />
+      <Head title={t.pricing.metaTitle} />
 
       {/* Hero */}
       <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
             <Scale className="w-3.5 h-3.5" />
-            Minh bạch · Hợp lệ mua sắm giáo dục
+            {t.pricing.badge}
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Biểu phí khảo thí và phương án triển khai
+            {t.pricing.heroTitle}
           </h1>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed mb-8">
-            Chỉ từ <span className="font-bold text-blue-600">4.500 VNĐ / lượt thi</span>. Tiết kiệm tới 70% ngân sách in sao đề thi, thuê phòng máy và thù lao cán bộ coi thi truyền thống.
+            {t.pricing.heroDesc}
           </p>
 
           {/* Bộ chọn chu kỳ */}
@@ -86,7 +90,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Theo ca thi linh hoạt
+              {t.pricing.tabPerClass}
             </button>
             <button
               type="button"
@@ -97,7 +101,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Thuê bao học kỳ hoặc theo trường
+              {t.pricing.tabSemester}
             </button>
           </div>
         </div>
@@ -107,7 +111,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
       <section className="py-14 sm:py-20 bg-white">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {(billingCycle === 'per_session' ? defaultSessionPlans : semesterPlans).map((p, idx) => (
+            {(billingCycle === 'per_session' ? sessionPlans : semesterPlans).map((p, idx) => (
               <div
                 key={idx}
                 className={`rounded-2xl border transition-all duration-300 flex flex-col justify-between p-6 sm:p-8 relative ${
@@ -118,7 +122,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
               >
                 {p.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold tracking-wide uppercase shadow-sm">
-                    Khuyến nghị sử dụng
+                    {t.pricing.recommendedBadge}
                   </div>
                 )}
 
@@ -145,7 +149,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
 
                   <div className="space-y-3 mb-8">
                     <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                      Quyền lợi bao gồm:
+                      {t.pricing.benefitsLabel}
                     </div>
                     {p.features.map((feat, fIdx) => (
                       <div key={fIdx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
@@ -176,21 +180,21 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
             <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md flex flex-col justify-between">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded">
-                  Chính sách khách hàng sáng lập
+                  {t.pricing.foundingTitle}
                 </span>
-                <h3 className="text-xl font-bold mt-3 mb-2">Ưu đãi giảm 30% năm đầu</h3>
+                <h3 className="text-xl font-bold mt-3 mb-2">{t.pricing.foundingDiscount}</h3>
                 <p className="text-xs sm:text-sm text-blue-100 leading-relaxed mb-4">
-                  Dành riêng cho 03 cơ sở đào tạo tiên phong ký kết hợp đồng thương mại với Exam Guard, đổi lại quyền xây dựng bộ hồ sơ triển khai mẫu (Case Study).
+                  {t.pricing.foundingDesc}
                 </p>
                 <div className="text-xs text-blue-200">
-                  ✓ Thí điểm miễn phí 01 học phần (tối đa 200 lượt thi) trước khi ký hợp đồng
+                  {t.pricing.foundingTrial}
                 </div>
               </div>
               <Link
                 href="/#tu-van"
                 className="mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
-                Đăng ký thí điểm miễn phí
+                {t.pricing.foundingCta}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -198,19 +202,19 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
             <div className="p-6 sm:p-7 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-md flex flex-col justify-between">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-blue-400 px-2.5 py-1 rounded border border-slate-700">
-                  {OFFICIAL_PRICING.onPremise.title}
+                  {pricingSource.onPremise.title}
                 </span>
                 <div className="mt-3 text-lg font-bold text-white">
-                  {OFFICIAL_PRICING.onPremise.setupFee}
+                  {pricingSource.onPremise.setupFee}
                 </div>
                 <div className="text-xs text-slate-400 mb-3">
-                  + {OFFICIAL_PRICING.onPremise.maintenanceFee}
+                  + {pricingSource.onPremise.maintenanceFee}
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                  {OFFICIAL_PRICING.onPremise.desc}
+                  {pricingSource.onPremise.desc}
                 </p>
                 <div className="space-y-1.5 text-xs text-slate-300">
-                  {OFFICIAL_PRICING.onPremise.features.map((f, i) => (
+                  {pricingSource.onPremise.features.map((f, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span>{f}</span>
@@ -222,7 +226,7 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                 href="/#tu-van"
                 className="mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm transition-colors border border-slate-700 cursor-pointer"
               >
-                Tư vấn giải pháp On-premise
+                {t.pricing.onPremiseCta}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -235,10 +239,10 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
-              Cơ sở pháp lý và hồ sơ mua sắm dành cho đơn vị công lập
+              {t.pricing.legalSectionTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Exam Guard được xây dựng hoàn toàn phù hợp với các quy định hiện hành về đấu thầu dịch vụ công nghệ thông tin và bảo vệ dữ liệu sinh viên tại Việt Nam.
+              {t.pricing.legalSectionDesc}
             </p>
           </div>
 
@@ -248,10 +252,10 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                 <FileText className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-slate-900 text-sm mb-2">
-                Nghị định 214/2025/NĐ-CP và Luật Đấu thầu
+                {t.pricing.legal1Title}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Hỗ trợ đầy đủ bộ hồ sơ năng lực, bảng báo giá cạnh tranh, hợp đồng kinh tế điện tử và hóa đơn giá trị gia tăng hợp lệ để thanh quyết toán ngân sách nhà nước.
+                {t.pricing.legal1Desc}
               </p>
             </div>
 
@@ -260,10 +264,10 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                 <Shield className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-slate-900 text-sm mb-2">
-                Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân
+                {t.pricing.legal2Title}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Toàn bộ dữ liệu đặt tại trung tâm dữ liệu Việt Nam. Hình ảnh và video vi phạm được tự động mã hóa, hủy bỏ định kỳ theo quy chế khảo thí và cam kết không thương mại hóa dữ liệu sinh viên.
+                {t.pricing.legal2Desc}
               </p>
             </div>
 
@@ -272,10 +276,10 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                 <Building className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-slate-900 text-sm mb-2">
-                Tích hợp linh hoạt với hệ thống đào tạo sẵn có
+                {t.pricing.legal3Title}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Cung cấp cổng kết nối chuẩn cho phép đồng bộ lịch thi, danh sách sinh viên và xuất điểm thi trực tiếp vào phần mềm quản lý đào tạo hiện hữu của nhà trường.
+                {t.pricing.legal3Desc}
               </p>
             </div>
           </div>
@@ -287,10 +291,10 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              So sánh chi phí khảo thí cho 1.000 thí sinh
+              {t.pricing.tableTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Ước tính bài toán kinh tế thực tế tại các trường đại học và cao đẳng
+              {t.pricing.tableDesc}
             </p>
           </div>
 
@@ -298,40 +302,40 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-4">Hạng mục chi phí</th>
-                  <th className="py-3 px-4 text-slate-500">Coi thi truyền thống</th>
+                  <th className="py-3 px-4">{t.pricing.colCategory}</th>
+                  <th className="py-3 px-4 text-slate-500">{t.pricing.colTraditional}</th>
                   <th className="py-3 px-4 text-blue-600 font-bold bg-blue-50/50">
-                    Sử dụng Exam Guard
+                    {t.pricing.colExamGuard}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 <tr>
-                  <td className="py-3 px-4 font-medium">Bố trí giám thị</td>
-                  <td className="py-3 px-4 text-slate-500">40 cán bộ coi thi (20 phòng)</td>
+                  <td className="py-3 px-4 font-medium">{t.pricing.row1Cat}</td>
+                  <td className="py-3 px-4 text-slate-500">{t.pricing.row1Trad}</td>
                   <td className="py-3 px-4 text-emerald-600 font-semibold bg-blue-50/20">
-                    4 đến 5 cán bộ giám sát trực tiếp
+                    {t.pricing.row1Exam}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-3 px-4 font-medium">In sao và bảo quản đề thi</td>
-                  <td className="py-3 px-4 text-slate-500">12.000.000 - 18.000.000 đ</td>
+                  <td className="py-3 px-4 font-medium">{t.pricing.row2Cat}</td>
+                  <td className="py-3 px-4 text-slate-500">{t.pricing.row2Trad}</td>
                   <td className="py-3 px-4 text-emerald-600 font-semibold bg-blue-50/20">
-                    0 đ (Đề thi số hóa bảo mật)
+                    {t.pricing.row2Exam}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-3 px-4 font-medium">Căn cứ giải quyết khiếu nại</td>
-                  <td className="py-3 px-4 text-slate-500">Dễ khiếu nại, không có hình ảnh ghi lại</td>
+                  <td className="py-3 px-4 font-medium">{t.pricing.row3Cat}</td>
+                  <td className="py-3 px-4 text-slate-500">{t.pricing.row3Trad}</td>
                   <td className="py-3 px-4 text-emerald-600 font-semibold bg-blue-50/20">
-                    Video 3 góc có mã kiểm tra toàn vẹn
+                    {t.pricing.row3Exam}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-3 px-4 font-medium">Tổng chi phí bình quân</td>
-                  <td className="py-3 px-4 text-rose-600 font-bold">~35.000 đ / sinh viên</td>
+                  <td className="py-3 px-4 font-medium">{t.pricing.row4Cat}</td>
+                  <td className="py-3 px-4 text-rose-600 font-bold">{t.pricing.row4Trad}</td>
                   <td className="py-3 px-4 text-blue-600 font-bold bg-blue-50/30">
-                    ~4.500 đến 6.000 đ / sinh viên
+                    {t.pricing.row4Exam}
                   </td>
                 </tr>
               </tbody>

@@ -9,14 +9,17 @@ import {
   Laptop,
   CheckCircle2,
   ShieldCheck,
+  Globe,
 } from 'lucide-react';
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
 }
 
-export default function PublicLayout({ children }: PublicLayoutProps) {
+function PublicLayoutContent({ children }: PublicLayoutProps) {
   const { url } = usePage();
+  const { lang, setLang, toggleLang, t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -33,10 +36,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   };
 
   const navLinks = [
-    { label: 'Trang chủ', href: '/' },
-    { label: 'Tính năng', href: '/features' },
-    { label: 'Bảng giá', href: '/pricing' },
-    { label: 'Về chúng tôi', href: '/about' },
+    { label: t.nav.home, href: '/' },
+    { label: t.nav.features, href: '/features' },
+    { label: t.nav.pricing, href: '/pricing' },
+    { label: t.nav.about, href: '/about' },
   ];
 
   const isActive = (href: string) => {
@@ -51,14 +54,16 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="max-w-[1360px] mx-auto flex items-center justify-between gap-3 text-[11px] sm:text-[12px]">
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-            <span className="font-bold text-white tracking-wide truncate">TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH</span>
+            <span className="font-bold text-white tracking-wide truncate">
+              {t.topBanner.institution}
+            </span>
             <span className="text-slate-600 hidden md:inline">|</span>
             <span className="text-slate-300 hidden md:inline truncate">
-              ĐỀ ÁN KHỞI NGHIỆP SINH VIÊN STEM 2026
+              {t.topBanner.project}
             </span>
           </div>
           <div className="text-slate-400 hidden lg:flex items-center gap-3 shrink-0 text-[11.5px] font-mono">
-            <span className="text-blue-400 font-semibold">KHOA CÔNG NGHỆ THÔNG TIN</span>
+            <span className="text-blue-400 font-semibold">{t.topBanner.faculty}</span>
           </div>
         </div>
       </div>
@@ -81,7 +86,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 </span>
               </div>
               <span className="text-[11px] font-medium text-slate-500 hidden sm:block truncate mt-0.5">
-                Hệ thống Giám sát Thi cử Trực tuyến
+                {lang === 'vi' ? 'Hệ thống Giám sát Thi cử Trực tuyến' : 'Smart Online Proctoring System'}
               </span>
             </div>
           </Link>
@@ -110,29 +115,58 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               rel="noreferrer"
               className="text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1"
             >
-              <span>Tài liệu API</span>
+              <span>{t.nav.apiDocs}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </nav>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Action Buttons & Language Switcher */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Language Switcher Button */}
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setLang('vi')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  lang === 'vi'
+                    ? 'bg-white text-blue-700 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Tiếng Việt"
+              >
+                <span>🇻🇳</span>
+                <span className="hidden sm:inline">VI</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  lang === 'en'
+                    ? 'bg-white text-blue-700 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="English"
+              >
+                <span>🇬🇧</span>
+                <span className="hidden sm:inline">EN</span>
+              </button>
+            </div>
+
             <Link
               href="/download"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[13px] sm:text-[13.5px] font-bold rounded-xl transition-colors border border-slate-200"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[13px] sm:text-[13.5px] font-bold rounded-xl transition-colors border border-slate-200"
             >
-              {/* Windows Icon */}
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 88 88">
                 <path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L0 75.48v-29.35zm4.326-39.043L87.314 0v41.527l-47.318.376zm47.329 44.912l-.011 41.535-47.318-6.678-.041-35.195z"/>
               </svg>
-              <span>Tải ứng dụng</span>
+              <span className="hidden sm:inline">{t.nav.downloadApp}</span>
             </Link>
 
             <Link
               href="/login"
               className="px-3.5 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[13px] sm:text-[13.5px] font-bold rounded-xl shadow-xs transition-colors whitespace-nowrap"
             >
-              Cổng Khảo thí
+              {t.nav.portalLogin}
             </Link>
 
             <button
@@ -149,6 +183,30 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         {/* Mobile Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white px-5 pt-3 pb-5 shadow-lg space-y-2">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-semibold text-slate-500">Ngôn ngữ / Language:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLang('vi')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                    lang === 'vi' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-slate-600'
+                  }`}
+                >
+                  🇻🇳 Tiếng Việt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLang('en')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                    lang === 'en' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-slate-600'
+                  }`}
+                >
+                  🇬🇧 English
+                </button>
+              </div>
+            </div>
+
             {navLinks.map((item) => (
               <Link
                 key={item.href}
@@ -169,7 +227,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               rel="noreferrer"
               className="block px-3 py-2 text-sm text-slate-600 hover:text-blue-600 flex items-center justify-between"
             >
-              <span>Tài liệu API</span>
+              <span>{t.nav.apiDocs}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
@@ -193,42 +251,42 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 <span className="text-[18px] font-bold text-white tracking-tight">EXAM GUARD</span>
               </div>
               <p className="mt-3 text-xs sm:text-sm text-slate-400 leading-relaxed max-w-[420px]">
-                Hệ thống giám sát thi cử trực tuyến &amp; phòng máy thông minh. Đề án phát triển từ đồ án chuyên ngành Công nghệ thông tin, Trường Đại học Mở TP. Hồ Chí Minh.
+                {t.footer.brandDesc}
               </p>
               <div className="mt-4 text-xs text-slate-500 font-mono">
-                STEM 2026 · Nền tảng Edge AI &amp; LiveKit SFU Realtime
+                {t.footer.stemBadge}
               </div>
             </div>
 
             <div className="space-y-2 text-xs sm:text-sm">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
-                Điều hướng
+                {t.footer.navTitle}
               </div>
-              <div><Link href="/" className="hover:text-white transition-colors">Trang chủ</Link></div>
-              <div><Link href="/features" className="hover:text-white transition-colors">Tính năng công nghệ</Link></div>
-              <div><Link href="/pricing" className="hover:text-white transition-colors">Bảng giá dịch vụ</Link></div>
-              <div><Link href="/download" className="hover:text-white transition-colors">Tải ứng dụng Windows</Link></div>
-              <div><Link href="/about" className="hover:text-white transition-colors">Về chúng tôi &amp; Đội ngũ</Link></div>
+              <div><Link href="/" className="hover:text-white transition-colors">{t.nav.home}</Link></div>
+              <div><Link href="/features" className="hover:text-white transition-colors">{t.nav.features}</Link></div>
+              <div><Link href="/pricing" className="hover:text-white transition-colors">{t.nav.pricing}</Link></div>
+              <div><Link href="/download" className="hover:text-white transition-colors">{t.nav.downloadApp}</Link></div>
+              <div><Link href="/about" className="hover:text-white transition-colors">{t.nav.about}</Link></div>
             </div>
 
             <div className="space-y-2 text-xs sm:text-sm">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
-                Thông tin liên hệ
+                {t.footer.contactTitle}
               </div>
               <div>Email: <a href="mailto:minkhoi.dev@gmail.com" className="hover:text-white text-slate-300">minkhoi.dev@gmail.com</a></div>
-              <div>Hotline: <span className="text-slate-300 font-semibold">0387 291 237</span> (Trưởng nhóm)</div>
-              <div>Địa chỉ: <span className="text-slate-300">35 - 37 Hồ Hảo Hớn, Q.1, TP.HCM</span></div>
+              <div>Hotline: <span className="text-slate-300 font-semibold">0387 291 237</span> ({t.footer.leaderRole})</div>
+              <div>{lang === 'vi' ? 'Địa chỉ' : 'Address'}: <span className="text-slate-300">{t.footer.address}</span></div>
               <div className="pt-2">
                 <Link href="/login" className="text-blue-400 hover:text-blue-300 font-bold inline-block">
-                  Truy cập Cổng Khảo thí →
+                  {t.footer.accessPortal}
                 </Link>
               </div>
             </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-mono">
-            <span>© 2026 EXAM GUARD · TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH · STEM 2026</span>
-            <span>LƯU TRỮ NỘI ĐỊA · TUÂN THỦ NGHỊ ĐỊNH 13/2023/NĐ-CP</span>
+            <span>{t.footer.copyright}</span>
+            <span>{t.footer.legalBadge}</span>
           </div>
         </div>
       </footer>
@@ -245,5 +303,13 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <ArrowUp className="w-5 h-5 stroke-[2.5]" />
       </button>
     </div>
+  );
+}
+
+export default function PublicLayout({ children }: PublicLayoutProps) {
+  return (
+    <LanguageProvider>
+      <PublicLayoutContent>{children}</PublicLayoutContent>
+    </LanguageProvider>
   );
 }

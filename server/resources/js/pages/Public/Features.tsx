@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Shield,
   Cpu,
@@ -20,10 +21,11 @@ import {
 } from 'lucide-react';
 
 export default function Features() {
+  const { lang, t } = useLanguage();
   const [kioskImgError, setKioskImgError] = useState(false);
   const [camImgError, setCamImgError] = useState(false);
 
-  const deepFeatures = [
+  const deepFeaturesVi = [
     {
       badge: 'BẢO VỆ MÁY TÍNH',
       title: 'Khóa màn hình và môi trường thi',
@@ -98,9 +100,86 @@ export default function Features() {
     },
   ];
 
+  const deepFeaturesEn = [
+    {
+      badge: 'DESKTOP LOCKDOWN',
+      title: 'Computer lockdown & secure kiosk',
+      icon: Lock,
+      desc: 'The app automatically locks the candidate workstation upon test launch. It disables all **system hotkeys**, prevents new browser tabs, detects **virtual machines**, and completely blocks **screen sharing or remote control tools**.',
+      highlights: [
+        'Disable Alt+Tab, Windows Key, Task Manager, and screenshot shortcuts',
+        'Autodetect and block virtual machines or external secondary monitors',
+        'Completely block TeamViewer, UltraViewer, AnyDesk, and Chrome Remote',
+      ],
+      benefit: 'Prevents 100% of unauthorized notes access or remote proxy test-taking.',
+    },
+    {
+      badge: 'ON-DEVICE AI',
+      title: 'Autonomous artificial intelligence proctoring',
+      icon: Cpu,
+      desc: 'Optimized computer vision models run directly on the **candidate laptop CPU**. The system tracks gaze direction, detects **unauthorized helpers**, and identifies **prohibited items** like cell phones or hidden earphones.',
+      highlights: [
+        'Continuous facial verification and immediate gaze-aversion alerts',
+        'Instant alarm if a second face appears in the camera frame',
+        'Anomaly detection: Smartphones, printed study sheets, Bluetooth buds',
+      ],
+      benefit: 'Institutions do not need expensive GPU servers, maximizing cost savings.',
+    },
+    {
+      badge: 'SECONDARY CAMERA',
+      title: '360° secondary smartphone camera',
+      icon: Smartphone,
+      desc: 'Students simply **scan a QR code** with their personal smartphone to activate an angled secondary camera covering the desk, keyboard, and screen **without installing any app**.',
+      highlights: [
+        'Frictionless 10-second setup directly via the smartphone web browser',
+        'Sub-second live video latency via WebRTC SFU for smooth proctor view',
+        'Automated alerts if the smartphone is moved, covered, or powered off',
+      ],
+      benefit: 'Completely eliminates blind spots beneath hands that laptops cannot capture.',
+    },
+    {
+      badge: 'TAMPER-PROOF AUDIT',
+      title: 'Transparent violation evidence & SHA-256',
+      icon: FileCheck2,
+      desc: 'Whenever an anomaly is flagged, the system captures **synced video clips and crisp snapshots** across all 3 angles. Data is sealed with a **cryptographic hash** to support the academic disciplinary board.',
+      highlights: [
+        'Auto-records pre/post buffer frames around incidents for full context',
+        'Exact millisecond synchronization between webcam, phone cam, and screen',
+        'Generates secure shareable online audit links and verifiable PDF reports',
+      ],
+      benefit: 'Irrefutable digital proof, eliminating disputes between students and proctors.',
+    },
+    {
+      badge: 'DATA RESILIENCE',
+      title: 'Offline buffer & network recovery',
+      icon: WifiOff,
+      desc: 'If candidate Internet fluctuates or drops, all answers and audit telemetry are **locally encrypted and safely buffered**. Once the connection is re-established, the app auto-resyncs seamlessly.',
+      highlights: [
+        'Zero answer loss during unexpected local network disruptions',
+        'Candidate must re-authenticate camera precheck before resuming test',
+        'Smart heuristics distinguish genuine network loss from intentional unplugging',
+      ],
+      benefit: 'Ensures test integrity without stressing students over transient network drops.',
+    },
+    {
+      badge: 'PROCTOR DASHBOARD',
+      title: 'Realtime proctoring console & remote triage',
+      icon: Eye,
+      desc: 'An intuitive command center engineered for a single proctor to **supervise 50 to 100 students simultaneously**. Artificial intelligence bubbles up high-risk anomalies to the top for swift intervention.',
+      highlights: [
+        'Live room grid visualization with high-contrast color-coded alerts',
+        'Remote intervention tools: Private audio ping, written warning, or termination',
+        'One-click electronic incident report drafting straight from the dashboard',
+      ],
+      benefit: 'Reduces required proctoring staff by 80% for large-scale online cohorts.',
+    },
+  ];
+
+  const deepFeatures = lang === 'vi' ? deepFeaturesVi : deepFeaturesEn;
+
   return (
     <PublicLayout>
-      <Head title="Tính năng giám sát - Exam Guard" />
+      <Head title={t.features.metaTitle} />
 
       {/* Hero */}
       <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200 overflow-hidden">
@@ -108,13 +187,13 @@ export default function Features() {
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
             <Layers className="w-3.5 h-3.5" />
-            Giải pháp khảo thí số thế hệ mới
+            {t.features.badge}
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Tính năng giám sát chuyên sâu phục vụ nhà trường
+            {t.features.heroTitle}
           </h1>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            Exam Guard được xây dựng xoay quanh bài toán thực tế của các đơn vị đào tạo: bảo đảm tính liêm chính học thuật, vận hành đơn giản trên thiết bị sẵn có và tối ưu hóa tối đa chi phí tổ chức.
+            {t.features.heroDesc}
           </p>
         </div>
       </section>
@@ -167,7 +246,7 @@ export default function Features() {
                     </div>
                   </div>
 
-                  {/* Phần giá trị thiết thực cho khách hàng (thay cho thông số kỹ thuật khô khan) */}
+                  {/* Phần giá trị thiết thực */}
                   <div className="pt-4 border-t border-slate-100 flex items-center gap-2 text-xs text-blue-700 bg-blue-50/50 p-3 rounded-xl border border-blue-100/80">
                     <Zap className="w-4 h-4 text-blue-600 shrink-0" />
                     <span className="font-medium">{feat.benefit}</span>
@@ -180,19 +259,19 @@ export default function Features() {
       </section>
 
       {/* =========================================================================
-          MOCKUP MINH HỌA TRỰC QUAN GIAO DIỆN ỨNG DỤNG (HỖ TRỢ ĐỔI ẢNH)
+          MOCKUP MINH HỌA TRỰC QUAN GIAO DIỆN ỨNG DỤNG
       ========================================================================= */}
       <section className="py-14 sm:py-16 bg-slate-50 border-y border-slate-200">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-2.5 py-1 rounded-md">
-              Giao diện thực tế
+              {t.features.mockupSectionBadge}
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 mb-3">
-              Trải nghiệm người dùng đơn giản cho cả thí sinh và giám thị
+              {t.features.mockupSectionTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Thiết kế trực quan, sinh viên không cần hướng dẫn phức tạp vẫn có thể hoàn thành thủ tục vào phòng thi trong 2 phút.
+              {t.features.mockupSectionDesc}
             </p>
           </div>
 
@@ -205,11 +284,11 @@ export default function Features() {
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                   <span className="text-xs font-semibold text-slate-700 ml-1.5">
-                    Màn hình làm bài của thí sinh
+                    {t.features.candidateScreenTitle}
                   </span>
                 </div>
                 <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ĐÃ KHÓA KIOSK
+                  {t.features.candidateScreenBadge}
                 </span>
               </div>
 
@@ -217,7 +296,7 @@ export default function Features() {
                 {!kioskImgError ? (
                   <img
                     src="/images/mockups/kiosk-candidate.png"
-                    alt="Màn hình làm bài của thí sinh"
+                    alt={t.features.candidateScreenTitle}
                     className="w-full h-auto rounded-lg shadow-sm"
                     onError={() => setKioskImgError(true)}
                   />
@@ -227,21 +306,23 @@ export default function Features() {
                   <div className="text-center p-6 space-y-2">
                     <Laptop className="w-10 h-10 text-slate-400 mx-auto" />
                     <div className="text-xs font-semibold text-slate-700">
-                      Giao diện làm bài toàn màn hình
+                      {lang === 'vi' ? 'Giao diện làm bài toàn màn hình' : 'Fullscreen Candidate Exam Interface'}
                     </div>
                     <p className="text-[11px] text-slate-500 max-w-xs">
-                      Tự động ẩn mọi thanh công cụ Windows, chỉ hiển thị đề thi và khung hình camera đối soát góc phải màn hình.
+                      {lang === 'vi'
+                        ? 'Tự động ẩn mọi thanh công cụ Windows, chỉ hiển thị đề thi và khung hình camera đối soát góc phải màn hình.'
+                        : 'Automatically suppresses Windows taskbar, presenting only the secure exam view and corner biometric camera.'}
                     </p>
                   </div>
                 )}
               </div>
 
               <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-600">
-                Thí sinh không thể bấm Alt+Tab hay mở bất kỳ ứng dụng nào khác trong suốt giờ thi.
+                {t.features.candidateScreenDesc}
               </div>
             </div>
 
-            {/* Mockup 2: Camera phụ điện thoại */}
+            {/* Mockup 2: Giao diện giám thị */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
               <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -249,19 +330,19 @@ export default function Features() {
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                   <span className="text-xs font-semibold text-slate-700 ml-1.5">
-                    Góc nhìn camera điện thoại phụ
+                    {t.features.mobileCamTitle}
                   </span>
                 </div>
                 <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  WEBRTC SFU
+                  {t.features.mobileCamBadge}
                 </span>
               </div>
 
               <div className="p-5 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[220px]">
                 {!camImgError ? (
                   <img
-                    src="/images/mockups/mobile-cam-view.png"
-                    alt="Góc nhìn camera phụ trên điện thoại"
+                    src="/images/mockups/operator-view.png"
+                    alt={t.features.mobileCamTitle}
                     className="w-full h-auto rounded-lg shadow-sm"
                     onError={() => setCamImgError(true)}
                   />
@@ -271,17 +352,19 @@ export default function Features() {
                   <div className="text-center p-6 space-y-2">
                     <Smartphone className="w-10 h-10 text-slate-400 mx-auto" />
                     <div className="text-xs font-semibold text-slate-700">
-                      Góc quan sát nghiêng 45 độ
+                      {lang === 'vi' ? 'Giao diện giám sát trực tiếp' : 'Realtime Proctoring Interface'}
                     </div>
                     <p className="text-[11px] text-slate-500 max-w-xs">
-                      Bao quát toàn bộ bàn tay gõ phím, màn hình máy tính và không gian xung quanh thí sinh.
+                      {lang === 'vi'
+                        ? 'Giám thị có thể theo dõi đồng thời nhiều thí sinh, nhận cảnh báo tự động khi phát hiện hành vi đáng ngờ và can thiệp từ xa.'
+                        : 'Proctors supervise multiple candidates concurrently, receiving automated alerts with instant remote intervention.'}
                     </p>
                   </div>
                 )}
               </div>
 
               <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-600">
-                Không yêu cầu cài app, chỉ cần mở trình duyệt web trên điện thoại để quét mã QR.
+                {t.features.mobileCamDesc}
               </div>
             </div>
           </div>
@@ -292,24 +375,24 @@ export default function Features() {
       <section className="py-14 bg-white text-center">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
-            Sẵn sàng nâng cao tính minh bạch cho kỳ thi của bạn?
+            {t.features.ctaTitle}
           </h2>
           <p className="text-sm text-slate-600 mb-6">
-            Trải nghiệm trực tiếp công nghệ Exam Guard với tài khoản thử nghiệm dành riêng cho giảng viên và nhà trường.
+            {t.features.ctaDesc}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/pricing"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-md shadow-blue-500/20"
             >
-              Xem biểu phí và báo giá
+              {t.features.pricingBtn}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/download"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-sm transition-colors border border-slate-300"
             >
-              Tải ứng dụng Windows
+              {t.features.downloadBtn}
             </Link>
           </div>
         </div>

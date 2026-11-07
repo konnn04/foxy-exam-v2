@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   ShieldCheck,
   Lock,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 
 export default function Landing() {
+  const { lang, t } = useLanguage();
   const [activeShield, setActiveShield] = useState<number>(0);
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -33,7 +35,7 @@ export default function Landing() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [dashboardImgError, setDashboardImgError] = useState(false);
 
-  const shields = [
+  const shieldsVi = [
     {
       id: 0,
       title: 'Khóa toàn diện máy tính thí sinh',
@@ -88,6 +90,63 @@ export default function Landing() {
     },
   ];
 
+  const shieldsEn = [
+    {
+      id: 0,
+      title: 'Candidate computer lockdown',
+      subtitle: 'Block unauthorized browsing and screen sharing',
+      desc: 'Automatically disables **system hotkeys** (Alt+Tab, Win Key), prevents **secondary displays**, detects **virtual machines**, and completely blocks **remote desktop software** like AnyDesk or UltraViewer.',
+      icon: Lock,
+      badge: 'DESKTOP LOCKDOWN',
+      specs: [
+        'Disable Alt+Tab, Task Manager, and shortcuts',
+        'Block all remote desktop and capture software',
+        'Local encrypted buffer during network dropouts',
+      ],
+    },
+    {
+      id: 1,
+      title: 'On-device AI anomaly detection',
+      subtitle: 'Autonomous detection of physical cheating and prohibited items',
+      desc: 'Lightweight neural networks run directly on the **candidate CPU** with low overhead. Instantly flags **secondary faces**, **mobile devices, notes**, and alerts proctors when candidates look away.',
+      icon: Cpu,
+      badge: 'EDGE ARTIFICIAL INTELLIGENCE',
+      specs: [
+        'Continuous biometric identity verification',
+        'Detect cell phones, notes, and bluetooth earphones',
+        'Immediate alert upon gaze aversion or disappearance',
+      ],
+    },
+    {
+      id: 2,
+      title: 'Secondary 360° pan-tilt phone camera',
+      subtitle: 'Overviews desk workspace, keyboard, and physical surroundings',
+      desc: 'Students simply scan an on-screen **QR code using their smartphone** to establish a zero-install WebRTC feed. Precheck ensures proper 45-degree angle before the exam unlocks.',
+      icon: QrCode,
+      badge: 'MOBILE WEBRTC CAMERA',
+      specs: [
+        'Instant pairing via QR code on mobile browser',
+        'Full coverage of desk, hands, keyboard, and screen',
+        'Instant alert if phone screen locks or turns away',
+      ],
+    },
+    {
+      id: 3,
+      title: 'Verifiable digital violation evidence',
+      subtitle: 'Synchronous 3-angle audit clips for dispute resolution',
+      desc: 'Automatically extracts a **15–30s synchronized video clip** from webcam, phone camera, and screen recording at the exact moment of anomaly, verified by **SHA-256 integrity hash**.',
+      icon: FileCheck,
+      badge: 'INTEGRITY EVIDENCE',
+      specs: [
+        'Synchronous 3-angle capture at the moment of incident',
+        'SHA-256 hash chains ensure legal non-repudiation',
+        'Secure shareable public links for faculty committees',
+      ],
+    },
+  ];
+
+  const shields = lang === 'en' ? shieldsEn : shieldsVi;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formEmail.trim()) return;
@@ -97,42 +156,39 @@ export default function Landing() {
   return (
     <PublicLayout>
       <Head>
-        <title>Exam Guard · Hệ thống giám sát thi cử trực tuyến và phòng máy thông minh</title>
-        <meta
-          name="description"
-          content="Exam Guard: Nền tảng giám sát thi cử trực tuyến và phòng máy thế hệ mới. Khóa môi trường thi, AI nhận diện bất thường tức thì, dữ liệu lưu trữ nội địa tuân thủ Nghị định 13/2023/NĐ-CP."
-        />
+        <title>{t.landing.metaTitle}</title>
+        <meta name="description" content={t.landing.heroDesc} />
       </Head>
 
       {/* =========================================================================
-          HERO SECTION: SÚC TÍCH, TRỌNG TÂM, HƯỚNG VỀ LỢI ÍCH KHÁCH HÀNG
+          HERO SECTION
       ========================================================================= */}
       <section className="pt-10 sm:pt-16 pb-16 sm:pb-20 bg-gradient-to-b from-blue-50/60 via-white to-slate-50/50 border-b border-slate-200">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[12px] font-bold mb-5 shadow-2xs">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>ĐỀ ÁN KHẢO THÍ SỐ · KHOA CNTT · TRƯỜNG ĐH MỞ TP.HCM</span>
+            <span>{t.landing.badge}</span>
           </div>
 
-          {/* Heading - chuẩn Sentence Case tiếng Việt */}
+          {/* Heading */}
           <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-black tracking-tight text-slate-900 leading-[1.18] max-w-[980px] mx-auto">
-            Giám sát thi cử trực tuyến và phòng máy thông minh
-            <span className="block text-blue-600 mt-2 font-extrabold">Bảo đảm toàn vẹn và công bằng với trí tuệ nhân tạo</span>
+            {t.landing.heroTitle}
+            <span className="block text-blue-600 mt-2 font-extrabold">{t.landing.heroTitleHighlight}</span>
           </h1>
 
           {/* Subtitle */}
           <p className="mt-4 sm:mt-5 text-[15.5px] sm:text-[17px] text-slate-600 max-w-[800px] mx-auto leading-relaxed">
-            Exam Guard kết hợp ứng dụng khóa màn hình chống gian lận và trí tuệ nhân tạo giám sát tự động. Phát hiện vi phạm chỉ trong <strong>≤ 2 giây</strong>, tiết kiệm <strong>85% chi phí tổ chức</strong> và giảm thiểu tối đa gánh nặng cho cán bộ coi thi.
+            {t.landing.heroDesc}
           </p>
 
           {/* Call To Actions */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md sm:max-w-none mx-auto">
             <a
               href="#tu-van"
-              className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 text-white text-[14.5px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 group"
+              className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 text-white text-[14.5px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 group cursor-pointer"
             >
-              <span>Đăng ký thí điểm miễn phí</span>
+              <span>{t.landing.registerPilotCta}</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
             <Link
@@ -142,35 +198,34 @@ export default function Landing() {
               <svg className="w-4 h-4 fill-blue-600" viewBox="0 0 88 88">
                 <path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L0 75.48v-29.35zm4.326-39.043L87.314 0v41.527l-47.318.376zm47.329 44.912l-.011 41.535-47.318-6.678-.041-35.195z"/>
               </svg>
-              <span>Tải ứng dụng Windows</span>
+              <span>{t.landing.downloadWinCta}</span>
             </Link>
           </div>
 
           {/* Key Metrics */}
           <div className="mt-12 pt-7 border-t border-slate-200/90 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-[980px] mx-auto">
             <div className="p-2">
-              <div className="text-3xl sm:text-4xl font-black text-blue-600 font-mono">≤ 2 giây</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">Phát hiện bất thường tức thì</div>
+              <div className="text-3xl sm:text-4xl font-black text-blue-600 font-mono">{t.landing.metrics.latencyNum}</div>
+              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.latencyLabel}</div>
             </div>
             <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">1 : 80</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">Một giám thị bao quát 80 thí sinh</div>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">{t.landing.metrics.ratioNum}</div>
+              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.ratioLabel}</div>
             </div>
             <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">4.500 đ</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">Chi phí tối ưu cho mỗi lượt thi</div>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">{t.landing.metrics.costNum}</div>
+              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.costLabel}</div>
             </div>
             <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">100%</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">Lưu trữ máy chủ tại Việt Nam</div>
+              <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">{t.landing.metrics.dataNum}</div>
+              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.dataLabel}</div>
             </div>
           </div>
 
           {/* =========================================================================
-              MOCKUP KHUNG HÌNH BẢNG ĐIỀU KHIỂN GIÁM THỊ (HỖ TRỢ THAY ẢNH DỄ DÀNG)
+              MOCKUP KHUNG HÌNH BẢNG ĐIỀU KHIỂN GIÁM THỊ
           ========================================================================= */}
           <div className="mt-12 max-w-[1060px] mx-auto bg-slate-950 text-slate-100 rounded-2xl shadow-2xl border border-slate-800 text-left overflow-hidden">
-            {/* Header thanh cửa sổ */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/90 text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
@@ -182,11 +237,10 @@ export default function Landing() {
               </div>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-bold text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                TRỰC TIẾP · 78/80 THÍ SINH
+                {t.landing.mockup.liveBadge}
               </span>
             </div>
 
-            {/* Khung nội dung ảnh: tự động ưu tiên ảnh thật nếu có tại public/images/mockups/dashboard-proctor.png */}
             {!dashboardImgError ? (
               <div className="relative">
                 <img
@@ -198,7 +252,6 @@ export default function Landing() {
               </div>
             ) : null}
 
-            {/* Giao diện mô phỏng mặc định khi chưa có tệp ảnh */}
             {dashboardImgError && (
               <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Ô thí sinh 1: Bình thường */}
@@ -206,18 +259,18 @@ export default function Landing() {
                   <div className="flex items-center justify-between text-xs mb-2">
                     <span className="font-bold text-white">Lê Minh Khoa</span>
                     <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-1.5 py-0.5 rounded">
-                      99.4% KHỚP MẶT
+                      {t.landing.mockup.faceMatch}
                     </span>
                   </div>
                   <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center relative">
                     <Users className="w-8 h-8 text-slate-700" />
                     <span className="absolute bottom-1.5 right-1.5 text-[9.5px] font-mono text-emerald-400 bg-black/70 px-1 rounded">
-                      CAM PHỤ: HỢP LỆ
+                      {t.landing.mockup.secondCamOk}
                     </span>
                   </div>
                   <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
-                    <span>Môi trường: Đã khóa an toàn</span>
-                    <span className="text-emerald-400">Bình thường</span>
+                    <span>{t.landing.mockup.kioskLocked}</span>
+                    <span className="text-emerald-400">{t.landing.mockup.normalStatus}</span>
                   </div>
                 </div>
 
@@ -229,48 +282,48 @@ export default function Landing() {
                       Trần Thị Mai
                     </span>
                     <span className="text-[10px] text-red-400 font-bold bg-red-950/80 border border-red-800 px-1.5 py-0.5 rounded">
-                      VẬT CẤM
+                      {t.landing.mockup.bannedObject}
                     </span>
                   </div>
                   <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center relative border border-red-500/40">
                     <Users className="w-8 h-8 text-slate-700" />
                     <div className="absolute bottom-2 left-2 border-2 border-red-500 bg-red-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold text-white flex items-center gap-1">
-                      <Smartphone className="w-3 h-3 text-red-400" /> Phát hiện điện thoại 91%
+                      <Smartphone className="w-3 h-3 text-red-400" /> {t.landing.mockup.phoneDetected}
                     </div>
                     <span className="absolute top-1.5 right-1.5 text-[9px] font-mono text-white bg-red-600 px-1 rounded font-bold">
-                      VIDEO ĐỐI SOÁT ĐÃ SẴN SÀNG
+                      {t.landing.mockup.videoReady}
                     </span>
                   </div>
                   <div className="mt-2 text-[11px] flex justify-between items-center text-red-300 font-medium">
-                    <span>Phát hiện sử dụng điện thoại</span>
-                    <span className="text-blue-400 font-bold underline cursor-pointer">Xem 3 góc</span>
+                    <span>{t.landing.mockup.phoneDetected}</span>
+                    <span className="text-blue-400 font-bold underline cursor-pointer">{t.landing.mockup.viewAngles}</span>
                   </div>
                 </div>
 
-                {/* Nhật ký sự kiện thời gian thực */}
+                {/* Nhật ký sự kiện */}
                 <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-3.5 flex flex-col justify-between text-xs font-mono">
                   <div>
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2 text-slate-300 font-bold">
                       <span className="flex items-center gap-1.5">
-                        <Bell className="w-3.5 h-3.5 text-blue-400" /> NHẬT KÝ TỰ ĐỘNG
+                        <Bell className="w-3.5 h-3.5 text-blue-400" /> {t.landing.mockup.autoLogTitle}
                       </span>
-                      <span className="text-[10px] text-slate-500">THỜI GIAN THỰC</span>
+                      <span className="text-[10px] text-slate-500">{t.landing.mockup.realtimeBadge}</span>
                     </div>
                     <div className="space-y-2 text-[10.5px]">
                       <div className="p-2 bg-red-950/40 border border-red-900/50 rounded text-slate-200">
-                        <span className="text-red-400 font-bold">14:22 · CẢNH BÁO:</span> Phát hiện điện thoại tại bàn thi Mai (91%).
+                        {t.landing.mockup.log1}
                       </div>
                       <div className="p-2 bg-slate-800/60 border border-slate-700/60 rounded text-slate-300">
-                        <span className="text-slate-400 font-bold">14:20 · THÔNG BÁO:</span> 78 thí sinh đã hoàn tất kiểm tra camera phụ.
+                        {t.landing.mockup.log2}
                       </div>
                       <div className="p-2 bg-slate-800/60 border border-slate-700/60 rounded text-slate-300">
-                        <span className="text-emerald-400 font-bold">14:15 · BẮT ĐẦU:</span> Đề thi đã được mở khóa đồng bộ trên toàn phòng.
+                        {t.landing.mockup.log3}
                       </div>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-slate-800 text-[10.5px] text-slate-400 flex items-center justify-between">
-                    <span>Trạng thái phòng thi:</span>
-                    <span className="text-emerald-400 font-bold">Đang kiểm soát tốt</span>
+                    <span>{t.landing.mockup.roomStatusLabel}</span>
+                    <span className="text-emerald-400 font-bold">{t.landing.mockup.roomStatusGood}</span>
                   </div>
                 </div>
               </div>
@@ -280,20 +333,20 @@ export default function Landing() {
       </section>
 
       {/* =========================================================================
-          SƠ ĐỒ 4 TẦNG KHIÊN BẢO VỆ (KHÔNG NGOẶC ĐƠN, GỌN GÀNG, IN ĐẬM KEYWORD)
+          SƠ ĐỒ 4 TẦNG KHIÊN BẢO VỆ
       ========================================================================= */}
       <section className="py-16 sm:py-24 bg-white border-b border-slate-200">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-3">
               <Layers className="w-3.5 h-3.5" />
-              Kiến trúc phòng thủ đa tầng
+              {t.landing.shieldsSection.badge}
             </div>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Sơ đồ 4 tầng bảo vệ toàn diện kỳ thi
+              {t.landing.shieldsSection.title}
             </h2>
             <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
-              Ngăn ngừa mọi hình thức gian lận từ phần cứng, hệ điều hành đến hành vi thực tế trong suốt quá trình làm bài.
+              {t.landing.shieldsSection.desc}
             </p>
           </div>
 
@@ -334,7 +387,7 @@ export default function Landing() {
                         </span>
                         {isSelected && (
                           <span className="text-xs font-semibold text-blue-100 flex items-center gap-1">
-                            Đang xem <ArrowRight className="w-3.5 h-3.5" />
+                            {t.landing.shieldsSection.viewing} <ArrowRight className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
@@ -358,7 +411,7 @@ export default function Landing() {
               })}
             </div>
 
-            {/* Chi tiết tầng khiên đang chọn */}
+            {/* Chi tiết tầng khiên */}
             <div className="lg:col-span-7 bg-slate-900 text-white rounded-3xl p-6 sm:p-9 border border-slate-800 shadow-xl relative overflow-hidden min-h-[380px] flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -375,7 +428,6 @@ export default function Landing() {
                   {shields[activeShield].subtitle}
                 </p>
 
-                {/* Mô tả có in đậm từ khóa */}
                 <div className="text-sm sm:text-[15px] text-slate-300 leading-relaxed mb-6">
                   {shields[activeShield].desc.split('**').map((chunk, cIdx) =>
                     cIdx % 2 === 1 ? (
@@ -390,7 +442,7 @@ export default function Landing() {
 
                 <div className="space-y-2.5 pt-5 border-t border-slate-800">
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Lợi ích vận hành thực tế:
+                    {t.landing.shieldsSection.benefitsLabel}
                   </div>
                   {shields[activeShield].specs.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-200">
@@ -402,12 +454,12 @@ export default function Landing() {
               </div>
 
               <div className="mt-8 pt-5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 relative z-10">
-                <span>Giải pháp thiết kế riêng cho trường đại học và viện đào tạo</span>
+                <span>{t.landing.shieldsSection.footerNote}</span>
                 <Link
                   href="/features"
                   className="text-blue-400 hover:text-blue-300 font-bold inline-flex items-center gap-1.5"
                 >
-                  Xem chi tiết tính năng <ChevronRight className="w-4 h-4" />
+                  {t.landing.shieldsSection.viewMoreFeatures} <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
@@ -416,19 +468,19 @@ export default function Landing() {
       </section>
 
       {/* =========================================================================
-          VIDEO DEMO SECTION
+          VIDEO DEMO
       ========================================================================= */}
       <section className="py-16 sm:py-20 bg-slate-50 border-b border-slate-200">
         <div className="max-w-[1060px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-3">
             <Play className="w-3.5 h-3.5 fill-blue-700" />
-            Video trải nghiệm thực tế
+            {t.landing.videoSection.badge}
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Quy trình tổ chức một kỳ thi trực tuyến
+            {t.landing.videoSection.title}
           </h2>
           <p className="mt-3 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-            Xem video thực tế quá trình thí sinh quét mã QR vào phòng, ứng dụng tự động khóa màn hình và giám thị theo dõi trực tiếp.
+            {t.landing.videoSection.desc}
           </p>
 
           <div className="mt-8 rounded-2xl overflow-hidden border border-slate-300 shadow-xl bg-black aspect-video max-w-4xl mx-auto">
@@ -451,27 +503,27 @@ export default function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="inline-block px-3 py-1 bg-blue-500/30 border border-blue-400/40 rounded-full text-xs font-bold uppercase tracking-wider text-blue-100 mb-3">
-                CHƯƠNG TRÌNH THÍ ĐIỂM
+                {t.landing.pilotForm.badge}
               </div>
               <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                Đăng ký tham gia thí điểm khảo thí miễn phí
+                {t.landing.pilotForm.title}
               </h2>
               <p className="mt-4 text-[15.5px] text-blue-100 leading-relaxed">
-                Hỗ trợ các trường đại học, trường cao đẳng và trung tâm đào tạo tổ chức thi thử nghiệm (tối đa 200 lượt thi) vận hành song song với phương thức hiện hành.
+                {t.landing.pilotForm.desc}
               </p>
 
               <div className="mt-6 space-y-3 text-sm text-blue-100">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Miễn phí 100% kinh phí bản quyền và hạ tầng cho 01 học phần</span>
+                  <span>{t.landing.pilotForm.bullet1}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Cán bộ kỹ thuật trực song song hỗ trợ trong suốt ca thi</span>
+                  <span>{t.landing.pilotForm.bullet2}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Bàn giao báo cáo đối soát toàn diện sau kỳ thi</span>
+                  <span>{t.landing.pilotForm.bullet3}</span>
                 </div>
               </div>
             </div>
@@ -483,21 +535,21 @@ export default function Landing() {
                   <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">Đã tiếp nhận thông tin</h3>
+                  <h3 className="text-xl font-bold text-slate-900">{t.landing.pilotForm.successTitle}</h3>
                   <p className="text-sm text-slate-600">
-                    Ban dự án Exam Guard sẽ liên hệ qua email <strong>{formEmail}</strong> trong 24 giờ làm việc.
+                    {t.landing.pilotForm.successDesc}
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-3.5">
-                  <h3 className="text-xl font-bold text-slate-900">Phiếu đăng ký thí điểm</h3>
+                  <h3 className="text-xl font-bold text-slate-900">{t.landing.pilotForm.formTitle}</h3>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                      Họ tên cán bộ đại diện hoặc giảng viên *
+                      {t.landing.pilotForm.nameLabel}
                     </label>
                     <input
                       type="text"
-                      placeholder="ThS. Nguyễn Văn A"
+                      placeholder={lang === 'vi' ? 'ThS. Nguyễn Văn A' : 'Dr. John Doe'}
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       required
@@ -508,7 +560,7 @@ export default function Landing() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                        Email công vụ *
+                        {t.landing.pilotForm.emailLabel}
                       </label>
                       <input
                         type="email"
@@ -521,7 +573,7 @@ export default function Landing() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                        Số điện thoại *
+                        {t.landing.pilotForm.phoneLabel}
                       </label>
                       <input
                         type="tel"
@@ -536,11 +588,11 @@ export default function Landing() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                      Trường hoặc đơn vị đào tạo
+                      {t.landing.pilotForm.orgLabel}
                     </label>
                     <input
                       type="text"
-                      placeholder="Trường Đại học / Cao đẳng / Khoa"
+                      placeholder={lang === 'vi' ? 'Trường Đại học / Cao đẳng / Khoa' : 'University / College / Faculty'}
                       value={formOrg}
                       onChange={(e) => setFormOrg(e.target.value)}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600"
@@ -551,7 +603,7 @@ export default function Landing() {
                     type="submit"
                     className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm cursor-pointer mt-2"
                   >
-                    Gửi phiếu đăng ký
+                    {t.landing.pilotForm.submitBtn}
                   </button>
                 </form>
               )}
