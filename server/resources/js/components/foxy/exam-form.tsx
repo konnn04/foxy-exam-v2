@@ -127,6 +127,25 @@ const PROHIBITED_OBJECTS: [string, string][] = [
 ];
 const PROHIBITED_DEFAULT = ['cell phone', 'laptop', 'book', 'remote', 'tv'];
 
+export const DEFAULT_BANNED_APPS_LIST = [
+  'obs*',
+  'anydesk',
+  'teamviewer*',
+  'ultraviewer*',
+  'discord*',
+  'zoom',
+  'skype*',
+  'telegram',
+  'zalo',
+  'slack',
+  'bandicam*',
+  'snippingtool',
+  'screenclippinghost',
+  'sharex',
+  'rustdesk',
+  'parsecd',
+];
+
 type MonKey = 'prevent_tab_switch' | 'ai_face_check' | 'ai_identity' | 'ai_objects' | 'prevent_paste' | 'track_keystroke' | 'require_mic';
 const MON_KEYS: Record<ExamKind, MonKey[]> = {
   general: ['prevent_tab_switch', 'ai_face_check', 'prevent_paste', 'require_mic'],
@@ -179,6 +198,8 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     extra_camera_spot_check: pick('extra_camera_spot_check', false),
     violation_clips: pick('violation_clips', false),
     prohibited_labels: pick<string[]>('prohibited_labels', PROHIBITED_DEFAULT),
+    banned_apps: pick<string[]>('banned_apps', DEFAULT_BANNED_APPS_LIST),
+    lock_device: pick('lock_device', true),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -596,6 +617,13 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                 : [{ key: 'mic', label: 'Bật micro', desc: 'Phát hiện tiếng nói · bắt buộc cho phần Nói', checked: form.require_mic, onChange: (v: boolean) => flipMon('require_mic', v) }]),
               { key: 'screen', label: 'Bắt buộc chia sẻ màn hình', desc: 'Dừng chia sẻ giữa giờ thi thì bài bị che cho tới khi bật lại', checked: form.require_screen, onChange: (v: boolean) => state.set('require_screen', v) },
               {
+                key: 'lock_device',
+                label: 'Khóa thiết bị thi (Device Fingerprint Lock)',
+                desc: 'Chặn thí sinh đăng nhập và tiếp tục phiên thi đang dở trên một máy tính khác với máy đã bắt đầu làm bài',
+                checked: form.lock_device,
+                onChange: (v: boolean) => state.set('lock_device', v),
+              },
+              {
                 key: 'clips',
                 label: 'Quay clip quanh vi phạm',
                 desc: 'Máy thí sinh tự quay khoảng 10 giây (5 giây trước, 5 giây sau) camera và màn hình rồi tải lên. Cần bật camera hoặc chia sẻ màn hình',
@@ -679,8 +707,69 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
           </div>
         </Panel>
       </div>
+      <BannedAppsPanel state={state} />
       {isCode && <AllowedAppsPanel state={state} />}
     </div>
+  );
+}
+
+/** Danh sách phần mềm bị cấm: phát hiện đang chạy sẽ khóa màn hình làm bài cho tới khi tắt hẳn. */
+function BannedAppsPanel({ state }: { state: ExamFormState }) {
+  const { form, set } = state;
+  const [draft, setDraft] = useState('');
+  const add = () => {
+    const v = draft.trim().replace(/\.exe$/i, '').toLowerCase();
+    if (v && !form.banned_apps.includes(v)) set('banned_apps', [...form.banned_apps, v]);
+    setDraft('');
+  };
+  const loadDefaults = () => {
+    set('banned_apps', Array.from(new Set([...form.banned_apps, ...DEFAULT_BANNED_APPS_LIST])));
+  };
+  return (
+    <Panel className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PanelTitle
+          title="Danh sách phần mềm cấm chạy ngầm (Banned Processes)"
+          desc="Nếu thí sinh mở bất kỳ phần mềm nào khớp danh sách (hỗ trợ ký tự đại diện *, không phân biệt hoa thường), màn hình bài thi sẽ tự động khóa và ghi nhận vi phạm BANNED_APP."
+        />
+        <div className="flex items-center gap-2">
+          <FxButton size="sm" onClick={loadDefaults}>
+            Nạp DS mặc định ({DEFAULT_BANNED_APPS_LIST.length})
+          </FxButton>
+          {form.banned_apps.length > 0 && (
+            <FxButton size="sm" onClick={() => set('banned_apps', [])}>
+              Xóa hết
+            </FxButton>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {form.banned_apps.map((a) => (
+          <span key={a} className="inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-danger/10 px-2 py-1 font-mono text-xs text-danger-fg">
+            {a}
+            <button
+              type="button"
+              className="cursor-pointer opacity-70 hover:opacity-100"
+              onClick={() => set('banned_apps', form.banned_apps.filter((x) => x !== a))}
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
+        {form.banned_apps.length === 0 && (
+          <span className="text-xs text-muted-foreground">Đang dùng bộ danh sách phần mềm cấm mặc định của FoxyClient.</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <FxInput
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+          placeholder="Nhập tên tiến trình cấm (vd: chatgpt*, claude*, ngrok, vmware*, virtualbox*) rồi nhấn Enter"
+        />
+        <FxButton onClick={add}>Thêm phần mềm cấm</FxButton>
+      </div>
+    </Panel>
   );
 }
 

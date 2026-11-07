@@ -91,6 +91,10 @@ async function request<T>(
 export interface MonitoringConfig {
   /** process names (lowercase, no .exe) usable during the exam; empty = everything but the exam is a violation */
   allowed_apps?: string[];
+  /** custom banned process patterns (e.g. ["obs*", "zalo", "chatgpt*"]) configured by the lecturer */
+  banned_apps?: string[];
+  /** lock attempt to the initial machine fingerprint (prevents resuming on another computer) */
+  lock_device?: boolean;
   require_screen?: boolean;
   require_mic?: boolean;
   prevent_tab_switch: boolean;

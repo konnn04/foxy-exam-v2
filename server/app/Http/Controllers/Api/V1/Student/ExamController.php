@@ -132,6 +132,19 @@ class ExamController extends Controller
             ->first();
 
         if ($activeAttempt) {
+            $incomingDevice = (array) $request->input('device_info', []);
+            $existingDevice = is_array($activeAttempt->device_info) ? $activeAttempt->device_info : [];
+            $lockDevice = !empty(($exam->monitoring_config ?? [])['lock_device']);
+            $oldFp = $existingDevice['fingerprint'] ?? null;
+            $newFp = $incomingDevice['fingerprint'] ?? null;
+            if ($lockDevice && $oldFp && $newFp && $oldFp !== $newFp) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'DEVICE_LOCKED',
+                    'message' => 'Kỳ thi này đã bật chế độ khóa thiết bị. Bạn chỉ được phép tiếp tục làm bài trên đúng máy tính đã bắt đầu phiên thi ban đầu.',
+                ], 403);
+            }
+
             app(\App\Services\Realtime::class)->lifecycle($activeAttempt, 'active');
             \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $activeAttempt);
             $elapsedSeconds = now()->diffInSeconds($activeAttempt->started_at);

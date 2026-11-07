@@ -83,6 +83,9 @@ export default function ShowExam({ user, teams, exam }: Props) {
   const monitor: [string, boolean][] = [
     ['Theo dõi chuyển tab / cửa sổ', !!cfg.prevent_tab_switch],
     ['Xác thực khuôn mặt (AI)', !!cfg.ai_face_check],
+    ['Bắt buộc chia sẻ màn hình', !!cfg.require_screen],
+    ['Camera phụ (điện thoại)', (cfg.extra_camera ?? 'off') !== 'off'],
+    ['Khóa thiết bị thi (Device Lock)', !!cfg.lock_device],
     ...(isCode
       ? ([
           [`Chặn dán code (> ${cfg.max_paste_chars ?? 80} ký tự)`, !!cfg.prevent_paste],

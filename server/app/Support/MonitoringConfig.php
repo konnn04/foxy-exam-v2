@@ -23,16 +23,23 @@ final class MonitoringConfig
         'violation_clips' => ['nullable', 'boolean'],
         'prohibited_labels' => ['nullable', 'array', 'max:20'],
         'prohibited_labels.*' => ['string', 'in:cell phone,laptop,book,remote,tv,keyboard,mouse,backpack,handbag,scissors'],
+        'banned_apps' => ['nullable', 'array', 'max:50'],
+        'banned_apps.*' => ['string', 'max:60', 'regex:/^[A-Za-z0-9._*-]+$/'],
+        'lock_device' => ['nullable', 'boolean'],
     ];
 
-    /** Copies the AI / extra-camera options of a validated request into the config and applies the dependencies. */
+    /** Copies the AI / extra-camera / banned_apps / lock_device options of a validated request into the config and applies the dependencies. */
     public static function fromRequest(array $config, array $validated): array
     {
-        foreach (['ai_identity', 'ai_objects', 'extra_camera_objects', 'extra_camera_spot_check', 'violation_clips'] as $k) {
+        foreach (['ai_identity', 'ai_objects', 'extra_camera_objects', 'extra_camera_spot_check', 'violation_clips', 'lock_device'] as $k) {
             $config[$k] = (bool) ($validated[$k] ?? false);
         }
 
         $config['prohibited_labels'] = (array) ($validated['prohibited_labels'] ?? []);
+        $config['banned_apps'] = array_values(array_unique(array_filter(array_map(
+            fn ($v) => strtolower(trim(preg_replace('/\.exe$/i', '', (string) $v))),
+            (array) ($validated['banned_apps'] ?? [])
+        ))));
 
         return self::normalize($config);
     }
@@ -51,6 +58,11 @@ final class MonitoringConfig
         // which objects count as prohibited: only meaningful when an object check is on
         $c['prohibited_labels'] = $c['ai_objects'] || $c['extra_camera_objects'] ? ProhibitedObjects::clean($c['prohibited_labels'] ?? []) : [];
         $c['violation_clips'] = ($camera || !empty($c['require_screen'])) && !empty($c['violation_clips']);
+        $c['lock_device'] = !empty($c['lock_device']);
+        $c['banned_apps'] = array_values(array_unique(array_filter(array_map(
+            fn ($v) => strtolower(trim(preg_replace('/\.exe$/i', '', (string) $v))),
+            (array) ($c['banned_apps'] ?? [])
+        ))));
 
         return $c;
     }

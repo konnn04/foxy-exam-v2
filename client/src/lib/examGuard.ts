@@ -396,11 +396,13 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     }
 
     try {
+      const customBanned = Array.isArray(cfg?.banned_apps) && cfg.banned_apps.length > 0 ? cfg.banned_apps : [];
+      const effectiveBannedApps = Array.from(new Set([...DEFAULT_BANNED_APPS, ...customBanned.map((s) => s.trim().toLowerCase()).filter(Boolean)]));
       await startMonitor({
         watchDevices: true,
         watchProcesses: true,
         processIntervalMs: 1500,
-        bannedApps: DEFAULT_BANNED_APPS,
+        bannedApps: effectiveBannedApps,
         watchForeground: true,
         keyboardHook: true,
         blockShortcuts: lockdownOn() && allowedApps.current.length === 0,
