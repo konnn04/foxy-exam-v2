@@ -2090,6 +2090,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/attempts/{id}/export/violations.csv', [\App\Http\Controllers\Admin\ExportController::class, 'attemptViolations'])->whereNumber('id');
     Route::get('/reports/export/exams.csv', [\App\Http\Controllers\Admin\ExportController::class, 'exams']);
     Route::get('/attempts/{id}/export/oplog.csv', [\App\Http\Controllers\Admin\ExportController::class, 'oplog'])->whereNumber('id');
+    Route::get('/attempts/{id}/export/tracking.txt', [\App\Http\Controllers\Admin\ExportController::class, 'tracking'])->whereNumber('id');
     Route::get('/attempts/{id}/export/chat.csv', [\App\Http\Controllers\Admin\ExportController::class, 'chat'])->whereNumber('id');
 });
 

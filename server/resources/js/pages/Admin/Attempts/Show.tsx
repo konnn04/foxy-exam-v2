@@ -59,7 +59,7 @@ interface Props {
   teams: TeamItem[];
   attempt: AttemptPayload;
   violations: ViolationRow[];
-  typing: { t: string | null; keys: number; pastes: number }[];
+  typing: { t: string | null; keys: number; pastes: number; clicks?: number; cpu?: number | null; ram?: number | null }[];
   submissions: { id: number; status: string; t: string | null }[];
 }
 
@@ -169,17 +169,26 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const pos = (iso: string | null) => (start && iso ? Math.min(100, Math.max(0, ((new Date(iso).getTime() - start) / span) * 100)) : 0);
 
   const bins = useMemo(() => {
-    const b = Array.from({ length: BINS }, () => ({ keys: 0, pastes: 0 }));
+    const b = Array.from({ length: BINS }, () => ({ keys: 0, pastes: 0, clicks: 0, cpuSum: 0, ramSum: 0, perfCount: 0 }));
     if (!start) return b;
     typing.forEach((l) => {
       if (!l.t) return;
       const i = Math.min(BINS - 1, Math.max(0, Math.floor(((new Date(l.t).getTime() - start) / span) * BINS)));
       b[i].keys += l.keys;
       b[i].pastes += l.pastes;
+      b[i].clicks += l.clicks ?? 0;
+      if (typeof l.cpu === 'number' || typeof l.ram === 'number') {
+        b[i].cpuSum += l.cpu ?? 0;
+        b[i].ramSum += l.ram ?? 0;
+        b[i].perfCount += 1;
+      }
     });
     return b;
   }, [typing, start, span]);
   const maxKeys = Math.max(1, ...bins.map((b) => b.keys));
+  const maxClicks = Math.max(1, ...bins.map((b) => b.clicks));
+  const hasClicks = bins.some((b) => b.clicks > 0);
+  const hasPerf = bins.some((b) => b.perfCount > 0);
 
   const ticks = start ? Array.from({ length: 5 }, (_, i) => hhmm(new Date(start + (span * i) / 4).toISOString())) : [];
   const counts = { high: 0, medium: 0, low: 0 };
@@ -328,6 +337,33 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                     style={{ height: `${Math.max(b.keys ? 8 : 4, (b.keys / maxKeys) * 100)}%`, opacity: b.keys || b.pastes ? 1 : 0.35 }}
                   />
                 ))}
+              </div>}
+              {hasClicks && <span>Nhấp chuột</span>}
+              {hasClicks && <div className="flex h-[18px] items-end gap-px">
+                {bins.map((b, i) => (
+                  <span
+                    key={i}
+                    title={`${b.clicks} lượt nhấp chuột`}
+                    className="flex-1 rounded-[1px] bg-info/65"
+                    style={{ height: `${Math.max(b.clicks ? 10 : 4, (b.clicks / maxClicks) * 100)}%`, opacity: b.clicks ? 1 : 0.25 }}
+                  />
+                ))}
+              </div>}
+              {hasPerf && <span>CPU / RAM</span>}
+              {hasPerf && <div className="flex h-[24px] items-end gap-px">
+                {bins.map((b, i) => {
+                  const cpu = b.perfCount ? Math.round(b.cpuSum / b.perfCount) : 0;
+                  const ram = b.perfCount ? Math.round(b.ramSum / b.perfCount) : 0;
+                  const peak = Math.max(cpu, ram);
+                  return (
+                    <span
+                      key={i}
+                      title={b.perfCount ? `CPU: ${cpu}% · RAM: ${ram}%` : 'Không có mẫu'}
+                      className={cn('flex-1 rounded-[1px]', cpu > 85 || ram > 90 ? 'bg-warning' : 'bg-success/65')}
+                      style={{ height: `${Math.max(b.perfCount ? 10 : 4, Math.min(100, peak))}%`, opacity: b.perfCount ? 1 : 0.25 }}
+                    />
+                  );
+                })}
               </div>}
               <span>Vi phạm</span>
               <div className="relative h-[22px] rounded bg-surface">

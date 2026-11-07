@@ -580,7 +580,15 @@ export function sendOpLogBatch(input: {
   batchSeq: number;
   keystrokeCount: number;
   pasteEventCount: number;
-  syntheticFlags?: { bulk_insert?: boolean; chars_count?: number };
+  syntheticFlags?: {
+    bulk_insert?: boolean;
+    chars_count?: number;
+    cpu?: number;
+    ram?: number;
+    mouse_clicks?: [number, number, number, number][];
+    mouse_count?: number;
+  };
+  rawOpsPayload?: string;
 }): Promise<OpLogResponse> {
   return request<OpLogResponse>("/student/op-log", {
     method: "POST",
@@ -590,6 +598,7 @@ export function sendOpLogBatch(input: {
       keystroke_count: input.keystrokeCount,
       paste_event_count: input.pasteEventCount,
       synthetic_flags: input.syntheticFlags,
+      raw_ops_payload: input.rawOpsPayload,
     }),
   });
 }

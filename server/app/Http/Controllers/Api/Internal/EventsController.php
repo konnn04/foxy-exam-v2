@@ -25,7 +25,8 @@ class EventsController extends Controller
         'BULK_PASTE', 'SYNTHETIC_INPUT', 'TAB_SWITCH', 'WINDOW_LOST_FOCUS', 'DEVTOOLS_OPENED',
         'MULTIPLE_KEYBOARDS', 'FACE_MISMATCH', 'MULTIPLE_PEOPLE', 'NO_FACE_DETECTED', 'PROHIBITED_DEVICE',
         'BANNED_APP', 'MULTIPLE_MONITORS', 'CAPTURE_DEVICE', 'DEVICE_CHANGED', 'SYSTEM_SHORTCUT', 'APP_NOT_ALLOWED',
-        'LOOKING_AWAY', 'GAZE_AWAY', 'SPOT_CHECK_FAILED', 'PHONE_DISCONNECTED', 'FACE_TOO_FAR', 'CAMERA_LOST', 'SCREEN_SHARE_STOPPED', 'OFFLINE_TOO_LONG',
+        'LOOKING_AWAY', 'GAZE_AWAY', 'SPOT_CHECK_FAILED', 'PHONE_DISCONNECTED', 'PHONE_SCREEN_OFF',
+        'PHONE_ORIENTATION_INVALID', 'CAMERA_TAMPERED', 'FACE_TOO_FAR', 'CAMERA_LOST', 'SCREEN_SHARE_STOPPED', 'OFFLINE_TOO_LONG',
         'COPY_ATTEMPT', 'SPEECH_DETECTED',
     ];
     private const SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -106,6 +107,7 @@ class EventsController extends Controller
                     'keystroke_count' => max(0, (int) ($o['keystroke_count'] ?? 0)),
                     'paste_event_count' => $pastes,
                     'synthetic_flags' => $flags ?: null,
+                    'raw_ops_payload' => isset($o['raw_ops_payload']) && is_string($o['raw_ops_payload']) ? $o['raw_ops_payload'] : null,
                     'payload_ref' => $o['payload_ref'] ?? null,
                     'client_event_id' => $cid,
                     'created_at' => $this->at($o['occurred_at'] ?? null),

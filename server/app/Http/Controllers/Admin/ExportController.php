@@ -144,4 +144,89 @@ class ExportController extends Controller
 
         return $this->csv("op-log-phien-{$attempt->id}.csv", ['Thời điểm', 'Số phím', 'Số lần dán', 'Dấu hiệu'], $rows);
     }
+
+    /** Raw post-exam audit tracking log (TRACKING_{attemptId}.txt): chronological keystrokes, mouse clicks, CPU/RAM, and violations. */
+    public function tracking(int $attemptId): StreamedResponse
+    {
+        $attempt = $this->attempt($attemptId);
+
+        return response()->streamDownload(function () use ($attempt) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fwrite($out, "================================================================================\n");
+            fwrite($out, "EXAM GUARD — BẢN GHI HẬU KIỂM HÀNH VI & TELEMETRY (RAW TRACKING LOG)\n");
+            fwrite($out, "================================================================================\n");
+            fwrite($out, "Phiên thi    : #{$attempt->id} (Lần thi thứ {$attempt->attempt_number})\n");
+            fwrite($out, "Kỳ thi       : {$attempt->exam->title} ({$attempt->exam->code})\n");
+            fwrite($out, "Thí sinh     : " . ($attempt->user?->name ?? '—') . ' (' . ($attempt->user?->username ?? '—') . ")\n");
+            fwrite($out, "Bắt đầu      : " . self::when($attempt->started_at) . "\n");
+            fwrite($out, "Kết thúc     : " . (self::when($attempt->submitted_at) ?: 'Đang làm bài') . "\n");
+            fwrite($out, "Điểm rủi ro  : {$attempt->risk_score} · Trạng thái: {$attempt->status}\n");
+            if (is_array($attempt->device_info) && !empty($attempt->device_info)) {
+                fwrite($out, "Thiết bị     : " . json_encode($attempt->device_info, JSON_UNESCAPED_UNICODE) . "\n");
+            }
+            fwrite($out, "================================================================================\n\n");
+
+            fwrite($out, "[1] NHẬT KÝ VI PHẠM AN NINH (SECURITY VIOLATIONS)\n");
+            fwrite($out, "--------------------------------------------------------------------------------\n");
+            $violations = Violation::withoutGlobalScope('counted')->where('exam_attempt_id', $attempt->id)->orderBy('timestamp')->get();
+            if ($violations->isEmpty()) {
+                fwrite($out, "(Không có vi phạm)\n");
+            } else {
+                foreach ($violations as $v) {
+                    $time = self::when($v->timestamp);
+                    $rev = self::review($v);
+                    $msg = is_array($v->details) ? ($v->details['message'] ?? json_encode($v->details, JSON_UNESCAPED_UNICODE)) : (string) $v->details;
+                    fwrite($out, "[{$time}] [{$v->severity}] {$v->violation_type} ({$rev}) — {$msg}\n");
+                }
+            }
+
+            fwrite($out, "\n[2] NHẬT KÝ THAO TÁC PHÍM, CHUỘT & HIỆU NĂNG (OP-LOG, MOUSE_CLICK & PERF_METRICS)\n");
+            fwrite($out, "--------------------------------------------------------------------------------\n");
+            $logs = \App\Models\EditOpLog::where('exam_attempt_id', $attempt->id)->orderBy('batch_seq')->get();
+            if ($logs->isEmpty()) {
+                fwrite($out, "(Không có dữ liệu thao tác)\n");
+            } else {
+                foreach ($logs as $l) {
+                    $time = self::when($l->created_at);
+                    $flags = is_array($l->synthetic_flags) ? $l->synthetic_flags : [];
+                    $cpu = isset($flags['cpu']) ? "{$flags['cpu']}%" : '—';
+                    $ram = isset($flags['ram']) ? "{$flags['ram']}%" : '—';
+                    $mouseCount = $flags['mouse_count'] ?? (is_array($flags['mouse_clicks'] ?? null) ? count($flags['mouse_clicks']) : 0);
+                    fwrite($out, sprintf(
+                        "[%s] Batch #%d | Keys: %d | Pastes: %d | MouseClicks: %d | CPU: %s | RAM: %s\n",
+                        $time,
+                        $l->batch_seq,
+                        $l->keystroke_count,
+                        $l->paste_event_count,
+                        $mouseCount,
+                        $cpu,
+                        $ram
+                    ));
+
+                    $clicks = $flags['mouse_clicks'] ?? [];
+                    if (!empty($clicks) && is_array($clicks)) {
+                        $formattedClicks = array_map(function ($c) {
+                            if (!is_array($c) || count($c) < 2) {
+                                return '';
+                            }
+                            $btn = match ($c[2] ?? 0) {
+                                2 => 'R',
+                                1 => 'M',
+                                default => 'L',
+                            };
+                            return "({$c[0]},{$c[1]},{$btn})";
+                        }, array_slice($clicks, 0, 50));
+                        fwrite($out, '    -> mouse_click(x,y,btn): ' . implode(' ', array_filter($formattedClicks)) . "\n");
+                    }
+
+                    if (!empty($l->raw_ops_payload)) {
+                        fwrite($out, '    -> raw_ops: ' . substr((string) $l->raw_ops_payload, 0, 2000) . "\n");
+                    }
+                }
+            }
+
+            fclose($out);
+        }, "TRACKING_{$attempt->id}.txt", ['Content-Type' => 'text/plain; charset=UTF-8']);
+    }
 }

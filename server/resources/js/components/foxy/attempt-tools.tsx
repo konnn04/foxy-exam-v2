@@ -101,6 +101,11 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
             CSV Op-Log
           </FxButton>
         </a>
+        <a href={`/admin/attempts/${attemptId}/export/tracking.txt`}>
+          <FxButton size="sm" icon={Download}>
+            TRACKING.txt
+          </FxButton>
+        </a>
         <a href={`/admin/attempts/${attemptId}/export/chat.csv`}>
           <FxButton size="sm" icon={Download}>
             CSV chat

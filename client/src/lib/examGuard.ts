@@ -1,6 +1,7 @@
 import { collectEvidence, evidenceDue, EVIDENCE_SOURCE, shootClip, type EvidenceSet } from "./evidence";
 import { clipRecorderActive } from "./clipRecorder";
 import { SpeechDetector } from "./speech";
+import { systemLoad } from "./sysinfo";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
@@ -80,6 +81,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const seq = useRef(0);
   const opLogSeq = useRef(0);
   const pasteCount = useRef(0);
+  const mouseClicks = useRef<[number, number, number, number][]>([]);
   const cleanup = useRef<(() => void)[]>([]);
   const clipboardHandled = useRef<WeakSet<Event> | null>(null);
   const allowedApps = useRef<string[]>([]);
@@ -133,26 +135,55 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
 
   const flushKeylog = useCallback(async () => {
     try {
-      const events = await drainKeylog();
+      const [events, load] = await Promise.all([
+        drainKeylog().catch(() => []),
+        systemLoad().catch(() => null),
+      ]);
       const downs = events.filter((e) => e.down);
-      if (downs.length === 0 && pasteCount.current === 0) return;
+      const clicks = mouseClicks.current.splice(0, 200);
+      if (downs.length === 0 && pasteCount.current === 0 && clicks.length === 0 && !load) return;
       const injected = downs.filter((e) => e.injected).length;
-      const flags = injected > 0 ? { bulk_insert: true, chars_count: injected } : undefined;
+      const flags: {
+        bulk_insert?: boolean;
+        chars_count?: number;
+        cpu?: number;
+        ram?: number;
+        mouse_clicks?: [number, number, number, number][];
+        mouse_count?: number;
+      } = {};
+      if (injected > 0) {
+        flags.bulk_insert = true;
+        flags.chars_count = injected;
+      }
+      if (load) {
+        flags.cpu = Math.round(load.cpu);
+        flags.ram = Math.round(load.ram);
+      }
+      if (clicks.length > 0) {
+        flags.mouse_clicks = clicks;
+        flags.mouse_count = clicks.length;
+      }
+      const hasFlags = Object.keys(flags).length > 0;
+      const rawOps = JSON.stringify({
+        keys: downs.slice(0, 3000).map((e) => [e.vk, e.t, e.injected ? 1 : 0]),
+        clicks,
+      });
       if (rt?.enabled) {
         rt.emit("oplog", {
           batch_seq: ++opLogSeq.current,
           keystroke_count: downs.filter((e) => !e.injected).length,
           paste_event_count: pasteCount.current,
-          synthetic_flags: flags,
-          // compact keystroke stream [vk, t, injected] for replay; archived to object storage by the worker
-          raw_ops_payload: JSON.stringify(downs.slice(0, 3000).map((e) => [e.vk, e.t, e.injected ? 1 : 0])),
+          synthetic_flags: hasFlags ? flags : undefined,
+          // compact keystroke + mouse stream for replay & post-exam audit; archived by the worker
+          raw_ops_payload: rawOps,
         });
       } else {
         await sendOpLogBatch({
           batchSeq: ++opLogSeq.current,
           keystrokeCount: downs.filter((e) => !e.injected).length,
           pasteEventCount: pasteCount.current,
-          syntheticFlags: flags,
+          syntheticFlags: hasFlags ? flags : undefined,
+          rawOpsPayload: rawOps,
         });
       }
       pasteCount.current = 0;
@@ -271,6 +302,15 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     const noMenu = (e: Event) => e.preventDefault();
     document.addEventListener("contextmenu", noMenu, true);
     on(() => document.removeEventListener("contextmenu", noMenu, true));
+
+    // mouse click tracking (x, y, button, timestamp) for post-exam audit & replay (TRACKING_*.txt)
+    const onMouseDown = (e: MouseEvent) => {
+      if (mouseClicks.current.length < 500) {
+        mouseClicks.current.push([Math.round(e.clientX), Math.round(e.clientY), e.button, Date.now()]);
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown, true);
+    on(() => document.removeEventListener("mousedown", onMouseDown, true));
     const copyAttempt = (e: Event) => blockClipboard.current && record("COPY_ATTEMPT", "LOW", e.type === "cut" ? "Cố cắt nội dung — đã chặn" : "Cố sao chép nội dung — đã chặn");
     document.addEventListener("copy", copyAttempt, true);
     document.addEventListener("cut", copyAttempt, true);

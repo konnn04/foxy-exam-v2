@@ -329,12 +329,19 @@ class MonitoringController extends Controller
 
         $typing = EditOpLog::where('exam_attempt_id', $attempt->id)
             ->orderBy('created_at')
-            ->get(['created_at', 'keystroke_count', 'paste_event_count'])
-            ->map(fn ($l) => [
-                't' => $l->created_at?->toIso8601String(),
-                'keys' => (int) $l->keystroke_count,
-                'pastes' => (int) $l->paste_event_count,
-            ]);
+            ->get(['created_at', 'keystroke_count', 'paste_event_count', 'synthetic_flags'])
+            ->map(function ($l) {
+                $flags = is_array($l->synthetic_flags) ? $l->synthetic_flags : [];
+
+                return [
+                    't' => $l->created_at?->toIso8601String(),
+                    'keys' => (int) $l->keystroke_count,
+                    'pastes' => (int) $l->paste_event_count,
+                    'clicks' => isset($flags['mouse_count']) ? (int) $flags['mouse_count'] : (is_array($flags['mouse_clicks'] ?? null) ? count($flags['mouse_clicks']) : 0),
+                    'cpu' => isset($flags['cpu']) && is_numeric($flags['cpu']) ? (int) $flags['cpu'] : null,
+                    'ram' => isset($flags['ram']) && is_numeric($flags['ram']) ? (int) $flags['ram'] : null,
+                ];
+            });
 
         $submissions = Submission::where('exam_attempt_id', $attempt->id)
             ->orderBy('submitted_at')
