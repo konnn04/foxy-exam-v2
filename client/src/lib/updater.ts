@@ -39,8 +39,23 @@ export async function checkForUpdateAndInstall(
   let update: Update | null;
   try {
     update = await check();
-  } catch (err) {
-    if (!silent) onStatus({ state: "error", message: String(err) });
+  } catch (err: any) {
+    const rawMsg = String(err?.message || err || "");
+    // Nếu endpoint trả về 404 (chưa có file latest.json do chưa cấu hình key ký số)
+    // hoặc lỗi JSON endpoint: coi như đang ở bản hiện tại để không gây báo động lỗi đỏ lúc khởi động
+    const isMissingManifest =
+      rawMsg.includes("404") ||
+      rawMsg.toLowerCase().includes("not found") ||
+      rawMsg.includes("Could not fetch a valid release JSON") ||
+      rawMsg.includes("failed to parse release JSON");
+
+    if (isMissingManifest) {
+      console.warn("[updater] Chưa tìm thấy release manifest latest.json trên GitHub. Sử dụng phiên bản hiện tại.");
+      if (!silent) onStatus({ state: "up-to-date" });
+      return "up-to-date";
+    }
+
+    if (!silent) onStatus({ state: "error", message: rawMsg });
     else console.error("[updater] Kiểm tra cập nhật (nền) thất bại:", err);
     return "error";
   }
