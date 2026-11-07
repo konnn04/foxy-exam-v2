@@ -28,6 +28,8 @@ import {
   Sparkles,
   HelpCircle,
   FileText,
+  Menu,
+  X,
 } from 'lucide-react';
 
 interface Plan {
@@ -59,8 +61,9 @@ export default function Landing({ plans = [] }: Props) {
   const [formScale, setFormScale] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Scroll to top state
+  // Scroll to top & mobile menu state
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -85,7 +88,7 @@ export default function Landing({ plans = [] }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-['Be_Vietnam_Pro',system-ui,sans-serif] selection:bg-blue-600 selection:text-white overflow-x-hidden antialiased">
+    <div className="min-h-screen bg-white text-slate-900 font-['Be_Vietnam_Pro',system-ui,sans-serif] selection:bg-blue-600 selection:text-white antialiased">
       <Head>
         <title>Exam Guard · Hệ thống Giám sát Thi cử Trực tuyến Thông minh</title>
         <meta
@@ -97,93 +100,152 @@ export default function Landing({ plans = [] }: Props) {
       {/* =========================================================================
           TOP BANNER: TRANG TRỌNG - TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH
       ========================================================================= */}
-      <div className="bg-slate-900 text-slate-200 border-b border-slate-800 py-2.5 px-4 sm:px-6">
-        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3 text-[12px]">
-          <div className="flex items-center gap-2">
+      <div className="bg-slate-900 text-slate-200 border-b border-slate-800 py-2 px-4 sm:px-6">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-2 text-[11px] sm:text-[12px]">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-            <span className="font-bold text-white tracking-wide">TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH</span>
-            <span className="text-slate-600 hidden sm:inline">|</span>
-            <span className="text-slate-300 hidden sm:inline">CUỘC THI “SINH VIÊN VỚI Ý TƯỞNG SÁNG TẠO &amp; KHỞI NGHIỆP” NĂM 2026</span>
+            <span className="font-bold text-white tracking-wide truncate">TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH</span>
+            <span className="text-slate-600 hidden md:inline">|</span>
+            <span className="text-slate-300 hidden md:inline truncate">CUỘC THI “SINH VIÊN VỚI Ý TƯỞNG SÁNG TẠO &amp; KHỞI NGHIỆP” NĂM 2026</span>
           </div>
-          <div className="text-slate-400 hidden md:flex items-center gap-4 text-[11.5px] font-['IBM_Plex_Mono',monospace]">
+          <div className="text-slate-400 hidden lg:flex items-center gap-3 shrink-0 text-[11.5px] font-['IBM_Plex_Mono',monospace]">
             <span>LĨNH VỰC: STEM</span>
             <span>·</span>
-            <span>BẢO VỆ ĐỒ ÁN CHUYÊN NGÀNH CNTT</span>
+            <span>ĐỒ ÁN CNTT</span>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
-          HEADER (SÁNG SỦA, VIỀN THANH LỊCH, DỄ QUAN SÁT CHO THẦY CÔ)
+          HEADER (STICKY CHUẨN, KHÔNG RỚT DÒNG NÚT, HỖ TRỢ MENU MOBILE)
       ========================================================================= */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4 max-w-[1440px] mx-auto px-4 sm:px-8 py-3.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-[70px]">
           {/* Brand Logo & Proctoring Tag */}
-          <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0 shrink-0 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 shrink-0 transition-transform group-hover:scale-105">
               <img src="/mark.png" alt="Exam Guard Logo" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[20px] font-black tracking-tight text-slate-900 leading-none group-hover:text-blue-700 transition-colors">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[16px] sm:text-[19px] font-black tracking-tight text-slate-900 leading-none whitespace-nowrap group-hover:text-blue-700 transition-colors">
                   EXAM GUARD
                 </span>
-                <span className="text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase">
+                <span className="text-[9.5px] sm:text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
                   STEM 2026
                 </span>
               </div>
-              <span className="text-[11.5px] font-medium text-slate-500 block mt-0.5">
-                Hệ thống Giám sát Thi cử Trực tuyến Thông minh · ĐH Mở TP.HCM
+              <span className="text-[11px] font-medium text-slate-500 hidden sm:block truncate max-w-[230px] md:max-w-none mt-0.5">
+                Hệ thống Giám sát Thi cử Trực tuyến · ĐH Mở TP.HCM
               </span>
             </div>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden xl:flex items-center gap-6 text-[14px] font-medium text-slate-700 whitespace-nowrap">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden xl:flex items-center gap-4 2xl:gap-6 text-[13.5px] font-medium text-slate-700 whitespace-nowrap">
             <a href="#tong-quan" className="hover:text-blue-600 transition-colors">
               Tổng quan
             </a>
             <a href="#demo" className="text-blue-700 font-bold hover:text-blue-800 transition-colors flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
               Video Demo
             </a>
             <a href="#nang-luc" className="hover:text-blue-600 transition-colors">
-              Trụ cột công nghệ
+              Công nghệ
             </a>
             <a href="#so-sanh" className="hover:text-blue-600 transition-colors">
-              Tính cạnh tranh
+              Cạnh tranh
             </a>
             <a href="#van-hanh" className="hover:text-blue-600 transition-colors">
-              Quy trình tổ chức
+              Quy trình
             </a>
             <a href="#gia" className="hover:text-blue-600 transition-colors">
-              Biểu phí đề xuất
+              Biểu phí
             </a>
             <a href="#doi-ngu" className="hover:text-blue-600 transition-colors">
-              Đội ngũ thực hiện
+              Đội ngũ
             </a>
             <a href="/docs/api" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 font-semibold">
-              API Docs <ExternalLink className="w-3.5 h-3.5" />
+              API <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
           </nav>
 
-          {/* Header Actions */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Header Actions (Never wraps onto a second row) */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <Link
               href="/login"
-              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-[14px] font-semibold hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              className="px-2.5 sm:px-3.5 py-2 border border-slate-300 text-slate-700 rounded-lg text-[12.5px] sm:text-[13.5px] font-semibold hover:bg-slate-50 hover:text-slate-900 transition-colors whitespace-nowrap"
             >
               Cổng Khảo thí
             </Link>
             <a
               href="#tai-app"
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-all"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 lg:px-4 py-2 bg-blue-600 text-white text-[13px] lg:text-[13.5px] font-semibold rounded-lg hover:bg-blue-700 shadow-xs transition-all whitespace-nowrap"
             >
-              <Download className="w-4 h-4" />
-              Tải Exam Guard Client
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span>Tải Client</span>
+              <span className="hidden lg:inline">(.exe)</span>
             </a>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="Mở danh mục điều hướng"
+              className="xl:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile / Tablet Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="xl:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 shadow-lg">
+            <div className="grid grid-cols-2 gap-1.5 text-[14px] font-medium text-slate-700">
+              <a href="#tong-quan" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Tổng quan đề án
+              </a>
+              <a href="#demo" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-blue-700 font-bold bg-blue-50/70 hover:bg-blue-100/70 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                Video Demo
+              </a>
+              <a href="#nang-luc" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Trụ cột công nghệ
+              </a>
+              <a href="#so-sanh" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Tính cạnh tranh
+              </a>
+              <a href="#van-hanh" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Quy trình tổ chức
+              </a>
+              <a href="#gia" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Biểu phí đề xuất
+              </a>
+              <a href="#doi-ngu" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+                Đội ngũ thực hiện
+              </a>
+              <a href="/docs/api" target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg text-blue-600 font-semibold hover:bg-slate-100 flex items-center gap-1">
+                API Docs <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
+              <a
+                href="#tai-app"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                Tải Exam Guard Client (.exe / .msi)
+              </a>
+              <a
+                href="#lien-he"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 flex items-center justify-center py-2.5 border border-slate-300 text-slate-700 text-[14px] font-semibold rounded-lg hover:bg-slate-50"
+              >
+                Đăng ký thí điểm
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* =========================================================================
@@ -192,33 +254,33 @@ export default function Landing({ plans = [] }: Props) {
       <section id="tong-quan" className="pt-12 pb-16 sm:pt-16 sm:pb-20 bg-gradient-to-b from-blue-50/40 via-white to-white border-b border-slate-200">
         <div className="max-w-[1200px] mx-auto px-6 sm:px-8 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[12.5px] font-bold mb-6 shadow-2xs">
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span>ĐỀ ÁN KHỞI NGHIỆP SINH VIÊN NĂM 2026 · KHOA CÔNG NGHỆ THÔNG TIN · TRƯỜNG ĐẠI HỌC MỞ TP.HCM</span>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[11px] sm:text-[12.5px] font-bold mb-6 shadow-2xs max-w-full">
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="truncate sm:whitespace-normal">ĐỀ ÁN KHỞI NGHIỆP SINH VIÊN 2026 · KHOA CNTT · ĐH MỞ TP.HCM</span>
           </div>
 
           {/* Clean Academic Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-[50px] font-black tracking-tight text-slate-900 leading-[1.2] max-w-[980px] mx-auto text-balance">
+          <h1 className="text-2xl sm:text-5xl lg:text-[50px] font-black tracking-tight text-slate-900 leading-[1.22] max-w-[980px] mx-auto text-balance">
             Hệ Thống Giám Sát Thi Cử Trực Tuyến Thông Minh
             <span className="block text-blue-700 mt-1">Bảo đảm tính toàn vẹn và công bằng trong khảo thí</span>
           </h1>
 
           {/* Subtitle - Academic Tone */}
-          <p className="mt-5 text-[16px] sm:text-[17px] text-slate-700 max-w-[820px] mx-auto leading-relaxed text-pretty">
+          <p className="mt-4 sm:mt-5 text-[15px] sm:text-[17px] text-slate-700 max-w-[820px] mx-auto leading-relaxed text-pretty">
             Exam Guard tích hợp ứng dụng kiểm soát môi trường thi (Lockdown Kiosk) và mô hình trí tuệ nhân tạo phân tích đa tầng trên thiết bị (Edge AI). Hệ thống tự động cảnh báo hành vi bất thường kèm trích xuất đoạn video bằng chứng trong vòng <strong>2 giây</strong>, hỗ trợ cơ sở đào tạo tối ưu hóa 85–90% chi phí vận hành khảo thí.
           </p>
 
           {/* Action Buttons */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 max-w-md sm:max-w-none mx-auto">
             <a
               href="#lien-he"
-              className="px-8 py-3.5 bg-blue-600 text-white text-[15px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
+              className="px-6 sm:px-8 py-3.5 bg-blue-600 text-white text-[14.5px] sm:text-[15px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 text-center whitespace-nowrap"
             >
               Đăng ký chương trình thí điểm
             </a>
             <a
               href="#gia"
-              className="px-8 py-3.5 bg-white border border-slate-300 text-slate-700 text-[15px] font-semibold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs"
+              className="px-6 sm:px-8 py-3.5 bg-white border border-slate-300 text-slate-700 text-[14.5px] sm:text-[15px] font-semibold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs text-center whitespace-nowrap"
             >
               Khung định mức kinh phí
             </a>
@@ -541,7 +603,7 @@ export default function Landing({ plans = [] }: Props) {
 
           {/* Comparison Table */}
           <div className="mt-8 overflow-x-auto rounded-xl border border-slate-200 shadow-xs">
-            <table className="w-full text-left border-collapse text-[15px]">
+            <table className="w-full min-w-[740px] text-left border-collapse text-[14px] sm:text-[15px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 text-[13.5px] font-bold border-b border-slate-200">
                   <th className="p-4 sm:p-5 w-1/4">Chỉ tiêu đánh giá</th>
@@ -678,11 +740,11 @@ export default function Landing({ plans = [] }: Props) {
             </div>
 
             {/* Tab Buttons */}
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-3 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full lg:w-auto gap-1">
               <button
                 type="button"
                 onClick={() => setPricingTab('semester')}
-                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                className={`px-3.5 sm:px-5 py-2.5 rounded-lg text-[13px] font-bold transition-all whitespace-nowrap ${
                   pricingTab === 'semester'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -693,7 +755,7 @@ export default function Landing({ plans = [] }: Props) {
               <button
                 type="button"
                 onClick={() => setPricingTab('per_exam')}
-                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                className={`px-3.5 sm:px-5 py-2.5 rounded-lg text-[13px] font-bold transition-all whitespace-nowrap ${
                   pricingTab === 'per_exam'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -704,7 +766,7 @@ export default function Landing({ plans = [] }: Props) {
               <button
                 type="button"
                 onClick={() => setPricingTab('on_premise')}
-                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                className={`px-3.5 sm:px-5 py-2.5 rounded-lg text-[13px] font-bold transition-all whitespace-nowrap ${
                   pricingTab === 'on_premise'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -1012,11 +1074,11 @@ export default function Landing({ plans = [] }: Props) {
 
             <div className="space-y-4">
               {/* Windows Exe */}
-              <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap gap-4 items-center justify-between">
+              <div className="p-5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-slate-900">Gói cài đặt độc lập (.exe)</h3>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">Gói cài đặt độc lập (.exe)</h3>
+                    <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded whitespace-nowrap">
                       BẢN THÍ SINH
                     </span>
                   </div>
@@ -1026,18 +1088,18 @@ export default function Landing({ plans = [] }: Props) {
                 </div>
                 <a
                   href="#lien-he"
-                  className="px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shrink-0 whitespace-nowrap"
                 >
-                  <Download className="w-4 h-4" /> Tải bản .exe
+                  <Download className="w-4 h-4 shrink-0" /> Tải bản .exe
                 </a>
               </div>
 
               {/* Room MSI */}
-              <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap gap-4 items-center justify-between">
+              <div className="p-5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-slate-900">Gói triển khai phòng máy tập trung (.msi)</h3>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">Gói triển khai phòng máy tập trung (.msi)</h3>
+                    <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded whitespace-nowrap">
                       CHO PHÒNG MÁY
                     </span>
                   </div>
@@ -1047,7 +1109,7 @@ export default function Landing({ plans = [] }: Props) {
                 </div>
                 <a
                   href="#lien-he"
-                  className="px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors"
+                  className="px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center shrink-0 whitespace-nowrap"
                 >
                   Yêu cầu gói phân phối .msi
                 </a>
