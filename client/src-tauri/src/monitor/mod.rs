@@ -246,6 +246,11 @@ pub async fn monitor_processes() -> Result<Vec<ProcessInfo>, String> {
 }
 
 #[tauri::command]
+pub async fn monitor_kill_process(pid: u32) -> Result<bool, String> {
+    platform::kill_process(pid)
+}
+
+#[tauri::command]
 pub async fn monitor_screen_capture_status() -> Result<ScreenCaptureStatus, String> {
     Ok(platform::screen_capture_status())
 }

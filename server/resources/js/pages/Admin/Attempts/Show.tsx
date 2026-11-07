@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, BarChart3, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
+import { Ban, BarChart3, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Trash2, Undo2, UserCheck, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
@@ -38,7 +38,16 @@ export interface AttemptPayload {
   device_info: Record<string, unknown> | null;
   pending_grading?: number;
   shared_device_with?: { attempt_id: number; name: string | null; username: string | null }[];
-  user: { id?: number | null; name: string; username: string; email?: string | null; has_face_photo?: boolean };
+  user: {
+    id?: number | null;
+    name: string;
+    username: string;
+    email?: string | null;
+    has_face_photo?: boolean;
+    total_attempts?: number;
+    total_violations?: number;
+    enrolled_courses?: { id: number; code: string; name: string }[];
+  };
   exam: { id: number; title: string; code: string; type: string; duration_minutes: number; monitoring_config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null };
 }
 
@@ -169,6 +178,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const [reportNotifyStudent, setReportNotifyStudent] = useState<boolean>(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId));
   const sel = selGroup?.head;
 
@@ -384,11 +394,29 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
         }
         actions={
           <>
+            <FxButton icon={UserCheck} onClick={() => setProfileOpen(true)}>
+              Hồ sơ thí sinh
+            </FxButton>
             <FxButton icon={BarChart3} onClick={() => setMetricsOpen(true)}>
               Thống kê TP/FP
             </FxButton>
             <FxButton variant={voided ? undefined : 'danger'} icon={voided ? Undo2 : Ban} onClick={toggleVoid}>
               {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
+            </FxButton>
+            <FxButton
+              variant="danger"
+              icon={Trash2}
+              onClick={async () => {
+                const ok = await dialog.confirm({
+                  title: 'Xóa vĩnh viễn phiên thi này?',
+                  text: 'Toàn bộ lịch sử vi phạm, nhật ký gõ phím (Op-Log) và bài nộp của phiên thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+                  tone: 'danger',
+                  confirmLabel: 'Xóa vĩnh viễn',
+                });
+                if (ok) router.post(`/admin/attempts/${attempt.id}/delete`);
+              }}
+            >
+              Xóa phiên
             </FxButton>
             {(attempt.pending_grading ?? 0) > 0 && (
               <FxButton variant="primary" onClick={() => router.visit(`/admin/attempts/${attempt.id}/grading`)}>
@@ -424,7 +452,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
 
           <DevicePanel info={attempt.device_info} shared={attempt.shared_device_with ?? []} />
 
-          <AttemptTools attemptId={attempt.id} running={running} chatSeq={row?.chat_seq} />
+          <AttemptTools attemptId={attempt.id} running={running} chatSeq={row?.chat_seq} deviceInfo={attempt.device_info} />
 
           <Panel className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-2.5">
@@ -1032,6 +1060,71 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             </div>
           );
         })()}
+      </Modal>
+
+      <Modal open={profileOpen} onClose={() => setProfileOpen(false)} width={560} title="Hồ sơ sinh trắc học & Lịch sử dự thi của thí sinh">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-4 rounded-xl border border-border bg-surface p-3.5">
+            {attempt.user.has_face_photo && attempt.user.id ? (
+              <img
+                src={`/admin/users/${attempt.user.id}/face-photo`}
+                alt={attempt.user.name}
+                className="h-24 w-24 shrink-0 rounded-lg border border-border object-cover"
+              />
+            ) : (
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-xl font-bold">
+                {initials(attempt.user.name)}
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
+              <div className="text-base font-bold text-foreground">{attempt.user.name}</div>
+              <div className="font-mono text-muted-foreground">
+                Mã định danh: <b>{attempt.user.username}</b> {attempt.user.email ? `· ${attempt.user.email}` : ''}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <Pill tone={attempt.user.has_face_photo ? 'success' : 'warning'} size="sm">
+                  {attempt.user.has_face_photo ? 'Đã đăng ký ảnh khuôn mặt mẫu' : 'Chưa có ảnh khuôn mặt mẫu'}
+                </Pill>
+                <Pill tone="neutral" size="sm">
+                  Lần thi #{attempt.attempt_number} của kỳ thi này
+                </Pill>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="rounded-lg border border-border bg-surface p-3 text-center">
+              <div className="font-mono text-xl font-bold">{attempt.user.total_attempts ?? 1}</div>
+              <div className="text-[11px] text-muted-foreground">Tổng lượt dự thi</div>
+            </div>
+            <div className="rounded-lg border border-border bg-surface p-3 text-center">
+              <div className="font-mono text-xl font-bold text-danger-fg">{attempt.user.total_violations ?? violations.length}</div>
+              <div className="text-[11px] text-muted-foreground">Tổng vi phạm tích lũy</div>
+            </div>
+            <div className="rounded-lg border border-border bg-surface p-3 text-center">
+              <div className="font-mono text-xl font-bold text-primary">{attempt.user.enrolled_courses?.length ?? 0}</div>
+              <div className="text-[11px] text-muted-foreground">Học phần đã ghi danh</div>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1.5 text-xs font-semibold">Danh sách lớp học phần đang theo học</div>
+            {!attempt.user.enrolled_courses || attempt.user.enrolled_courses.length === 0 ? (
+              <div className="rounded-lg border border-border bg-surface py-4 text-center text-xs text-muted-foreground">
+                Chưa ghi nhận lớp học phần nào.
+              </div>
+            ) : (
+              <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border text-xs">
+                {attempt.user.enrolled_courses.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2 hover:bg-surface/60">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">{c.code}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </Modal>
     </AdminLayout>
   );

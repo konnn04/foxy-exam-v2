@@ -828,3 +828,18 @@ export interface ViolationRuleSpec {
 export function getViolationRules(): Promise<{ success: boolean; data: Record<string, ViolationRuleSpec> }> {
   return request<{ success: boolean; data: Record<string, ViolationRuleSpec> }>("/public/violation-rules", {}, { auth: false });
 }
+
+export function reportProcesses(input: {
+  attemptId?: number;
+  processes: { pid: number; ppid: number; name: string }[];
+  killResult?: { pid: number; name?: string; ok: boolean; error?: string };
+}): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>("/student/processes", {
+    method: "POST",
+    body: JSON.stringify({
+      attempt_id: input.attemptId,
+      processes: input.processes,
+      kill_result: input.killResult,
+    }),
+  });
+}

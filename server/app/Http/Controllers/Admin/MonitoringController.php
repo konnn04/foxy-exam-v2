@@ -236,6 +236,98 @@ class MonitoringController extends Controller
     }
 
     /**
+     * POST /admin/attempts/{id}/command — Gửi lệnh giám thị thời gian thực tới máy thí sinh:
+     * WARN (nhắc nhở hiển thị trên màn hình thi), PAUSE (tạm dừng bài làm), RESUME (cho phép tiếp tục),
+     * REQ_PROCESSES (yêu cầu danh sách tiến trình), KILL_PROCESS (buộc tắt tiến trình theo PID).
+     */
+    public function commandAttempt(Request $request, int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+        $validated = $request->validate([
+            'type' => ['required', 'in:WARN,PAUSE,RESUME,REQ_PROCESSES,KILL_PROCESS'],
+            'message' => ['nullable', 'string', 'max:500'],
+            'pid' => ['nullable', 'integer', 'min:1'],
+            'name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $type = $validated['type'];
+        $cmd = [
+            'id' => strtolower($type) . '-' . bin2hex(random_bytes(4)),
+            'type' => $type,
+            'at' => (int) round(microtime(true) * 1000),
+            'by' => Auth::id(),
+        ];
+        if (!empty($validated['message'])) {
+            $cmd['message'] = trim($validated['message']);
+        }
+        if (isset($validated['pid'])) {
+            $cmd['pid'] = (int) $validated['pid'];
+        }
+        if (!empty($validated['name'])) {
+            $cmd['name'] = trim($validated['name']);
+        }
+
+        $dev = is_array($attempt->device_info) ? $attempt->device_info : [];
+        if ($type === 'PAUSE') {
+            $dev['paused_by_proctor'] = true;
+            $attempt->device_info = $dev;
+            $attempt->save();
+        } elseif ($type === 'RESUME') {
+            $dev['paused_by_proctor'] = false;
+            $attempt->device_info = $dev;
+            $attempt->save();
+        } elseif ($type === 'WARN' && !empty($cmd['message'])) {
+            \App\Models\AttemptMessage::create([
+                'exam_attempt_id' => $attempt->id,
+                'sender_id' => Auth::id(),
+                'sender_role' => 'PROCTOR',
+                'body' => '[NHẮC NHỞ TRỰC TIẾP] ' . $cmd['message'],
+            ]);
+        }
+
+        $ok = app(Realtime::class)->signal($attempt, ['command' => $cmd]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'signaled' => $ok,
+                'command' => $cmd,
+            ]);
+        }
+
+        return back()->with('success', match ($type) {
+            'WARN' => 'Đã gửi cảnh báo trực tiếp lên màn hình thí sinh.',
+            'PAUSE' => 'Đã gửi lệnh tạm dừng phiên thi của thí sinh.',
+            'RESUME' => 'Đã cho phép thí sinh tiếp tục làm bài.',
+            'REQ_PROCESSES' => 'Đã gửi yêu cầu làm mới danh sách tiến trình máy thí sinh.',
+            'KILL_PROCESS' => 'Đã gửi lệnh buộc dừng tiến trình #' . ($cmd['pid'] ?? '') . ' trên máy thí sinh.',
+            default => 'Đã gửi lệnh giám thị.',
+        });
+    }
+
+    /** POST /admin/attempts/{id}/delete — Xoá vĩnh viễn phiên thi và các dữ liệu liên quan. */
+    public function deleteAttempt(int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+        $examId = $attempt->exam_id;
+
+        if ($attempt->status === 'IN_PROGRESS') {
+            app(Realtime::class)->lifecycle($attempt, 'force_ended');
+        }
+        Violation::withoutGlobalScope('counted')->where('exam_attempt_id', $attempt->id)->delete();
+        EditOpLog::where('exam_attempt_id', $attempt->id)->delete();
+        Submission::where('exam_attempt_id', $attempt->id)->delete();
+        \App\Models\ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->delete();
+        \App\Models\AttemptMessage::where('exam_attempt_id', $attempt->id)->delete();
+        \App\Models\ViolationReport::where('exam_attempt_id', $attempt->id)->delete();
+        $attempt->delete();
+
+        return redirect("/admin/reports/{$examId}")->with('success', 'Đã xoá phiên thi.');
+    }
+
+    /**
      * GET /admin/exams/{id}/realtime — connection info for the proctor UI: a 1-hour token scoped to THIS exam
      * and the hub / recording service URLs. 503 when the realtime plane is not configured.
      */
@@ -824,6 +916,16 @@ HTML;
 
     private function attemptPayload(ExamAttempt $attempt): array
     {
+        $student = $attempt->user;
+        $totalAttempts = $student ? ExamAttempt::where('user_id', $student->id)->count() : 0;
+        $totalViolations = $student
+            ? Violation::whereHas('attempt', fn ($q) => $q->where('user_id', $student->id))->where('is_false_positive', false)->count()
+            : 0;
+        $enrolledCourses = $student
+            ? $student->enrolledCourses()->select('courses.id', 'courses.code', 'courses.name')->limit(20)->get()
+                ->map(fn ($c) => ['id' => $c->id, 'code' => $c->code, 'name' => $c->name])->values()->all()
+            : [];
+
         return [
             'id' => $attempt->id,
             'attempt_number' => $attempt->attempt_number,
@@ -840,11 +942,14 @@ HTML;
             'pending_grading' => \App\Models\ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->whereNull('is_correct')
                 ->whereHas('question', fn ($q) => $q->whereIn('type', \App\Http\Controllers\Admin\GradingController::MANUAL))->count(),
             'user' => [
-                'id' => $attempt->user?->id,
-                'name' => $attempt->user?->name ?? 'Thí sinh',
-                'username' => $attempt->user?->username ?? '',
-                'email' => $attempt->user?->email,
-                'has_face_photo' => $attempt->user ? \App\Support\FaceReference::has($attempt->user) : false,
+                'id' => $student?->id,
+                'name' => $student?->name ?? 'Thí sinh',
+                'username' => $student?->username ?? '',
+                'email' => $student?->email,
+                'has_face_photo' => $student ? \App\Support\FaceReference::has($student) : false,
+                'total_attempts' => $totalAttempts,
+                'total_violations' => $totalViolations,
+                'enrolled_courses' => $enrolledCourses,
             ],
             'exam' => [
                 'id' => $attempt->exam->id,

@@ -173,4 +173,54 @@ class TelemetryController extends Controller
             'data' => \App\Support\ViolationCatalog::all(),
         ]);
     }
+
+    /**
+     * Đồng bộ danh sách tiến trình (Process List) từ máy thí sinh theo yêu cầu của giám thị hoặc định kỳ.
+     */
+    public function recordProcesses(Request $request): JsonResponse
+    {
+        $attempt = \App\Support\AttemptResolver::for($request);
+        if (!$attempt) {
+            return response()->json(['success' => false, 'message' => 'Phiên làm bài không tồn tại.'], 404);
+        }
+
+        $validated = $request->validate([
+            'processes' => ['required', 'array', 'max:500'],
+            'processes.*.pid' => ['required', 'integer'],
+            'processes.*.ppid' => ['nullable', 'integer'],
+            'processes.*.name' => ['required', 'string', 'max:255'],
+            'kill_result' => ['nullable', 'array'],
+            'kill_result.pid' => ['nullable', 'integer'],
+            'kill_result.name' => ['nullable', 'string', 'max:255'],
+            'kill_result.ok' => ['nullable', 'boolean'],
+            'kill_result.error' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $dev = is_array($attempt->device_info) ? $attempt->device_info : [];
+        $dev['processes'] = array_values(array_map(fn ($p) => [
+            'pid' => (int) $p['pid'],
+            'ppid' => (int) ($p['ppid'] ?? 0),
+            'name' => (string) $p['name'],
+        ], $validated['processes']));
+        $dev['processes_updated_at'] = now()->toIso8601String();
+        if (!empty($validated['kill_result'])) {
+            $dev['last_kill_result'] = [
+                'pid' => (int) ($validated['kill_result']['pid'] ?? 0),
+                'name' => (string) ($validated['kill_result']['name'] ?? ''),
+                'ok' => (bool) ($validated['kill_result']['ok'] ?? false),
+                'error' => isset($validated['kill_result']['error']) ? (string) $validated['kill_result']['error'] : null,
+                'at' => now()->toIso8601String(),
+            ];
+        }
+        $attempt->device_info = $dev;
+        $attempt->save();
+
+        // Bump ev_seq so proctor's AttemptShow page reloads device_info in real time
+        app(\App\Services\Realtime::class)->signal($attempt, ['field' => 'ev', 'value' => time()]);
+
+        return response()->json([
+            'success' => true,
+            'count' => count($dev['processes']),
+        ]);
+    }
 }

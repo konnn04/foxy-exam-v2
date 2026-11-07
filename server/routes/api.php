@@ -92,6 +92,7 @@ Route::prefix('v1')->group(function () {
             // Anti-Cheat Telemetry & Keystroke Op-Log
             Route::post('/op-log', [TelemetryController::class, 'recordOpLog']);
             Route::post('/violation', [TelemetryController::class, 'recordViolation']);
+            Route::post('/processes', [TelemetryController::class, 'recordProcesses']);
             Route::post('/violation-clip', [\App\Http\Controllers\Api\V1\Student\ViolationClipController::class, 'attach'])->middleware('throttle:60,1');
 
             // Code Submissions

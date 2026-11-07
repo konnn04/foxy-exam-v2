@@ -17,6 +17,9 @@ pub fn microphones() -> Vec<AudioInput> {
 pub fn processes() -> Vec<ProcessInfo> {
     Vec::new()
 }
+pub fn kill_process(_pid: u32) -> Result<bool, String> {
+    Err("Chức năng kết thúc tiến trình chưa hỗ trợ trên hệ điều hành này.".into())
+}
 pub fn start_device_watch(_app: AppHandle) -> Result<(), String> {
     Ok(())
 }

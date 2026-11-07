@@ -90,6 +90,7 @@ export const getDisplays = () => invoke<DisplayInfo[]>("monitor_displays");
 export const getDevices = () => invoke<Device[]>("monitor_devices");
 export const getMicrophones = () => invoke<AudioInput[]>("monitor_microphones");
 export const getProcesses = () => invoke<ProcessInfo[]>("monitor_processes");
+export const killProcess = (pid: number) => invoke<boolean>("monitor_kill_process", { pid });
 export const getScreenCaptureStatus = () => invoke<ScreenCaptureStatus>("monitor_screen_capture_status");
 export const requestScreenCapture = () => invoke<ScreenCaptureStatus>("monitor_request_screen_capture");
 export const startMonitor = (config: MonitorConfig = {}) => invoke<void>("monitor_start", { config });

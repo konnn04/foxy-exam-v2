@@ -2,6 +2,7 @@ use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
+use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
 
 use super::wide_to_string;
 use crate::monitor::ProcessInfo;
@@ -35,4 +36,20 @@ pub fn processes() -> Vec<ProcessInfo> {
         let _ = CloseHandle(snap);
     }
     out
+}
+
+/// Buộc dừng một tiến trình theo PID (do giám thị yêu cầu từ xa).
+/// Không cho phép tắt tiến trình hệ thống (PID <= 4) hoặc chính FoxyExam.
+pub fn kill_process(pid: u32) -> Result<bool, String> {
+    if pid <= 4 || pid == std::process::id() {
+        return Err("Không được phép kết thúc tiến trình hệ thống hoặc chính ứng dụng thi.".into());
+    }
+    unsafe {
+        let handle = OpenProcess(PROCESS_TERMINATE, false, pid)
+            .map_err(|e| format!("Không mở được tiến trình #{pid}: {e}"))?;
+        let res = TerminateProcess(handle, 1);
+        let _ = CloseHandle(handle);
+        res.map(|_| true)
+            .map_err(|e| format!("Không thể kết thúc tiến trình #{pid}: {e}"))
+    }
 }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import QRCode from "qrcode";
-import { getMobileViewer, issueMobileCamera, verifyMobileLayout, type MonitoringConfig } from "./api";
+import { getMobileViewer, issueMobileCamera, reportProcesses, verifyMobileLayout, type MonitoringConfig } from "./api";
+import { getProcesses, killProcess } from "./monitor";
 import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
@@ -87,6 +88,17 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const badSince = useRef<number | null>(null);
   const goodSince = useRef<number | null>(null);
 
+  const syncProcesses = useCallback(async (killResult?: { pid: number; name?: string; ok: boolean; error?: string }) => {
+    const attemptId = getSession()?.attemptId;
+    if (!attemptId) return;
+    try {
+      const list = await getProcesses();
+      await reportProcesses({ attemptId, processes: list.slice(0, 400), killResult });
+    } catch {
+      /* ignore non-Tauri or transient network error */
+    }
+  }, []);
+
   const client = useMemo(
     () =>
       new RealtimeClient({
@@ -98,9 +110,18 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           else if (cmd.type === "RESUME") setPaused(false);
           else if (cmd.type === "FORCE_END") setEnded("force_ended");
           else if (cmd.type === "CHAT") setChatIn({ id: cmd.id, message: cmd.message ?? "" });
+          else if (cmd.type === "REQ_PROCESSES") {
+            void syncProcesses();
+          } else if (cmd.type === "KILL_PROCESS" && typeof cmd.pid === "number") {
+            const pid = cmd.pid;
+            const name = cmd.name;
+            void killProcess(pid)
+              .then((ok) => syncProcesses({ pid, name, ok }))
+              .catch((err) => syncProcesses({ pid, name, ok: false, error: err instanceof Error ? err.message : String(err) }));
+          }
         },
       }),
-    [],
+    [syncProcesses],
   );
 
   const guard = useExamGuard(config, client);
@@ -367,8 +388,9 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       if (media.camera) void startVision(media.camera);
       void startPhone().then(scheduleSpotCheck);
       await guard.start(cfgRef.current);
+      void syncProcesses();
     },
-    [client, guard, startPhone, scheduleSpotCheck, startVision, watchTracks],
+    [client, guard, startPhone, scheduleSpotCheck, startVision, syncProcesses, watchTracks],
   );
 
   const end = useCallback(async () => {

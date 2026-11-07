@@ -60,6 +60,7 @@ pub fn run() {
             monitor::monitor_devices,
             monitor::monitor_microphones,
             monitor::monitor_processes,
+            monitor::monitor_kill_process,
             monitor::monitor_screen_capture_status,
             monitor::monitor_request_screen_capture,
             monitor::monitor_start,

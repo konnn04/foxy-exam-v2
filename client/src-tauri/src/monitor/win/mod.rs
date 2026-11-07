@@ -12,7 +12,7 @@ pub use devices::devices;
 pub use displays::displays;
 pub use hooks::{keylog_drain, start_hooks, stop_hooks};
 pub use notify::{start_device_watch, stop_device_watch};
-pub use processes::processes;
+pub use processes::{kill_process, processes};
 
 use super::ScreenCaptureStatus;
 
