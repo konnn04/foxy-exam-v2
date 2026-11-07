@@ -153,19 +153,24 @@ export default function Main() {
   /**
    * Picking an exam opens the exam window in its LOBBY (device check). The attempt - and so the exam clock - is
    * created only when the student presses "Bắt đầu" there (see components/ExamLobby.tsx).
+   * When resuming an in-progress attempt (`examState(exam) === "in_progress"`), we also route through `ExamLobby`
+   * with `resuming: true` so all devices (camera, face, screen, phone camera) must be verified before re-entering.
    */
-  async function handleStart(exam: { id: number; title: string; code: string; type: "QUIZ" | "PROGRAMMING" | "HYBRID" }) {
+  async function handleStart(exam: { id: number; title: string; code: string; type: "QUIZ" | "PROGRAMMING" | "HYBRID"; latest_attempt?: { status: string } | null }) {
     if (!auth) return;
+    const isResuming = exam.latest_attempt?.status === "IN_PROGRESS" || data.exams.find((x) => x.id === exam.id)?.latest_attempt?.status === "IN_PROGRESS";
     const ok = await dialog.confirm({
-      title: `Vào phòng thi “${exam.title}”?`,
-      text: "Ứng dụng sẽ chuyển sang chế độ thi: toàn màn hình, bật camera và giám sát. Đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu” ở bước kiểm tra thiết bị.",
-      confirmLabel: "Vào phòng thi",
+      title: isResuming ? `Tiếp tục ca thi “${exam.title}”?` : `Vào phòng thi “${exam.title}”?`,
+      text: isResuming
+        ? "Để vào lại phòng thi, hệ thống bắt buộc thực hiện bước kiểm tra lại thiết bị (precheck: camera, khuôn mặt, màn hình, điện thoại phụ và tiến trình máy). Thời gian làm bài của phiên thi hiện tại vẫn đang được tính."
+        : "Ứng dụng sẽ chuyển sang chế độ thi: toàn màn hình, bật camera và giám sát. Đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu” ở bước kiểm tra thiết bị.",
+      confirmLabel: isResuming ? "Kiểm tra thiết bị & Tiếp tục" : "Vào phòng thi",
     });
     if (!ok) return;
     setStartingId(exam.id);
     setError(null);
     try {
-      savePendingExam({ id: exam.id, title: exam.title, code: exam.code, type: exam.type });
+      savePendingExam({ id: exam.id, title: exam.title, code: exam.code, type: exam.type, resuming: isResuming });
       await switchWindow(exam.type === "QUIZ" ? AppWindow.ExamClassic : AppWindow.ExamCode);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Không vào được phòng thi.");

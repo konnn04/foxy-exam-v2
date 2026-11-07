@@ -132,15 +132,31 @@ export function ExamShell({
           {blocker && (
             <Overlay
               z={25}
-              icon={blocker.kind === "camera" ? <Camera size={28} className="text-danger" /> : blocker.kind === "phone" ? <Smartphone size={28} className="text-danger" /> : <MonitorUp size={28} className="text-danger" />}
-              title="Bài thi đang bị tạm khoá"
+              icon={
+                blocker.kind === "camera" ? (
+                  <Camera size={28} className="text-danger" />
+                ) : blocker.kind === "phone" ? (
+                  <Smartphone size={28} className="text-danger" />
+                ) : blocker.kind === "recheck" ? (
+                  <ShieldAlert size={28} className="text-warning" />
+                ) : (
+                  <MonitorUp size={28} className="text-danger" />
+                )
+              }
+              title={blocker.kind === "recheck" ? "Yêu cầu kiểm tra lại thiết bị (Precheck)" : "Bài thi đang bị tạm khoá"}
             >
               {blocker.text}
               <div className="mt-4 flex flex-col items-center gap-2">
-                {blocker.kind !== "phone" && (
-                  <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
-                    {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
+                {blocker.kind === "recheck" ? (
+                  <Button variant="primary" onClick={() => void runtime.triggerRecheck()}>
+                    Thực hiện kiểm tra thiết bị (Precheck)
                   </Button>
+                ) : (
+                  blocker.kind !== "phone" && (
+                    <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
+                      {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
+                    </Button>
+                  )
                 )}
                 {runtime.restoreError && <span className="text-danger">{runtime.restoreError}</span>}
                 <span className="text-[11px] text-subtle">Sự việc đã được ghi nhận và gửi cho giám thị.</span>

@@ -17,7 +17,7 @@ import { Markdown } from "../components/Markdown";
 import { Terminal } from "../components/Terminal";
 import { ResizeHandle, useResizable } from "../components/Resizable";
 import ExamLobby from "../components/ExamLobby";
-import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
+import { clearPendingExam, getLobbyMedia, getPendingExam, savePendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
   ApiError,
   finishExam,
@@ -161,8 +161,26 @@ export default function ExamCode() {
 
     loadRef.current = loadPaper;
     const shown = () => {
-      const p = getPendingExam("code");
-      setPending(p); // a pending exam means: show the lobby first, the attempt does not exist yet
+      let p = getPendingExam("code");
+      if (!p) {
+        const s = getSession();
+        const media = getLobbyMedia();
+        const hasVerifiedMedia = Boolean(
+          (!s?.exam.monitoring_config?.ai_face_check || media.camera?.active) &&
+            (!s?.exam.monitoring_config?.require_screen || media.screen?.active),
+        );
+        if (s && loadedAttemptRef.current !== s.attemptId && !hasVerifiedMedia) {
+          p = {
+            id: s.exam.id,
+            title: s.exam.title,
+            code: s.exam.code,
+            type: s.exam.type ?? "PROGRAMMING",
+            resuming: true,
+          };
+          savePendingExam(p);
+        }
+      }
+      setPending(p); // a pending exam means: show the lobby first, or re-verify before resuming
       if (!p) void loadPaper();
     };
     void getCurrentWindow().isVisible().then((v) => v && shown());

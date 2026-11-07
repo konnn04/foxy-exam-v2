@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { issueMobileCamera, verifyMobileLayout } from "./api";
+import { getMobileViewer, issueMobileCamera, verifyMobileLayout } from "./api";
 
 export type PhoneLink = "idle" | "waiting" | "connected" | "error";
 export type Layout = "unknown" | "checking" | "ok" | "bad";
@@ -34,16 +34,28 @@ export function usePhoneCamera(examId: number) {
     room.current = null;
   }, []);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (forceNew = false) => {
     setLink("idle");
     setLayout("unknown");
     setError("");
     await leave();
     try {
-      const res = (await issueMobileCamera(examId)).data;
-      url.current = res.url;
-      setQr(await QRCode.toDataURL(res.url, { margin: 1, width: 220, errorCorrectionLevel: "M" }));
-      if (!res.viewer) throw new Error("Máy chủ chưa bật hệ thống phát hình.");
+      // If reconnecting to an in-progress attempt and the phone is already streaming in the room,
+      // reuse the existing viewer first unless the student explicitly asked for a new QR code.
+      let viewer: { url: string; token: string; room: string } | null = null;
+      if (!forceNew) {
+        const existing = (await getMobileViewer(examId).catch(() => ({ data: null }))).data;
+        if (existing?.connected && existing.viewer) {
+          viewer = existing.viewer;
+        }
+      }
+      if (!viewer) {
+        const res = (await issueMobileCamera(examId)).data;
+        url.current = res.url;
+        setQr(await QRCode.toDataURL(res.url, { margin: 1, width: 220, errorCorrectionLevel: "M" }));
+        viewer = res.viewer;
+      }
+      if (!viewer) throw new Error("Máy chủ chưa bật hệ thống phát hình.");
       const r = new Room({ adaptiveStream: true });
       r.on(RoomEvent.TrackSubscribed, (t) => {
         if (t.kind !== Track.Kind.Video) return;
@@ -62,19 +74,28 @@ export function usePhoneCamera(examId: number) {
           setLayout("unknown");
         })
         .on(RoomEvent.Disconnected, () => setLink((l) => (l === "connected" ? "waiting" : l)));
-      await r.connect(res.viewer.url, res.viewer.token);
+      await r.connect(viewer.url, viewer.token);
       room.current = r;
       setLink("waiting");
       // a phone that was already in the room
+      let alreadyPublishing = false;
       r.remoteParticipants.forEach((p) =>
         p.trackPublications.forEach((pub) => {
           if (pub.track && pub.kind === Track.Kind.Video) {
             track.current = pub.track as RemoteTrack;
             if (video.current) pub.track.attach(video.current);
             setLink("connected");
+            alreadyPublishing = true;
           }
         }),
       );
+      // If we reused an existing token that said `connected` in DB, but the phone is no longer in the LiveKit room,
+      // automatically issue a fresh QR code after 2.5 seconds so the student isn't stuck without a QR!
+      if (!forceNew && !url.current && !alreadyPublishing) {
+        const res = (await issueMobileCamera(examId)).data;
+        url.current = res.url;
+        setQr(await QRCode.toDataURL(res.url, { margin: 1, width: 220, errorCorrectionLevel: "M" }));
+      }
     } catch (e) {
       setLink("error");
       setError(e instanceof Error ? e.message : "Không tạo được liên kết cho điện thoại.");

@@ -28,12 +28,23 @@ class MobileCameraController extends Controller
     /** Called when an attempt is created or resumed: the lobby's phone link now belongs to this attempt. */
     public static function bind(User $user, Exam $exam, ExamAttempt $attempt): bool
     {
-        $row = MobileCameraToken::where('user_id', $user->id)->where('exam_id', $exam->id)
-            ->whereNull('attempt_id')->where('expires_at', '>', now())->latest('id')->first();
+        $row = MobileCameraToken::where('user_id', $user->id)
+            ->where('exam_id', $exam->id)
+            ->where(fn ($q) => $q->whereNull('attempt_id')->orWhere('attempt_id', $attempt->id))
+            ->where('expires_at', '>', now())
+            ->latest('id')
+            ->first();
         if (!$row) {
             return false;
         }
-        $row->update(['attempt_id' => $attempt->id]);
+        if ($row->attempt_id !== $attempt->id) {
+            $row->update(['attempt_id' => $attempt->id]);
+        }
+        // Retire older tokens for this student + exam so viewer() always picks the active bound token
+        MobileCameraToken::where('user_id', $user->id)
+            ->where('exam_id', $exam->id)
+            ->where('id', '!=', $row->id)
+            ->delete();
         if ($row->relay_ack_at) {
             app(Realtime::class)->startPhoneRecording($attempt); // the phone is already publishing: record from the start
         }

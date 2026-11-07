@@ -5,7 +5,7 @@ import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
 import { useExamGuard } from "./examGuard";
-import { getLobbyMedia, releaseLobbyMedia, setLobbyMedia } from "./lobbyMedia";
+import { getLobbyMedia, releaseLobbyMedia, savePendingExam, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { releaseEvidence } from "./evidence";
@@ -55,6 +55,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const [sample, setSample] = useState<VisionSample | null>(null);
   const [visionError, setVisionError] = useState<string | null>(null);
   const [offlineFor, setOfflineFor] = useState(0);
+  const [wasOffline, setWasOffline] = useState(false);
+  const [recheckNeeded, setRecheckNeeded] = useState(false);
   const [closeRequested, setCloseRequested] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [chatIn, setChatIn] = useState<{ id: string; message: string } | null>(null);
@@ -345,14 +347,27 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   }, [sample]);
 
   // --- connection loss: after 5 minutes the candidate is absent (the server closes the attempt as well) ------
+  // If offline >= 15 seconds and then connection recovers, require going through Precheck (ExamLobby) again
+  // so camera, screen, face, and phone camera are re-verified before resuming.
   useEffect(() => {
     const t = window.setInterval(() => {
       if (!active.current) return;
       const down = !navigator.onLine || status === "degraded";
-      setOfflineFor((s) => (down ? s + 1 : 0));
+      setOfflineFor((s) => {
+        const next = down ? s + 1 : 0;
+        if (next >= 15) setWasOffline(true);
+        if (!down && s >= 15) setRecheckNeeded(true);
+        return next;
+      });
     }, 1000);
     return () => window.clearInterval(t);
   }, [status]);
+  useEffect(() => {
+    if (offlineFor === 0 && wasOffline && status === "live") {
+      setWasOffline(false);
+      setRecheckNeeded(true);
+    }
+  }, [offlineFor, wasOffline, status]);
   useEffect(() => {
     if (offlineFor >= OFFLINE_LIMIT_S) setEnded("absent");
   }, [offlineFor]);
@@ -375,13 +390,32 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
 
   const needPhone = cfgRef.current?.extra_camera === "required";
   const blocker =
-    needCamera && camera === "lost"
-      ? ({ kind: "camera", text: "Camera đã bị tắt. Bật lại camera để tiếp tục làm bài." } as const)
-      : needScreen && screen === "lost"
-        ? ({ kind: "screen", text: "Bạn đã dừng chia sẻ màn hình. Chia sẻ lại để tiếp tục làm bài." } as const)
-        : needPhone && phoneState === "lost" && active.current
-          ? ({ kind: "phone", text: "Camera phụ (điện thoại) đã mất kết nối. Mở lại trang camera trên điện thoại, đặt đúng góc rồi bài thi sẽ tự mở lại." } as const)
-          : null;
+    recheckNeeded && active.current
+      ? ({ kind: "recheck", text: "Mạng vừa kết nối lại sau khi gián đoạn. Theo quy chế thi, bạn bắt buộc thực hiện kiểm tra lại thiết bị (precheck) để tiếp tục làm bài." } as const)
+      : needCamera && camera === "lost"
+        ? ({ kind: "camera", text: "Camera đã bị tắt. Bật lại camera để tiếp tục làm bài." } as const)
+        : needScreen && screen === "lost"
+          ? ({ kind: "screen", text: "Bạn đã dừng chia sẻ màn hình. Chia sẻ lại để tiếp tục làm bài." } as const)
+          : needPhone && phoneState === "lost" && active.current
+            ? ({ kind: "phone", text: "Camera phụ (điện thoại) đã mất kết nối. Mở lại trang camera trên điện thoại, đặt đúng góc rồi bài thi sẽ tự mở lại." } as const)
+            : null;
+
+  const triggerRecheck = useCallback(async () => {
+    setRecheckNeeded(false);
+    setWasOffline(false);
+    const s = getSession();
+    if (s) {
+      savePendingExam({
+        id: s.exam.id,
+        title: s.exam.title,
+        code: s.exam.code,
+        type: s.exam.type ?? "QUIZ",
+        resuming: true,
+      });
+    }
+    await end();
+    window.location.reload();
+  }, [end]);
 
   return {
     guard,
@@ -407,6 +441,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     spot,
     restoreCamera,
     restoreScreen,
+    triggerRecheck,
     restoreError,
     offlineFor,
     closeRequested,

@@ -31,6 +31,7 @@ export interface PendingExam {
   title: string;
   code: string;
   type: "QUIZ" | "PROGRAMMING" | "HYBRID";
+  resuming?: boolean;
 }
 
 const PENDING_KEY = "foxyexam:pending-exam";

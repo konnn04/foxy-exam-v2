@@ -454,7 +454,7 @@ export default function ExamLobby({
         attemptNumber: res.attempt_number,
         maxAttempts: null,
         student: { id: auth.user.id, username: auth.user.username, name: auth.user.name },
-        exam: { id: res.exam.id, title: res.exam.title, code: res.exam.code, duration_minutes: res.duration_minutes, monitoring_config: res.exam.monitoring_config },
+        exam: { id: res.exam.id, title: res.exam.title, code: res.exam.code, type: res.exam.type, duration_minutes: res.duration_minutes, monitoring_config: res.exam.monitoring_config },
       });
       clearPendingExam();
       startedRef.current = true;
@@ -486,16 +486,24 @@ export default function ExamLobby({
   const cancelRef = useRef(cancel);
   cancelRef.current = cancel;
 
+  const isResuming = Boolean(pending.resuming || detail?.latest_attempt?.status === "IN_PROGRESS");
+
   return (
     <div className="flex h-screen flex-col bg-app text-fg">
-      <div className="flex h-7 shrink-0 items-center gap-2 bg-surface-3 px-4 text-[11px] text-muted">
-        <ShieldAlert size={12} /> Chuẩn bị vào phòng thi — đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu”
+      <div className={cx("flex h-7 shrink-0 items-center gap-2 px-4 text-[11px]", isResuming ? "bg-danger-soft text-danger font-medium" : "bg-surface-3 text-muted")}>
+        <ShieldAlert size={12} />
+        {isResuming
+          ? "Kiểm tra lại thiết bị để kết nối lại phòng thi — bắt buộc xác thực camera, khuôn mặt, màn hình và điện thoại phụ trước khi tiếp tục"
+          : "Chuẩn bị vào phòng thi — đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu”"}
         {IS_DEV && <span className="ml-auto font-mono text-warning">DEV</span>}
       </div>
 
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 gap-6 overflow-y-auto p-6">
         <section className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold">{pending.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold">{pending.title}</h1>
+            {isResuming && <Badge tone="danger">Kết nối lại ca thi đang diễn ra</Badge>}
+          </div>
           <p className="mt-0.5 text-xs text-muted">
             {pending.code}
             {detail ? ` · ${detail.course?.name ?? ""} · ${detail.duration_minutes} phút` : ""}
@@ -604,13 +612,18 @@ export default function ExamLobby({
                 icon={<Smartphone size={14} />}
                 action={
                   phone.link === "idle" || phone.link === "error" ? (
-                    <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect()}>
+                    <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect(true)}>
                       Tạo mã QR
                     </Button>
                   ) : phone.link === "connected" ? (
-                    <Button size="sm" loading={phone.layout === "checking"} onClick={() => void phone.checkLayout()}>
-                      Kiểm tra góc đặt
-                    </Button>
+                    <span className="flex gap-1.5">
+                      <Button size="sm" loading={phone.layout === "checking"} onClick={() => void phone.checkLayout()}>
+                        Kiểm tra góc đặt
+                      </Button>
+                      <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect(true)}>
+                        Đổi máy / QR mới
+                      </Button>
+                    </span>
                   ) : undefined
                 }
               />
@@ -623,7 +636,7 @@ export default function ExamLobby({
                   <p>1. Mở liên kết, cho phép camera.</p>
                   <p>2. Đặt điện thoại nằm ngang ở góc bàn, thấy bạn và màn hình laptop.</p>
                   <p>3. Cắm sạc, giữ màn hình sáng suốt giờ thi.</p>
-                  <button type="button" className="text-accent hover:underline" onClick={() => void phone.connect()}>
+                  <button type="button" className="text-accent hover:underline" onClick={() => void phone.connect(true)}>
                     Tạo mã mới
                   </button>
                 </div>
@@ -681,7 +694,7 @@ export default function ExamLobby({
           </ul>
 
           <Button variant="primary" size="lg" className="w-full" disabled={!ready} loading={starting} onClick={() => void start()}>
-            Bắt đầu làm bài
+            {isResuming ? "Xác nhận & Vào lại phòng thi" : "Bắt đầu làm bài"}
           </Button>
           {!ready && !checking && <p className="text-center text-[11px] text-danger">Hãy khắc phục các mục màu đỏ để tiếp tục.</p>}
         </aside>

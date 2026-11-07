@@ -10,6 +10,7 @@ export interface SessionExam {
   id: number;
   title: string;
   code: string;
+  type?: "QUIZ" | "PROGRAMMING" | "HYBRID";
   duration_minutes: number;
   monitoring_config: MonitoringConfig;
 }

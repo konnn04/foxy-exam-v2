@@ -12,7 +12,7 @@ import { setNotice } from "../lib/notice";
 import { useExamRuntime } from "../lib/examRuntime";
 import ExamLobby from "../components/ExamLobby";
 import { clearAnswerQueue, flushAnswers, onQueueChange, pendingAnswers, queueAnswer } from "../lib/answerQueue";
-import { clearPendingExam, getPendingExam, type PendingExam } from "../lib/lobbyMedia";
+import { clearPendingExam, getLobbyMedia, getPendingExam, savePendingExam, type PendingExam } from "../lib/lobbyMedia";
 import {
   ApiError,
   finishExam,
@@ -119,9 +119,29 @@ export default function ExamClassic() {
   );
 
   // The window is shown either to run the lobby (a pending exam, no attempt yet) or to resume a running attempt.
+  // Reconnect / reload enforcement: if a session exists in storage but this window has not passed precheck
+  // (no active verified lobby media and no loaded attempt in this runtime), force routing through ExamLobby!
   useEffect(() => {
     const shown = () => {
-      const p = getPendingExam("classic");
+      let p = getPendingExam("classic");
+      if (!p) {
+        const s = getSession();
+        const media = getLobbyMedia();
+        const hasVerifiedMedia = Boolean(
+          (!s?.exam.monitoring_config?.ai_face_check || media.camera?.active) &&
+            (!s?.exam.monitoring_config?.require_screen || media.screen?.active),
+        );
+        if (s && loadedAttempt.current !== s.attemptId && !hasVerifiedMedia) {
+          p = {
+            id: s.exam.id,
+            title: s.exam.title,
+            code: s.exam.code,
+            type: s.exam.type ?? "QUIZ",
+            resuming: true,
+          };
+          savePendingExam(p);
+        }
+      }
       setPending(p);
       if (!p) load();
     };
