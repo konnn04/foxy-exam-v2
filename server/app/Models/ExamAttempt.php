@@ -72,4 +72,9 @@ class ExamAttempt extends Model
     {
         return $this->hasMany(ExamAttemptAnswer::class);
     }
+
+    public function violationReport(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ViolationReport::class, 'exam_attempt_id');
+    }
 }

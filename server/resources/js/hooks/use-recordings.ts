@@ -13,7 +13,7 @@ export interface RecordingInfo {
 }
 
 /** Recordings and evidence pictures of one attempt, with short-lived download URLs from the record service. */
-export function useAttemptRecordings(examId: number, attemptId: number) {
+export function useAttemptRecordings(examId: number, attemptId: number, refreshKey?: string | number, publicEndpoint?: string) {
   const [items, setItems] = useState<RecordingInfo[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'disabled' | 'error'>('loading');
   const [access, setAccess] = useState<{ record_url: string; token: string } | null>(null);
@@ -22,6 +22,38 @@ export function useAttemptRecordings(examId: number, attemptId: number) {
     let live = true;
     (async () => {
       try {
+        if (publicEndpoint) {
+          const res = await fetch(publicEndpoint, { headers: { Accept: 'application/json' } });
+          if (!res.ok) return live && setState('error');
+          const json = await res.json();
+          if (json.recordings && json.recordings.length > 0) {
+            if (live) {
+              setItems(json.recordings);
+              setState('ready');
+            }
+            return;
+          }
+          if (json.fallback_token && json.record_url) {
+            if (live) setAccess({ record_url: json.record_url, token: json.fallback_token });
+            const rec = await fetch(`${json.record_url}/v1/exams/${examId}/attempts/${attemptId}/recordings`, {
+              headers: { Authorization: `Bearer ${json.fallback_token}` },
+            });
+            if (rec.ok) {
+              const rJson = await rec.json();
+              if (live) {
+                setItems(rJson.recordings ?? []);
+                setState('ready');
+              }
+              return;
+            }
+          }
+          if (live) {
+            setItems(json.recordings ?? []);
+            setState(json.enabled === false ? 'disabled' : 'ready');
+          }
+          return;
+        }
+
         const res = await fetch(`/admin/exams/${examId}/realtime`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
         if (!res.ok) return live && setState('disabled');
         const info = await res.json();
@@ -40,7 +72,7 @@ export function useAttemptRecordings(examId: number, attemptId: number) {
     return () => {
       live = false;
     };
-  }, [examId, attemptId]);
+  }, [examId, attemptId, refreshKey, publicEndpoint]);
 
   /** Ask the record service to cut [fromS, toS] seconds out of a recording; resolves the download URL. */
   const clip = async (rec: RecordingInfo, fromS: number, toS: number): Promise<string> => {

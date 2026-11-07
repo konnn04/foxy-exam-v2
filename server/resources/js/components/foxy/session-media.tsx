@@ -114,6 +114,8 @@ export function SessionMedia({
   clips,
   clipRange,
   config,
+  refreshKey,
+  publicEndpoint,
 }: {
   examId: number;
   attemptId: number;
@@ -125,8 +127,10 @@ export function SessionMedia({
   clips?: Record<string, string> | null;
   clipRange?: { from_ms: number; to_ms: number } | null;
   config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null;
+  refreshKey?: string | number;
+  publicEndpoint?: string;
 }) {
-  const { items, state, clip } = useAttemptRecordings(examId, attemptId);
+  const { items, state, clip } = useAttemptRecordings(examId, attemptId, refreshKey, publicEndpoint);
   const atMs = at ? new Date(at).getTime() : null;
   const [clock, setClock] = useState<Clock>({ t: null, playing: false, rate: 1 });
   const [clipError, setClipError] = useState('');

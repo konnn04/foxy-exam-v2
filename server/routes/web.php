@@ -37,6 +37,10 @@ Route::get('/m/camera/{token}', fn (string $token) => Inertia::render('Public/Mo
 Route::get('/m/face/{token}', fn (string $token) => Inertia::render('Public/FaceEnroll', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
 Route::get('/biometric-policy', fn () => Inertia::render('Public/BiometricPolicy', ['version' => \App\Support\BiometricPolicy::VERSION, 'sections' => \App\Support\BiometricPolicy::sections()]));
 
+// Public shareable Violation Report web page (no login required, protected by unique slug & expiration)
+Route::get('/violation-report/{slug}', [\App\Http\Controllers\ViolationReportController::class, 'show'])->where('slug', '[A-Za-z0-9\-]{8,120}');
+Route::get('/violation-report/{slug}/recordings', [\App\Http\Controllers\ViolationReportController::class, 'recordings'])->where('slug', '[A-Za-z0-9\-]{8,120}');
+
 // the bell (staff, web session)
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
@@ -2075,6 +2079,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
     Route::get('/attempts/{id}/report', [\App\Http\Controllers\Admin\MonitoringController::class, 'report'])->whereNumber('id');
     Route::post('/attempts/{id}/send-report', [\App\Http\Controllers\Admin\MonitoringController::class, 'sendReport'])->whereNumber('id');
+    Route::post('/attempts/{id}/violation-report', [\App\Http\Controllers\ViolationReportController::class, 'publish'])->whereNumber('id');
+    Route::post('/attempts/{id}/violation-report/unpublish', [\App\Http\Controllers\ViolationReportController::class, 'unpublish'])->whereNumber('id');
     Route::get('/attempts/{id}/submissions', [\App\Http\Controllers\Admin\MonitoringController::class, 'submissions'])->whereNumber('id');
     Route::post('/violations/bulk-review', [\App\Http\Controllers\Admin\MonitoringController::class, 'bulkReview']);
     Route::get('/attempts/{id}/verify-chain', [\App\Http\Controllers\Admin\MonitoringController::class, 'verifyChain'])->whereNumber('id');

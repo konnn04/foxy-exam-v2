@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, CircleCheck, Code, RotateCcw, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
+import { Ban, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { EmptyState, FxButton, PageHeader, Panel, Pill } from '@/components/foxy/ui';
+import { EmptyState, FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
 import {
   ATTEMPT_STATUS,
   clockOffset,
@@ -54,6 +54,21 @@ interface ViolationRow {
   timestamp: string | null;
 }
 
+interface ViolationReportPayload {
+  id: number;
+  slug: string;
+  public_url: string;
+  is_published: boolean;
+  status: 'no_violation' | 'warning' | 'suspended';
+  suspension_reason: string | null;
+  score_deduction_percent: number;
+  original_score: number | null;
+  attached_violation_ids: number[];
+  link_expires_at: string | null;
+  sent_at: string | null;
+  updated_at: string | null;
+}
+
 interface Props {
   user: any;
   teams: TeamItem[];
@@ -61,6 +76,8 @@ interface Props {
   violations: ViolationRow[];
   typing: { t: string | null; keys: number; pastes: number; clicks?: number; cpu?: number | null; ram?: number | null }[];
   submissions: { id: number; status: string; t: string | null }[];
+  violationReport?: ViolationReportPayload | null;
+  reportReasonTemplates?: Record<string, string>;
 }
 
 const BINS = 72;
@@ -127,7 +144,7 @@ export function deviceLabel(d: Record<string, unknown> | null) {
   return [app && `FoxyClient ${app}`, os && `(${os})`].filter(Boolean).join(' ');
 }
 
-export default function AttemptShow({ user, teams, attempt, violations, typing, submissions }: Props) {
+export default function AttemptShow({ user, teams, attempt, violations, typing, submissions, violationReport, reportReasonTemplates }: Props) {
   const initialId = useMemo(() => {
     // nothing is opened by default: the detail (and its pictures) shows only for a violation the reviewer picks
     const q = typeof window !== 'undefined' ? Number(new URLSearchParams(window.location.search).get('violation')) : 0;
@@ -137,7 +154,20 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const groups = useMemo(() => groupViolations(violations), [violations]);
   const [selId, setSelId] = useState(initialId);
   const [busy, setBusy] = useState(false);
-  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [checked, setChecked] = useState<Set<number>>(
+    () => new Set(violationReport?.attached_violation_ids?.length ? violationReport.attached_violation_ids : []),
+  );
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [reportStatus, setReportStatus] = useState<'no_violation' | 'warning' | 'suspended'>(
+    violationReport?.status ?? (violations.some((v) => !v.is_false_positive && v.severity === 'CRITICAL') ? 'suspended' : violations.some((v) => !v.is_false_positive) ? 'warning' : 'no_violation'),
+  );
+  const [reportDeduction, setReportDeduction] = useState<number>(violationReport?.score_deduction_percent ?? 25);
+  const [reportReason, setReportReason] = useState<string>(
+    violationReport?.suspension_reason ?? reportReasonTemplates?.[reportStatus] ?? '',
+  );
+  const [reportExpiresDays, setReportExpiresDays] = useState<number>(30);
+  const [reportNotifyStudent, setReportNotifyStudent] = useState<boolean>(true);
+  const [copiedLink, setCopiedLink] = useState(false);
   const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId));
   const sel = selGroup?.head;
 
@@ -243,6 +273,76 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
       confirmLabel: voided ? 'Khôi phục' : 'Hủy phiên thi',
     });
     if (ok) router.post(`/admin/attempts/${attempt.id}/void`, { void: !voided }, { preserveScroll: true });
+  };
+
+  const openPublishModal = () => {
+    // If lecturer hasn't ticked any violation yet, pre-tick existing report's violations or all non-false-positive violations
+    if (checked.size === 0 && violations.length > 0) {
+      if (violationReport?.attached_violation_ids?.length) {
+        setChecked(new Set(violationReport.attached_violation_ids));
+      } else {
+        setChecked(new Set(violations.filter((v) => !v.is_false_positive).map((v) => v.id)));
+      }
+    }
+    if (!reportReason && reportReasonTemplates?.[reportStatus]) {
+      setReportReason(reportReasonTemplates[reportStatus]);
+    }
+    setPublishOpen(true);
+  };
+
+  const changeReportStatus = (next: 'no_violation' | 'warning' | 'suspended') => {
+    setReportStatus(next);
+    if (reportReasonTemplates?.[next]) {
+      setReportReason(reportReasonTemplates[next]);
+    }
+    if (next === 'no_violation') setChecked(new Set());
+    else if (checked.size === 0) setChecked(new Set(violations.filter((v) => !v.is_false_positive).map((v) => v.id)));
+  };
+
+  const submitPublishReport = () => {
+    setBusy(true);
+    router.post(
+      `/admin/attempts/${attempt.id}/violation-report`,
+      {
+        status: reportStatus,
+        suspension_reason: reportReason,
+        score_deduction_percent: reportStatus === 'warning' ? reportDeduction : reportStatus === 'suspended' ? 100 : 0,
+        attached_violation_ids: [...checked],
+        link_expires_days: reportExpiresDays,
+        notify_student: reportNotifyStudent,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => setPublishOpen(false),
+        onFinish: () => setBusy(false),
+      },
+    );
+  };
+
+  const handleUnpublishReport = async () => {
+    const ok = await dialog.confirm({
+      title: 'Gỡ xuất bản biên bản vi phạm?',
+      text: 'Đường dẫn chia sẻ công khai sẽ bị vô hiệu hóa ngay lập tức và điểm bài thi gốc của thí sinh sẽ được khôi phục.',
+      tone: 'danger',
+      confirmLabel: 'Gỡ xuất bản & thu hồi link',
+    });
+    if (!ok) return;
+    setBusy(true);
+    router.post(
+      `/admin/attempts/${attempt.id}/violation-report/unpublish`,
+      {},
+      {
+        preserveScroll: true,
+        onFinish: () => setBusy(false),
+      },
+    );
+  };
+
+  const copyShareLink = () => {
+    if (!violationReport?.public_url) return;
+    void navigator.clipboard.writeText(violationReport.public_url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const st = ATTEMPT_STATUS[attempt.status] ?? { label: attempt.status, tone: 'neutral' as const };
@@ -519,6 +619,72 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
                 </FxButton>
               </div>
             )}
+
+            <div className="flex flex-col gap-2 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Globe className="size-3.5 text-primary" />
+                  Biên bản vi phạm (Link chia sẻ)
+                </span>
+                {violationReport?.is_published ? (
+                  <Pill tone="success" size="sm">
+                    Đã xuất bản ({violationReport.attached_violation_ids.length} vi phạm)
+                  </Pill>
+                ) : violationReport ? (
+                  <Pill tone="neutral" size="sm">
+                    Đã gỡ xuất bản
+                  </Pill>
+                ) : (
+                  <Pill tone="info" size="sm">
+                    Chưa xuất bản
+                  </Pill>
+                )}
+              </div>
+
+              {violationReport?.is_published ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-[11px]">
+                    <span className="flex-1 truncate font-mono text-muted-foreground">{violationReport.public_url}</span>
+                    <button
+                      type="button"
+                      onClick={copyShareLink}
+                      className="flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-medium text-foreground hover:bg-muted/80"
+                      title="Sao chép đường dẫn biên bản công khai"
+                    >
+                      {copiedLink ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+                      {copiedLink ? 'Đã chép' : 'Sao chép'}
+                    </button>
+                    <a
+                      href={violationReport.public_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex shrink-0 items-center gap-1 rounded bg-primary px-1.5 py-0.5 font-medium text-primary-foreground hover:opacity-90"
+                      title="Mở trang web biên bản vi phạm"
+                    >
+                      <ExternalLink className="size-3" />
+                      Mở web
+                    </a>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <FxButton size="sm" icon={FileCheck2} disabled={busy} onClick={openPublishModal}>
+                      Cập nhật ({checked.size} đã chọn)
+                    </FxButton>
+                    <FxButton size="sm" variant="danger" icon={Link2Off} disabled={busy} onClick={handleUnpublishReport}>
+                      Gỡ xuất bản
+                    </FxButton>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    Tick chọn các vi phạm bên dưới rồi bấm Xuất bản để tạo trang web biên bản kèm video đồng bộ.
+                  </span>
+                  <FxButton size="sm" variant="primary" icon={Share2} disabled={busy} onClick={openPublishModal}>
+                    Xuất bản ({checked.size > 0 ? checked.size : violations.filter((v) => !v.is_false_positive).length})
+                  </FxButton>
+                </div>
+              )}
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {groups.slice(0, more.count).map((g) => {
@@ -565,6 +731,192 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
           </div>
         </Panel>
       </div>
+
+      <Modal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        width={620}
+        title={violationReport?.is_published ? 'Cập nhật Biên bản Vi phạm (Link chia sẻ)' : 'Xuất bản Biên bản Vi phạm (Tạo link chia sẻ web)'}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="rounded-lg border border-border bg-surface p-3 text-xs text-muted-foreground">
+            Biên bản sau khi xuất bản sẽ tạo một trang web công khai (có thể gửi cho thí sinh hoặc Hội đồng thi) hiển thị tổng thể{' '}
+            <strong className="text-foreground">các vi phạm đã được giảng viên tick chọn</strong> cùng trình phát đồng bộ đa luồng video (Camera chính, Màn hình, Camera phụ) tại từng thời điểm vi phạm. Bạn có thể gỡ xuất bản bất kỳ lúc nào.
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground">1. Kết luận xử lý phiên thi</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'no_violation' as const, label: 'Không vi phạm', sub: 'Bảo lưu 100% điểm', tone: 'border-success/40 bg-success/10 text-success-fg' },
+                { key: 'warning' as const, label: 'Cảnh cáo vi phạm', sub: `Trừ ${reportDeduction}% điểm bài thi`, tone: 'border-warning/40 bg-warning/10 text-warning-fg' },
+                { key: 'suspended' as const, label: 'Đình chỉ thi', sub: 'Hủy kết quả (0 điểm)', tone: 'border-danger/40 bg-danger/10 text-danger-fg' },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => changeReportStatus(opt.key)}
+                  className={cn(
+                    'flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition',
+                    reportStatus === opt.key ? `${opt.tone} ring-2 ring-primary` : 'border-border bg-card hover:bg-surface',
+                  )}
+                >
+                  <span className="text-xs font-bold">{opt.label}</span>
+                  <span className="text-[11px] opacity-80">{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {reportStatus === 'warning' && (
+            <div className="flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
+              <label className="text-xs font-semibold text-foreground">Tỷ lệ trừ điểm cảnh cáo (%):</label>
+              <div className="flex items-center gap-1.5">
+                {[10, 25, 50, 75].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => setReportDeduction(pct)}
+                    className={cn(
+                      'rounded px-2 py-1 text-xs font-semibold',
+                      reportDeduction === pct ? 'bg-warning text-white' : 'border border-border bg-card hover:bg-muted',
+                    )}
+                  >
+                    -{pct}%
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={reportDeduction}
+                  onChange={(e) => setReportDeduction(Math.min(100, Math.max(0, Number(e.target.value))))}
+                  className="h-7 w-16 rounded border border-border bg-card px-2 text-center font-mono text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground">
+                2. Danh sách vi phạm đính kèm vào biên bản ({checked.size} / {violations.length} sự kiện đã tick)
+              </label>
+              <div className="flex gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setChecked(new Set(violations.filter((v) => !v.is_false_positive).map((v) => v.id)))}
+                  className=" font-medium text-primary hover:underline"
+                >
+                  Chọn mọi vi phạm hợp lệ
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button
+                  type="button"
+                  onClick={() => setChecked(new Set(violations.filter((v) => v.is_reviewed && !v.is_false_positive).map((v) => v.id)))}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Chỉ vi phạm đã xác nhận
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button type="button" onClick={() => setChecked(new Set())} className="text-muted-foreground hover:underline">
+                  Bỏ chọn hết
+                </button>
+              </div>
+            </div>
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-surface p-2">
+              {violations.length === 0 ? (
+                <div className="py-3 text-center text-xs text-muted-foreground">Phiên thi không có sự kiện vi phạm nào.</div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {violations.map((v) => {
+                    const isTicked = checked.has(v.id);
+                    const sev = severityOf(v.severity);
+                    return (
+                      <label
+                        key={v.id}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs',
+                          isTicked ? 'bg-primary/10 font-medium' : 'hover:bg-muted/60',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isTicked}
+                          onChange={() =>
+                            setChecked((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(v.id)) next.delete(v.id);
+                              else next.add(v.id);
+                              return next;
+                            })
+                          }
+                          className="size-3.5 accent-[var(--primary)]"
+                        />
+                        <Pill tone={sev.tone} size="sm">
+                          {sev.label}
+                        </Pill>
+                        <span className="flex-1 truncate">{violationLabel(v.type)}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{clockOffset(attempt.started_at, v.timestamp)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground">3. Lý do &amp; Kết luận của Giảng viên / Hội đồng thi</label>
+            <textarea
+              rows={3}
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Nhập kết luận xử lý và nhận xét chuyên môn…"
+              className="w-full rounded-lg border border-border bg-card p-2.5 text-xs leading-relaxed focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-xs">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={reportNotifyStudent}
+                onChange={(e) => setReportNotifyStudent(e.target.checked)}
+                className="size-3.5 accent-[var(--primary)]"
+              />
+              <span>Gửi thông báo kèm đường dẫn biên bản cho thí sinh</span>
+            </label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Thời hạn link:</span>
+              <select
+                value={reportExpiresDays}
+                onChange={(e) => setReportExpiresDays(Number(e.target.value))}
+                className="h-7 rounded border border-border bg-card px-2 text-xs"
+              >
+                <option value={7}>7 ngày</option>
+                <option value={30}>30 ngày</option>
+                <option value={90}>90 ngày</option>
+                <option value={365}>1 năm</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            {violationReport?.is_published && (
+              <FxButton variant="danger" icon={Link2Off} disabled={busy} onClick={handleUnpublishReport}>
+                Gỡ xuất bản
+              </FxButton>
+            )}
+            <FxButton onClick={() => setPublishOpen(false)} disabled={busy}>
+              Đóng
+            </FxButton>
+            <FxButton variant="primary" icon={Globe} disabled={busy} onClick={submitPublishReport}>
+              {violationReport?.is_published ? 'Cập nhật biên bản' : 'Xuất bản & Tạo link chia sẻ'}
+            </FxButton>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   );
 }

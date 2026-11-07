@@ -348,12 +348,16 @@ class MonitoringController extends Controller
             ->get(['id', 'status', 'submitted_at'])
             ->map(fn ($s) => ['id' => $s->id, 'status' => $s->status, 't' => $s->submitted_at?->toIso8601String()]);
 
+        $existingReport = \App\Models\ViolationReport::where('exam_attempt_id', $attempt->id)->first();
+
         return Inertia::render('Admin/Attempts/Show', [
             ...$this->layoutProps(),
             'attempt' => $this->attemptPayload($attempt),
             'violations' => $violations,
             'typing' => $typing,
             'submissions' => $submissions,
+            'violationReport' => \App\Http\Controllers\ViolationReportController::formatForAdmin($existingReport),
+            'reportReasonTemplates' => \App\Models\ViolationReport::REASON_TEMPLATES,
         ]);
     }
 
