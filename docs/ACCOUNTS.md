@@ -1,6 +1,16 @@
-# 📋 Danh Sách Tài Khoản & Hướng Dẫn Phân Quyền (FoxyExam v2)
+# 📋 Danh Sách Tài Khoản & Hướng Dẫn Phân Quyền — Exam Guard (STEM 2026)
 
-Tài liệu này tổng hợp toàn bộ danh sách tài khoản dùng thử (Seeded Accounts), phân quyền vai trò (RBAC), điểm truy cập (Portals / APIs) và kịch bản kiểm thử mẫu cho hệ thống **FoxyExam Core Server**.
+Tài liệu này tổng hợp toàn bộ danh sách tài khoản dùng thử (Seeded Accounts), phân quyền vai trò (RBAC), điểm truy cập (Portals / APIs) và kịch bản kiểm thử mẫu cho hệ thống **Exam Guard: Hệ thống giám sát thi cử trực tuyến thông minh (Cuộc thi Sinh viên với Ý tưởng Sáng tạo & Khởi nghiệp 2026 - Trường Đại học Mở TP.HCM)**.
+
+- **Production Domain**: `https://foxyexam.konnn04.dev`
+- **Môi trường cục bộ (Local Dev)**: `http://localhost:8000` (hoặc `http://127.0.0.1:8000`)
+- **API Base URL**: `https://foxyexam.konnn04.dev/api/v1` (Default Client) / `http://127.0.0.1:8000/api/v1` (Local)
+- **Cổng thông tin Đề án (Bilingual VI/EN)**:
+  - Trang chủ: `/`
+  - 4 Tầng Phòng Vệ & Tính năng: `/features`
+  - Bảng giá Khảo thí & Gói dịch vụ: `/pricing`
+  - Đề án STEM 2026 (5 sinh viên sáng lập & 2 cố vấn): `/about`
+  - Tải Client Giám Sát (.exe/.msi tự động): `/download` (Endpoint redirect: `/api/v1/client/download/latest-exe`)
 
 ---
 
@@ -18,17 +28,22 @@ Tài liệu này tổng hợp toàn bộ danh sách tài khoản dùng thử (Se
 ## 2. Điểm Truy Cập & Phân Luồng (Routing Logic)
 
 ### 🌐 A. Đăng nhập qua Web Portal (Dành cho Quản trị & Giảng viên)
-- **URL Đăng nhập**: `http://127.0.0.1:8000/login`
+- **URL Đăng nhập**: `/login`
 - **Cơ chế điều hướng tự động**:
   - Khi `admin` hoặc `admin_ou` đăng nhập -> Chuyển hướng tới **Cổng Quản Trị** (`/admin`).
   - Khi `teacher_ou` đăng nhập -> Tự động chuyển hướng tới **Cổng Giảng Viên** (`/lecturer`).
   - Nếu Giảng viên cố ý gõ `/admin`, hệ thống sẽ chặn và chuyển về `/lecturer`.
 
-### 🖥️ B. Đăng nhập qua Desktop App (Dành cho Thí sinh / Sinh viên)
-> **Lưu ý quan trọng:** Sinh viên **KHÔNG** làm bài thi trên trình duyệt web thông thường để đảm bảo tính toàn vẹn và chống gian lận. Thí sinh đăng nhập qua Desktop App (FoxyClient) kết nối với REST API máy chủ.
+### 📱 B. Camera Giám Sát Phụ Bằng Điện Thoại (Mobile Companion Cam 2)
+- **URL Truy cập**: `/cam2/{token}` (Quét QR code hiển thị tại màn hình chờ hoặc trong phòng thi của Client App).
+- **Tính năng**: Truyền luồng WebRTC góc nghiêng 45° vào LiveKit SFU; tích hợp chế độ Blackout tiết kiệm pin, phát hiện chạm màn hình, chống tắt màn hình (Wake Lock) và cơ chế tự kết nối lại.
 
-- **Endpoint API**: `POST /api/v1/auth/login` (Portal) hoặc `POST /api/v1/student/login` (Mã phòng)
-- **Tài liệu OpenAPI tra cứu & thử nghiệm**: `http://127.0.0.1:8000/docs/api`
+### 🖥️ C. Đăng nhập qua Desktop App (Dành cho Thí sinh / Sinh viên)
+> **Lưu ý quan trọng:** Sinh viên **KHÔNG** làm bài thi trên trình duyệt web thông thường để đảm bảo tính toàn vẹn và chống gian lận. Thí sinh đăng nhập qua Desktop App (Exam Guard Client - Tauri v2) kết nối với REST API máy chủ.
+
+- **Endpoint API**: `POST /api/v1/student/login` (Mã phòng) hoặc `POST /api/v1/auth/login` (Tài khoản)
+- **Tài liệu OpenAPI tra cứu & thử nghiệm**: `/docs/api`
+- **Tự động cập nhật**: Tích hợp `@tauri-apps/plugin-updater` lấy manifest từ GitHub Releases.
 - **Payload yêu cầu**:
   ```json
   {
@@ -48,19 +63,23 @@ Hệ thống đã nạp sẵn cấu trúc dữ liệu thực tế để phục v
 1. **Foxy Platform Root (`ROOT`)**:
    - Gói cước: `ENTERPRISE` (Không giới hạn tính năng và dung lượng).
 2. **Trường Đại học Mở TP.HCM (`OU`)**:
-   - Gói cước: `PRO` (1.490.000đ/tháng).
+   - Gói cước: `PRO` (1.490.000đ/tháng hoặc 4.500đ - 7.500đ/lượt thi).
    - Hạn mức: Tối đa 30 kỳ thi/tháng, 100 thí sinh/kỳ, 20GB lưu trữ, kích hoạt AI Giám sát & Quay lại hành trình gõ code (Code Replay).
 
-### 📚 Khóa học & Kỳ thi Demo
+### 📚 Khóa học & Ngân Hàng Đề Thi Demo
 - **Khóa học**: `CS101 - Nhập Môn Lập Trình C++` (Giảng viên: Thầy Nguyễn Văn A).
-- **Kỳ thi**: `Kỳ Thi Lập Trình C++ Cuối Kỳ`
+- **Kỳ thi lập trình**: `Kỳ Thi Lập Trình C++ Cuối Kỳ`
   - **Mã phòng thi**: `FOXY-2026`
   - **Thời lượng**: 90 phút.
   - **Cấu hình chống gian lận**: Chặn chuyển tab, chặn dán code vượt quá 80 ký tự, theo dõi nhịp gõ phím (keystroke dynamics), kích hoạt camera AI.
-- **Đề bài thi**:
-  - **Bài 1**: *Tìm Phần Tử Lớn Nhất và Nhỏ Nhất trong mảng $N$ số nguyên*.
-  - **Ngôn ngữ cho phép**: C++, Python.
-  - Đã có sẵn 1 Test Case công khai (Sample) và 1 Test Case ẩn để chấm điểm tự động.
+  - **Đề bài thi**: Tìm Phần Tử Lớn Nhất và Nhỏ Nhất trong mảng $N$ số nguyên (C++, Python). Test Case công khai và test case ẩn.
+- **Bộ câu hỏi trắc nghiệm & tự luận (6 loại)**:
+  1. `SINGLE_CHOICE`: Trắc nghiệm 1 đáp án đúng
+  2. `MULTIPLE_CHOICE`: Trắc nghiệm nhiều đáp án đúng
+  3. `TRUE_FALSE`: Đúng / Sai
+  4. `FILL_IN_BLANK`: Điền vào chỗ trống
+  5. `SHORT_ANSWER`: Trả lời ngắn
+  6. `ESSAY`: Tự luận (hỗ trợ giảng viên chấm điểm thủ công tại `/admin/attempts/{id}/grading`)
 
 ---
 

@@ -19,8 +19,13 @@
 ## Client (máy thí sinh)
 
 - Build lại bản mới (`pnpm tauri dev` khởi động lại, hoặc `pnpm tauri build`): có màn đồng ý sinh trắc học, chat, quay clip, QR đăng ký khuôn mặt, icon mới.
+- **Ký số tự động cho Updater (GitHub Actions)**:
+  - Khi tạo release tự động bằng `.github/workflows/release-client.yml`, cần cấu hình GitHub Repository Secret:
+    `TAURI_SIGNING_PRIVATE_KEY` chứa nội dung khoá bí mật `foxyexam-updater.key`.
+  - Public key đã được lưu sẵn trong `client/src-tauri/tauri.conf.json`.
+  - Trước khi release bản mới, chạy `pnpm bump:patch` hoặc `pnpm bump:minor` tại thư mục `client/` để nâng phiên bản đồng bộ.
 - Rust có thêm crate `sysinfo` và `machine-uid` (lần build đầu tải về). Thông tin máy chỉ gửi mã thiết bị đã băm.
-- Biến build tuỳ chọn: `VITE_SENTRY_DSN` (báo lỗi client), `VITE_API_BASE_URL` như cũ.
+- Biến build mặc định: `VITE_API_BASE_URL=https://foxyexam.konnn04.dev/api/v1` (tự động kế thừa từ file `.env.production`).
 - `pnpm sync:mediapipe` nếu thư mục wasm/model chưa có.
 - WebView2 phải hỗ trợ `MediaRecorder` webm (Windows 10/11 hiện đại đều có).
 
