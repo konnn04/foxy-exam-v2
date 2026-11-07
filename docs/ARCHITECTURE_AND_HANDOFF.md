@@ -75,7 +75,7 @@ Thư mục: `server/resources/js/pages/`
 
 Dữ liệu có sẵn trong seeder:
 * **Mã phòng thi lập trình:** `FOXY-2026`
-* **Giảng viên trường (HCMUS):** `teacher_hcmus` / Mật khẩu: `teacher123`
+* **Giảng viên trường (OU):** `teacher_ou` / Mật khẩu: `teacher123`
 * **Super Admin nền tảng:** `admin` / Mật khẩu: `admin123`
 * **Sinh viên (dùng test API qua Scramble Docs):** `student01` / Mật khẩu: `student123`
 

@@ -23,10 +23,10 @@ class StudentExamLoginRequest extends FormRequest
     {
         return [
             /**
-             * Mã định danh tổ chức / trường học (ví dụ: HCMUS, BKDN).
+             * Mã định danh tổ chức / trường học (ví dụ: OU, BKDN).
              * 
              * @var string|null
-             * @example HCMUS
+             * @example OU
              */
             'org_code' => ['nullable', 'string', 'max:50'],
 

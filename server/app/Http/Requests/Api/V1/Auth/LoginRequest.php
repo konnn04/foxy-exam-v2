@@ -36,8 +36,8 @@ class LoginRequest extends FormRequest
     {
         return [
             /**
-             * Mã định danh tổ chức / trường học (ví dụ: HCMUS, BKDN).
-             * @example HCMUS
+             * Mã định danh tổ chức / trường học (ví dụ: OU, BKDN).
+             * @example OU
              */
             'org_code' => ['nullable', 'string', 'max:50'],
 

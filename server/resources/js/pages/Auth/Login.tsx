@@ -72,7 +72,7 @@ export default function Login() {
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="admin hoặc teacher_hcmus"
+                                    placeholder="admin hoặc teacher_ou"
                                     required
                                     className="h-10 text-xs"
                                 />
@@ -105,8 +105,8 @@ export default function Login() {
                 <div className="p-3 rounded-lg bg-card/60 border border-border text-xs text-muted-foreground space-y-1">
                     <span className="font-semibold text-foreground block">Tài khoản demo sẵn có:</span>
                     <p>• Super Admin: <code className="text-primary font-mono font-semibold">admin</code> / <code className="text-primary font-mono">admin123</code></p>
-                    <p>• Quản trị trường: <code className="text-primary font-mono font-semibold">admin_hcmus</code> / <code className="text-primary font-mono">admin123</code></p>
-                    <p>• Giảng viên trường: <code className="text-primary font-mono font-semibold">teacher_hcmus</code> / <code className="text-primary font-mono">teacher123</code></p>
+                    <p>• Quản trị trường (OU): <code className="text-primary font-mono font-semibold">admin_ou</code> / <code className="text-primary font-mono">admin123</code></p>
+                    <p>• Giảng viên trường (OU): <code className="text-primary font-mono font-semibold">teacher_ou</code> / <code className="text-primary font-mono">teacher123</code></p>
                 </div>
             </div>
         </div>

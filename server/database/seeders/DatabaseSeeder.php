@@ -90,7 +90,7 @@ class DatabaseSeeder extends Seeder
             'middle_name' => 'Hoàng',
             'last_name' => 'Nguyễn',
             'date_of_birth' => '1990-01-15',
-            'address' => '227 Nguyễn Văn Cừ, Phường 4, Quận 5, TP.HCM',
+            'address' => '35 - 37 Hồ Hảo Hớn, Phường Cô Giang, Quận 1, TP.HCM',
             'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=admin',
             'email' => 'admin@foxyexam.com',
             'password' => Hash::make('admin123'),
@@ -99,21 +99,21 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 4. Demo School (Tenant 1)
-        $hcmusOrg = Organization::create([
-            'name' => 'Trường ĐH Khoa học Tự nhiên',
-            'code' => 'HCMUS',
-            'slug' => 'hcmus',
+        $ouOrg = Organization::create([
+            'name' => 'Trường Đại học Mở TP.HCM',
+            'code' => 'OU',
+            'slug' => 'ou',
             'type' => 'UNIVERSITY',
             'status' => 'ACTIVE',
             'is_public' => true,
             'settings' => [
                 'primary_color' => '#1d4ed8',
-                'contact_email' => 'contact@hcmus.edu.vn',
+                'contact_email' => 'contact@ou.edu.vn',
             ],
         ]);
 
         Subscription::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'plan_id' => $proPlan->id,
             'starts_at' => now(),
             'ends_at' => now()->addMonth(),
@@ -121,10 +121,10 @@ class DatabaseSeeder extends Seeder
             'auto_renew' => true,
         ]);
 
-        // Sample Invoices for HCMUS
+        // Sample Invoices for OU
         Invoice::create([
             'invoice_code' => 'INV-2026-001',
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'plan_id' => $proPlan->id,
             'amount' => 1490000,
             'status' => 'PAID',
@@ -136,7 +136,7 @@ class DatabaseSeeder extends Seeder
 
         Invoice::create([
             'invoice_code' => 'INV-2026-002',
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'plan_id' => $proPlan->id,
             'amount' => 1490000,
             'status' => 'PAID',
@@ -148,7 +148,7 @@ class DatabaseSeeder extends Seeder
 
         Invoice::create([
             'invoice_code' => 'INV-2026-003',
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'plan_id' => $enterprisePlan->id,
             'amount' => 4990000,
             'status' => 'PENDING',
@@ -160,16 +160,16 @@ class DatabaseSeeder extends Seeder
 
         // 5. Org Admin User (Trưởng khoa / Quản trị trường)
         $orgAdmin = User::create([
-            'organization_id' => $hcmusOrg->id,
-            'username' => 'admin_hcmus',
+            'organization_id' => $ouOrg->id,
+            'username' => 'admin_ou',
             'name' => 'Trần Văn Quản Trị',
             'first_name' => 'Quản Trị',
             'middle_name' => 'Văn',
             'last_name' => 'Trần',
             'date_of_birth' => '1985-05-20',
-            'address' => 'Linh Trung, TP. Thủ Đức, TP.HCM',
-            'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=hcmus_admin',
-            'email' => 'admin@hcmus.edu.vn',
+            'address' => '35 - 37 Hồ Hảo Hớn, Phường Cô Giang, Quận 1, TP.HCM',
+            'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=ou_admin',
+            'email' => 'admin@ou.edu.vn',
             'password' => Hash::make('admin123'),
             'role' => 'ORG_ADMIN',
             'status' => 'ACTIVE',
@@ -177,8 +177,8 @@ class DatabaseSeeder extends Seeder
 
         // 6. Teacher User
         $teacher = User::create([
-            'organization_id' => $hcmusOrg->id,
-            'username' => 'teacher_hcmus',
+            'organization_id' => $ouOrg->id,
+            'username' => 'teacher_ou',
             'name' => 'Nguyễn Văn A',
             'first_name' => 'A',
             'middle_name' => 'Văn',
@@ -186,7 +186,7 @@ class DatabaseSeeder extends Seeder
             'date_of_birth' => '1988-11-12',
             'address' => 'Phường 10, Quận 10, TP.HCM',
             'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=teacherA',
-            'email' => 'teacher@hcmus.edu.vn',
+            'email' => 'teacher@ou.edu.vn',
             'password' => Hash::make('teacher123'),
             'role' => 'TEACHER',
             'status' => 'ACTIVE',
@@ -194,16 +194,16 @@ class DatabaseSeeder extends Seeder
 
         // 6. Student User
         $student = User::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'username' => 'student01',
             'name' => 'Lê Thị Thu B',
             'first_name' => 'B',
             'middle_name' => 'Thị Thu',
             'last_name' => 'Lê',
             'date_of_birth' => '2004-09-01',
-            'address' => 'Ký túc xá ĐHQG Khu B, Dĩ An, Bình Dương',
+            'address' => 'Ký túc xá Trường ĐH Mở TP.HCM, TP. Thủ Đức, TP.HCM',
             'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=student01',
-            'email' => 'student01@student.hcmus.edu.vn',
+            'email' => 'student01@student.ou.edu.vn',
             'password' => Hash::make('student123'),
             'role' => 'STUDENT',
             'status' => 'ACTIVE',
@@ -211,7 +211,7 @@ class DatabaseSeeder extends Seeder
 
         // 7. Demo Course
         $course = Course::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'code' => 'CS101',
             'name' => 'Nhập Môn Lập Trình C++',
             'description' => 'Khóa học lập trình căn bản với C++ và thuật toán.',
@@ -220,7 +220,7 @@ class DatabaseSeeder extends Seeder
 
         // 8. Demo Programming Exam
         $exam = Exam::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'course_id' => $course->id,
             'title' => 'Kỳ Thi Lập Trình C++ Cuối Kỳ',
             'code' => 'FOXY-2026', // Code for students to enter room
@@ -246,7 +246,7 @@ class DatabaseSeeder extends Seeder
 
         // 9. Question Set 1: PROGRAMMING (Bộ đề lập trình LeetCode / HackerRank)
         $progQuestionSet = QuestionSet::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'course_id' => $course->id,
             'name' => 'Ngân hàng Thuật toán & Cấu trúc Dữ liệu C++',
             'code' => 'SET-PROG-01',
@@ -327,7 +327,7 @@ class DatabaseSeeder extends Seeder
 
         // 10. Question Set 2: CLASSICAL (Bộ đề cổ điển: 5 loại câu hỏi)
         $classicalQuestionSet = QuestionSet::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'course_id' => $course->id,
             'name' => 'Bộ Đề Thi Lý Thuyết Chuyên Ngành & Tiếng Anh Kỹ Thuật',
             'code' => 'SET-CLAS-01',
@@ -450,7 +450,7 @@ class DatabaseSeeder extends Seeder
 
         // 12. Demo Classical Quiz Exam
         Exam::create([
-            'organization_id' => $hcmusOrg->id,
+            'organization_id' => $ouOrg->id,
             'course_id' => $course->id,
             'question_set_id' => $classicalQuestionSet->id,
             'title' => 'Kỳ Thi Trắc Nghiệm & Lý Thuyết C++',
@@ -468,18 +468,18 @@ class DatabaseSeeder extends Seeder
             'created_by' => $teacher->id,
         ]);
 
-        // 13. More of everything: the HCMUS fixtures above stay as-is (tests and docs refer to them);
+        // 13. More of everything: the OU fixtures above stay as-is (tests and docs refer to them);
         //     the same generator then builds two further schools, each with its own staff and exam banks.
         $school = new SchoolSeeder();
 
-        $people = $school->people($hcmusOrg, 'HCMUS', 'hcmus.edu.vn', 6, 40, 21120000, ['teachers' => [$teacher], 'students' => [$student]]);
-        $extraCourses = $school->courses($hcmusOrg, 'HCMUS', $people['teachers'], $people['students'], [
+        $people = $school->people($ouOrg, 'OU', 'ou.edu.vn', 6, 40, 24540000, ['teachers' => [$teacher], 'students' => [$student]]);
+        $extraCourses = $school->courses($ouOrg, 'OU', $people['teachers'], $people['students'], [
             ['DB201', 'Cơ Sở Dữ Liệu', 'Mô hình quan hệ, SQL và chuẩn hóa lược đồ.'],
             ['DS202', 'Cấu Trúc Dữ Liệu & Giải Thuật', 'Mảng, danh sách, cây, đồ thị và các thuật toán sắp xếp.'],
         ]);
         $people['students']->each(fn (User $u) => $u->enrolledCourses()->syncWithoutDetaching([$course->id]));
-        $this->fillSchool($school, $hcmusOrg, $people, [$course, ...$extraCourses], [
-            'from' => 2, 'clas' => ['db', 'ds'], 'prog' => ['strings', 'arrays'], 'code' => 'HCMUS',
+        $this->fillSchool($school, $ouOrg, $people, [$course, ...$extraCourses], [
+            'from' => 2, 'clas' => ['db', 'ds'], 'prog' => ['strings', 'arrays'], 'code' => 'OU',
         ]);
 
         $this->extraSchool($school, $proPlan, [

@@ -9,9 +9,9 @@ Tài liệu này tổng hợp toàn bộ danh sách tài khoản dùng thử (Se
 | Vai trò (Role) | Tên hiển thị | Username | Mật khẩu | Email | Tổ chức (Tenant) | Gói SaaS | Điểm truy cập / Mục đích |
 |---|---|---|---|---|---|---|---|
 | **SUPER_ADMIN** | Super Administrator | `admin` | `admin123` | `admin@foxyexam.com` | Foxy Platform Root (`ROOT`) | ENTERPRISE | Web `/admin` (Quản trị toàn sàn, duyệt gói cước, các trường) |
-| **ORG_ADMIN** | Quản Trị Viên HCMUS | `admin_hcmus` | `admin123` | `admin@hcmus.edu.vn` | ĐH Khoa học Tự nhiên (`HCMUS`) | PRO (30 kỳ thi/tháng) | Web `/admin` (Quản lý trường HCMUS, xem Quota tháng, giảng viên) |
-| **TEACHER** | Thầy Nguyễn Văn A | `teacher_hcmus` | `teacher123` | `teacher@hcmus.edu.vn` | ĐH Khoa học Tự nhiên (`HCMUS`) | Kế thừa PRO của trường | Web `/lecturer` (Soạn đề, tạo kỳ thi, giám sát trực tiếp) |
-| **STUDENT** | Nguyễn Văn B | `student01` | `student123` | `student01@student.hcmus.edu.vn` | ĐH Khoa học Tự nhiên (`HCMUS`) | — | Client App (Tauri v2) / API `POST /api/v1/student/login` |
+| **ORG_ADMIN** | Quản Trị Viên OU | `admin_ou` | `admin123` | `admin@ou.edu.vn` | Trường Đại học Mở TP.HCM (`OU`) | PRO (30 kỳ thi/tháng) | Web `/admin` (Quản lý trường OU, xem Quota tháng, giảng viên) |
+| **TEACHER** | Thầy Nguyễn Văn A | `teacher_ou` | `teacher123` | `teacher@ou.edu.vn` | Trường Đại học Mở TP.HCM (`OU`) | Kế thừa PRO của trường | Web `/lecturer` (Soạn đề, tạo kỳ thi, giám sát trực tiếp) |
+| **STUDENT** | Nguyễn Văn B | `student01` | `student123` | `student01@student.ou.edu.vn` | Trường Đại học Mở TP.HCM (`OU`) | — | Client App (Tauri v2) / API `POST /api/v1/student/login` |
 
 ---
 
@@ -20,8 +20,8 @@ Tài liệu này tổng hợp toàn bộ danh sách tài khoản dùng thử (Se
 ### 🌐 A. Đăng nhập qua Web Portal (Dành cho Quản trị & Giảng viên)
 - **URL Đăng nhập**: `http://127.0.0.1:8000/login`
 - **Cơ chế điều hướng tự động**:
-  - Khi `admin` hoặc `admin_hcmus` đăng nhập -> Chuyển hướng tới **Cổng Quản Trị** (`/admin`).
-  - Khi `teacher_hcmus` đăng nhập -> Tự động chuyển hướng tới **Cổng Giảng Viên** (`/lecturer`).
+  - Khi `admin` hoặc `admin_ou` đăng nhập -> Chuyển hướng tới **Cổng Quản Trị** (`/admin`).
+  - Khi `teacher_ou` đăng nhập -> Tự động chuyển hướng tới **Cổng Giảng Viên** (`/lecturer`).
   - Nếu Giảng viên cố ý gõ `/admin`, hệ thống sẽ chặn và chuyển về `/lecturer`.
 
 ### 🖥️ B. Đăng nhập qua Desktop App (Dành cho Thí sinh / Sinh viên)
@@ -47,7 +47,7 @@ Hệ thống đã nạp sẵn cấu trúc dữ liệu thực tế để phục v
 ### 🏢 Tổ chức & Gói cước (Tenants & Plans)
 1. **Foxy Platform Root (`ROOT`)**:
    - Gói cước: `ENTERPRISE` (Không giới hạn tính năng và dung lượng).
-2. **Trường ĐH Khoa học Tự nhiên (`HCMUS`)**:
+2. **Trường Đại học Mở TP.HCM (`OU`)**:
    - Gói cước: `PRO` (1.490.000đ/tháng).
    - Hạn mức: Tối đa 30 kỳ thi/tháng, 100 thí sinh/kỳ, 20GB lưu trữ, kích hoạt AI Giám sát & Quay lại hành trình gõ code (Code Replay).
 
@@ -66,16 +66,16 @@ Hệ thống đã nạp sẵn cấu trúc dữ liệu thực tế để phục v
 
 ## 4. Kịch Bản Kiểm Thử Nhanh (Step-by-Step Test Scenarios)
 
-### Kịch bản 1: Quản trị viên Root / Trường học (`admin` / `admin_hcmus`)
+### Kịch bản 1: Quản trị viên Root / Trường học (`admin` / `admin_ou`)
 1. Truy cập `http://127.0.0.1:8000/login`.
-2. Nhập username `admin` (mật khẩu `admin123`) hoặc `admin_hcmus` (mật khẩu `admin123`).
+2. Nhập username `admin` (mật khẩu `admin123`) hoặc `admin_ou` (mật khẩu `admin123`).
 3. Xác nhận vào trang **Admin Dashboard** (`/admin`):
    - Xem thống kê tổ chức, hạn mức Quota đã dùng trong tháng.
    - Thao tác nhanh quản lý trường học hoặc nâng cấp gói dịch vụ.
 
-### Kịch bản 2: Giảng viên quản lý môn học & đề thi (`teacher_hcmus`)
+### Kịch bản 2: Giảng viên quản lý môn học & đề thi (`teacher_ou`)
 1. Truy cập `http://127.0.0.1:8000/login`.
-2. Nhập username `teacher_hcmus`, mật khẩu `teacher123`.
+2. Nhập username `teacher_ou`, mật khẩu `teacher123`.
 3. Xác nhận được đưa tới **Lecturer Dashboard** (`/lecturer`):
    - Xem khóa học `CS101`.
    - Xem kỳ thi đang mở với mã phòng `FOXY-2026`.
@@ -115,7 +115,7 @@ Seeder dựng sẵn **1 root + 3 tổ chức**, mỗi tổ chức có nhiều gi
 
 | Tổ chức | Mã | Gói | Quản trị | Giảng viên | Sinh viên (đăng nhập bằng MSSV) |
 |---|---|---|---|---|---|
-| Trường ĐH Khoa học Tự nhiên | `HCMUS` | PRO | `admin_hcmus` / `admin123` | `teacher_hcmus`, `gv_hcmus_02`… `gv_hcmus_06` / `teacher123` | `student01`, `21120002`… `21120040` / `student123` |
+| Trường Đại học Mở TP.HCM | `OU` | PRO | `admin_ou` / `admin123` | `teacher_ou`, `gv_ou_02`… `gv_ou_06` / `teacher123` | `student01`, `24540002`… `24540040` / `student123` |
 | Trường ĐH Bách khoa TP.HCM | `HCMUT` | ENTERPRISE | `admin_hcmut` / `admin123` | `gv_hcmut_01`… `gv_hcmut_05` / `teacher123` | `21100001`… `21100036` / `student123` |
 | Trung tâm Tin học & Anh ngữ FoxyLab (riêng tư — nhập mã `FLAB`) | `FLAB` | PRO | `admin_flab` / `admin123` | `gv_flab_01`… `gv_flab_05` / `teacher123` | `5001`… `5036` / `student123` |
 

@@ -73,7 +73,7 @@ export function SettingsTab({ organization }: { organization: OrganizationData }
         <Panel className="flex max-w-[640px] flex-[1_1_420px] flex-col gap-3.5">
           <PanelTitle title="Thông tin định danh" desc="Mã tổ chức dùng cùng tên đăng nhập và mật khẩu để sinh viên vào phòng thi." />
           <Field label="Tên tổ chức" error={errors.name}>
-            <FxInput value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Trường ĐH Khoa học Tự nhiên" />
+            <FxInput value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Trường Đại học Mở TP.HCM" />
           </Field>
           <Field
             label={
@@ -92,7 +92,7 @@ export function SettingsTab({ organization }: { organization: OrganizationData }
             hint="Viết hoa, không dấu, không khoảng trắng."
             error={errors.code}
           >
-            <FxInput className="font-mono font-semibold uppercase tracking-wider" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="VD: HCMUS" />
+            <FxInput className="font-mono font-semibold uppercase tracking-wider" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="VD: OU" />
           </Field>
           <Field label="Loại hình" error={errors.type}>
             <FxSelect value={type} onChange={(e) => setType(e.target.value)}>

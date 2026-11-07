@@ -43,7 +43,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/read', [\App\Http\Controllers\NotificationController::class, 'read']);
 });
 
-// 1. Landing Page (Trang chủ, Về chúng tôi, Dự án FoxyExam, Bảng giá)
+// 1. Landing Page (Trang chủ, Về chúng tôi, Dự án Exam Guard, Bảng giá)
 Route::get('/', function () {
     $plans = Plan::where('is_active', true)->get();
     return Inertia::render('Landing', [

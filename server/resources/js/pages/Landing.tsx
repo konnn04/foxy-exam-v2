@@ -1,6 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { ShieldCheck, Laptop, Cpu, CheckCircle2, ChevronRight, AlertTriangle, Monitor, ExternalLink, Download } from 'lucide-react';
+import {
+  ShieldCheck,
+  Laptop,
+  Cpu,
+  CheckCircle2,
+  ChevronRight,
+  AlertTriangle,
+  Monitor,
+  ExternalLink,
+  Download,
+  Lock,
+  Layers,
+  FileCheck,
+  QrCode,
+  Users,
+  Award,
+  Check,
+  Server,
+  ArrowRight,
+  ArrowUp,
+  Clock,
+  Database,
+  Building2,
+  PhoneCall,
+  Mail,
+  Sparkles,
+  HelpCircle,
+  FileText,
+} from 'lucide-react';
 
 interface Plan {
   id: number;
@@ -20,15 +48,35 @@ interface Props {
 }
 
 export default function Landing({ plans = [] }: Props) {
-  // Billing cycle state: false = monthly, true = yearly
-  const [isYearly, setIsYearly] = useState(false);
+  // Pricing tab state: 'semester' | 'per_exam' | 'on_premise'
+  const [pricingTab, setPricingTab] = useState<'semester' | 'per_exam' | 'on_premise'>('semester');
 
   // Contact form state
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formPhone, setFormPhone] = useState('');
   const [formOrg, setFormOrg] = useState('');
   const [formScale, setFormScale] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Scroll to top state
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,223 +84,191 @@ export default function Landing({ plans = [] }: Props) {
     setIsSubmitted(true);
   };
 
-  const proPrice = isYearly ? '24.900.000đ' : '2.490.000đ';
-  const proPriceNote = isYearly ? 'mỗi năm — tiết kiệm 2 tháng' : 'mỗi tháng, thanh toán hàng tháng';
-
   return (
-    <div className="min-h-screen bg-[#0B0B0C] text-[#F2EFE9] font-['Be_Vietnam_Pro',system-ui,sans-serif] selection:bg-[#FF5D23] selection:text-[#0B0B0C] overflow-x-hidden antialiased">
+    <div className="min-h-screen bg-white text-slate-900 font-['Be_Vietnam_Pro',system-ui,sans-serif] selection:bg-blue-600 selection:text-white overflow-x-hidden antialiased">
       <Head>
-        <title>Foxy Exam · Nền tảng thi trực tuyến có giám sát AI &amp; Lockdown Browser</title>
+        <title>Exam Guard · Hệ thống Giám sát Thi cử Trực tuyến Thông minh</title>
         <meta
           name="description"
-          content="Foxy Exam là phòng thi số có AI canh 24/7: nhận diện khuôn mặt, khóa máy tính bằng Lockdown và đọc tín hiệu hệ thống. Một giám thị coi được 200 thí sinh kèm bằng chứng vi phạm đầy đủ."
+          content="Exam Guard là nền tảng giám sát thi cử thế hệ mới tích hợp AI đa tầng trên thiết bị (Edge AI) và ứng dụng Kiosk Lockdown, tối ưu cho thi trực tuyến, thi tại phòng máy và thi kết hợp. Cảnh báo thời gian thực trong 2 giây, dữ liệu lưu trữ tại Việt Nam tuân thủ Nghị định 13/2023/NĐ-CP."
         />
       </Head>
 
       {/* =========================================================================
-          HEADER (STICKY, BORDER BOTTTOM, TECHNICAL BRUTALIST)
+          TOP BANNER: TRANG TRỌNG - TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH
       ========================================================================= */}
-      <header className="sticky top-0 z-50 bg-[#0B0B0C]/90 backdrop-blur-md border-b border-[rgba(242,239,233,0.14)]">
-        <div className="flex flex-wrap items-stretch justify-between gap-0 max-w-[1440px] mx-auto">
-          {/* Brand Logo & Proctoring Tag */}
-          <div className="flex items-center gap-3 px-6 py-4 border-r border-[rgba(242,239,233,0.14)] shrink-0">
-            <div className="w-[30px] h-[30px] bg-[#FF5D23] flex items-center justify-center font-bold text-[#0B0B0C] text-sm">
-              🦊
-            </div>
-            <span className="text-[17px] font-bold tracking-tight whitespace-nowrap">
-              FOXY EXAM
-            </span>
-            <span className="font-['IBM_Plex_Mono',monospace] text-[10.5px] font-semibold tracking-wider text-[#FF5D23] border border-[#FF5D23]/50 px-1.5 py-0.5 whitespace-nowrap">
-              PROCTORING
-            </span>
+      <div className="bg-slate-900 text-slate-200 border-b border-slate-800 py-2.5 px-4 sm:px-6">
+        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3 text-[12px]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+            <span className="font-bold text-white tracking-wide">TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH</span>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+            <span className="text-slate-300 hidden sm:inline">CUỘC THI “SINH VIÊN VỚI Ý TƯỞNG SÁNG TẠO &amp; KHỞI NGHIỆP” NĂM 2026</span>
           </div>
+          <div className="text-slate-400 hidden md:flex items-center gap-4 text-[11.5px] font-['IBM_Plex_Mono',monospace]">
+            <span>LĨNH VỰC: STEM</span>
+            <span>·</span>
+            <span>BẢO VỆ ĐỒ ÁN CHUYÊN NGÀNH CNTT</span>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          HEADER (SÁNG SỦA, VIỀN THANH LỊCH, DỄ QUAN SÁT CHO THẦY CÔ)
+      ========================================================================= */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 max-w-[1440px] mx-auto px-4 sm:px-8 py-3.5">
+          {/* Brand Logo & Proctoring Tag */}
+          <Link href="/" className="flex items-center gap-3 shrink-0 group">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+              <img src="/mark.png" alt="Exam Guard Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[20px] font-black tracking-tight text-slate-900 leading-none group-hover:text-blue-700 transition-colors">
+                  EXAM GUARD
+                </span>
+                <span className="text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase">
+                  STEM 2026
+                </span>
+              </div>
+              <span className="text-[11.5px] font-medium text-slate-500 block mt-0.5">
+                Hệ thống Giám sát Thi cử Trực tuyến Thông minh · ĐH Mở TP.HCM
+              </span>
+            </div>
+          </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-5 lg:gap-6 px-6 font-['IBM_Plex_Mono',monospace] text-[12px] font-medium tracking-wider uppercase text-[#B5B1A8] whitespace-nowrap shrink-0">
-            <a href="#nang-luc" className="hover:text-[#F2EFE9] transition-colors">
-              01 Năng lực
+          <nav className="hidden xl:flex items-center gap-6 text-[14px] font-medium text-slate-700 whitespace-nowrap">
+            <a href="#tong-quan" className="hover:text-blue-600 transition-colors">
+              Tổng quan
             </a>
-            <a href="#van-hanh" className="hover:text-[#F2EFE9] transition-colors">
-              02 Vận hành
+            <a href="#demo" className="text-blue-700 font-bold hover:text-blue-800 transition-colors flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
+              Video Demo
             </a>
-            <a href="#demo" className="hover:text-[#F2EFE9] transition-colors">
-              03 Demo
+            <a href="#nang-luc" className="hover:text-blue-600 transition-colors">
+              Trụ cột công nghệ
             </a>
-            <a href="#gia" className="hover:text-[#F2EFE9] transition-colors">
-              04 Giá
+            <a href="#so-sanh" className="hover:text-blue-600 transition-colors">
+              Tính cạnh tranh
             </a>
-            <a href="/docs/api" target="_blank" rel="noreferrer" className="hover:text-[#FF5D23] transition-colors">
-              API Docs
+            <a href="#van-hanh" className="hover:text-blue-600 transition-colors">
+              Quy trình tổ chức
+            </a>
+            <a href="#gia" className="hover:text-blue-600 transition-colors">
+              Biểu phí đề xuất
+            </a>
+            <a href="#doi-ngu" className="hover:text-blue-600 transition-colors">
+              Đội ngũ thực hiện
+            </a>
+            <a href="/docs/api" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 font-semibold">
+              API Docs <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </nav>
 
           {/* Header Actions */}
-          <div className="flex items-stretch shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/login"
-              className="flex items-center px-5 sm:px-6 border-l border-[rgba(242,239,233,0.14)] text-[14px] font-semibold text-[#F2EFE9] hover:bg-[#F2EFE9]/10 transition-colors whitespace-nowrap"
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-[14px] font-semibold hover:bg-slate-50 hover:text-slate-900 transition-colors"
             >
-              Đăng nhập
+              Cổng Khảo thí
             </Link>
             <a
               href="#tai-app"
-              className="flex items-center gap-2 px-5 sm:px-7 bg-[#FF5D23] text-[#0B0B0C] text-[14px] font-bold whitespace-nowrap hover:bg-[#F2EFE9] transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-all"
             >
-              Tải app Windows
+              <Download className="w-4 h-4" />
+              Tải Exam Guard Client
             </a>
           </div>
         </div>
       </header>
 
       {/* =========================================================================
-          HERO SECTION (SPLIT ASYMMETRIC GRID WITH SUPERVISOR DASHBOARD)
+          HERO SECTION (TRANG TRỌNG, HỌC THUẬT, CHUẨN THUYẾT MINH ĐỀ TÀI)
       ========================================================================= */}
-      <section className="border-b border-[rgba(242,239,233,0.14)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] max-w-[1440px] mx-auto">
-          {/* Left Column: Heading & Value Proposition */}
-          <div className="p-6 sm:p-12 lg:p-16 lg:border-r border-[rgba(242,239,233,0.14)] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2.5 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider uppercase text-[#C5C1B6]">
-                <span className="w-1.5 h-1.5 bg-[#FF5D23] rounded-full animate-[fxBlink_1.6s_steps(1)_infinite]" />
-                Khởi nghiệp Sinh viên 2026 · Bản demo đang chạy
-              </div>
+      <section id="tong-quan" className="pt-12 pb-16 sm:pt-16 sm:pb-20 bg-gradient-to-b from-blue-50/40 via-white to-white border-b border-slate-200">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[12.5px] font-bold mb-6 shadow-2xs">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>ĐỀ ÁN KHỞI NGHIỆP SINH VIÊN NĂM 2026 · KHOA CÔNG NGHỆ THÔNG TIN · TRƯỜNG ĐẠI HỌC MỞ TP.HCM</span>
+          </div>
 
-              <h1 className="mt-7 text-5xl sm:text-7xl lg:text-8xl font-black leading-[0.96] tracking-[-0.04em] text-balance">
-                Gian lận
-                <br />
-                <span className="text-[#FF5D23]">không còn</span>
-                <br />
-                chỗ trốn.
-              </h1>
+          {/* Clean Academic Headline */}
+          <h1 className="text-3xl sm:text-5xl lg:text-[50px] font-black tracking-tight text-slate-900 leading-[1.2] max-w-[980px] mx-auto text-balance">
+            Hệ Thống Giám Sát Thi Cử Trực Tuyến Thông Minh
+            <span className="block text-blue-700 mt-1">Bảo đảm tính toàn vẹn và công bằng trong khảo thí</span>
+          </h1>
 
-              <p className="mt-7 max-w-[490px] text-[17.5px] font-normal leading-[1.65] text-[#E0DCD3] text-pretty">
-                Foxy Exam là phòng thi số có AI canh 24/7: nhận diện khuôn mặt, khóa máy tính bằng
-                Lockdown và đọc tín hiệu hệ thống. Một giám thị coi được 200 thí sinh — và mọi vi
-                phạm đều có bằng chứng kèm mốc thời gian.
-              </p>
+          {/* Subtitle - Academic Tone */}
+          <p className="mt-5 text-[16px] sm:text-[17px] text-slate-700 max-w-[820px] mx-auto leading-relaxed text-pretty">
+            Exam Guard tích hợp ứng dụng kiểm soát môi trường thi (Lockdown Kiosk) và mô hình trí tuệ nhân tạo phân tích đa tầng trên thiết bị (Edge AI). Hệ thống tự động cảnh báo hành vi bất thường kèm trích xuất đoạn video bằng chứng trong vòng <strong>2 giây</strong>, hỗ trợ cơ sở đào tạo tối ưu hóa 85–90% chi phí vận hành khảo thí.
+          </p>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-0 mt-9 border border-[rgba(242,239,233,0.25)] w-fit">
-                <a
-                  href="#tai-app"
-                  className="px-6 sm:px-7 py-4 bg-[#FF5D23] text-[#0B0B0C] text-[15.5px] font-bold whitespace-nowrap hover:bg-[#F2EFE9] transition-colors"
-                >
-                  Dùng thử miễn phí
-                </a>
-                <a
-                  href="#lien-he"
-                  className="px-6 sm:px-7 py-4 text-[#F2EFE9] text-[15.5px] font-semibold border-l border-[rgba(242,239,233,0.25)] whitespace-nowrap hover:bg-[#F2EFE9]/10 transition-colors"
-                >
-                  Đặt demo 15 phút →
-                </a>
-              </div>
+          {/* Action Buttons */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <a
+              href="#lien-he"
+              className="px-8 py-3.5 bg-blue-600 text-white text-[15px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
+            >
+              Đăng ký chương trình thí điểm
+            </a>
+            <a
+              href="#gia"
+              className="px-8 py-3.5 bg-white border border-slate-300 text-slate-700 text-[15px] font-semibold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs"
+            >
+              Khung định mức kinh phí
+            </a>
+          </div>
 
-              <div className="mt-6 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                Không cần thẻ · Cài trong 2 phút · Windows 10/11
-              </div>
+          {/* 3 Core Highlight Numbers */}
+          <div className="mt-12 pt-8 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[900px] mx-auto">
+            <div className="p-2">
+              <div className="text-3xl font-black text-blue-700">≤ 2 giây</div>
+              <div className="text-[13.5px] font-medium text-slate-600 mt-1">Độ trễ cảnh báo vi phạm kèm video đối soát</div>
+            </div>
+            <div className="p-2 sm:border-x border-slate-200">
+              <div className="text-3xl font-black text-slate-900">4.500 – 7.500 đ</div>
+              <div className="text-[13.5px] font-medium text-slate-600 mt-1">Định mức chi phí trên mỗi lượt thi sinh viên</div>
+            </div>
+            <div className="p-2">
+              <div className="text-3xl font-black text-slate-900">1 : 80 Thí sinh</div>
+              <div className="text-[13.5px] font-medium text-slate-600 mt-1">Năng lực giám sát đồng thời của một cán bộ coi thi</div>
             </div>
           </div>
 
-          {/* Right Column: Supervisor Dashboard Realtime View */}
-          <div className="bg-[#101012] grid grid-rows-[auto_1fr_auto] border-t lg:border-t-0 border-[rgba(242,239,233,0.14)]">
-            {/* Live Indicator Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-[rgba(242,239,233,0.14)] font-['IBM_Plex_Mono',monospace] text-[11px] tracking-wider uppercase text-[#8E8B85]">
-              <span>Bảng điều khiển giám thị · KỲ THI #2431</span>
-              <span className="text-[#FF5D23] font-bold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#FF5D23] animate-pulse" />
-                LIVE STREAM
+          {/* Clean Preview Card */}
+          <div className="mt-12 max-w-[920px] mx-auto bg-slate-900 text-slate-100 rounded-2xl p-5 sm:p-7 shadow-xl border border-slate-800 text-left">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className="font-semibold text-sm text-slate-200">
+                  Giao diện Giám sát Khảo thí Trực tuyến · Phòng thi 80 Thí sinh (Khoa CNTT - ĐH Mở TP.HCM)
+                </span>
+              </div>
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded">
+                ● WEBRTC SFU STREAM
               </span>
             </div>
 
-            {/* Simulated Live Supervisor Canvas */}
-            <div className="relative min-h-[340px] p-6 flex flex-col justify-between overflow-hidden bg-gradient-to-b from-[#141418] to-[#0D0D0F]">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-['IBM_Plex_Mono',monospace] text-xs text-[#8E8B85]">
-                    <Monitor className="w-4 h-4 text-[#FF5D23]" />
-                    <span>PHÒNG THI A-204 (200 THÍ SINH)</span>
-                  </div>
-                  <span className="font-['IBM_Plex_Mono',monospace] text-[10px] text-[#FF5D23] border border-[#FF5D23]/30 px-2 py-0.5">
-                    LOCKDOWN ACTIVE
-                  </span>
-                </div>
-
-                {/* Candidate Feed Grid Preview */}
-                <div className="grid grid-cols-4 gap-2 pt-2">
-                  <div className="border border-emerald-500/40 bg-[#0B0B0C] p-2 text-center rounded-[2px] relative">
-                    <span className="text-[10px] font-['IBM_Plex_Mono',monospace] text-emerald-400 block">TS-0001</span>
-                    <span className="text-[9px] text-[#8E8B85]">Bình thường</span>
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full absolute top-1.5 right-1.5" />
-                  </div>
-                  <div className="border border-[#FF5D23] bg-[#FF5D23]/10 p-2 text-center rounded-[2px] relative">
-                    <span className="text-[10px] font-['IBM_Plex_Mono',monospace] text-[#FF5D23] font-bold block">TS-0142</span>
-                    <span className="text-[9px] text-[#FF5D23]">Rời webcam</span>
-                    <div className="w-1.5 h-1.5 bg-[#FF5D23] rounded-full absolute top-1.5 right-1.5 animate-ping" />
-                  </div>
-                  <div className="border border-emerald-500/40 bg-[#0B0B0C] p-2 text-center rounded-[2px] relative">
-                    <span className="text-[10px] font-['IBM_Plex_Mono',monospace] text-emerald-400 block">TS-0035</span>
-                    <span className="text-[9px] text-[#8E8B85]">Bình thường</span>
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full absolute top-1.5 right-1.5" />
-                  </div>
-                  <div className="border border-rose-500 bg-rose-500/10 p-2 text-center rounded-[2px] relative">
-                    <span className="text-[10px] font-['IBM_Plex_Mono',monospace] text-rose-400 font-bold block">TS-0088</span>
-                    <span className="text-[9px] text-rose-400">VMware detected</span>
-                    <div className="w-1.5 h-1.5 bg-rose-500 rounded-full absolute top-1.5 right-1.5 animate-ping" />
-                  </div>
-                </div>
-
-                {/* Key Telemetry Visualizer */}
-                <div className="mt-4 p-4 border border-[rgba(242,239,233,0.1)] bg-[#0B0B0C]/60 rounded-[2px] space-y-2 text-xs font-['IBM_Plex_Mono',monospace]">
-                  <div className="flex justify-between text-[#8E8B85]">
-                    <span>AI PROCTORING LATENCY</span>
-                    <span className="text-emerald-400">14ms · Cloudflare Worker</span>
-                  </div>
-                  <div className="flex justify-between text-[#8E8B85]">
-                    <span>KEYSTROKE FLIGHT RATIO</span>
-                    <span className="text-emerald-400">Normal (0.84 ops/sec)</span>
-                  </div>
-                  <div className="flex justify-between text-[#8E8B85]">
-                    <span>CLIPBOARD / PASTE DETECTOR</span>
-                    <span className="text-[#FF5D23]">Locked · 0 paste attempts</span>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-xl">
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">TRẠNG THÁI CA THI</div>
+                <div className="text-lg font-bold text-white mt-1">78 / 80 Thí sinh đang kết nối</div>
+                <div className="text-xs text-emerald-400 mt-1">Khóa môi trường Kiosk kích hoạt</div>
               </div>
-
-              <div className="font-['IBM_Plex_Mono',monospace] text-[10.5px] text-[#8E8B85] pt-4">
-                Dữ liệu giám sát tự động mã hoá TLS 1.3 · Lưu trữ tại cụm máy chủ Việt Nam
+              <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-xl">
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">PHÁT HIỆN SỰ CỐ AI</div>
+                <div className="text-lg font-bold text-amber-400 mt-1">02 Cảnh báo tự động</div>
+                <div className="text-xs text-slate-300 mt-1">Đã trích xuất đoạn video đối soát</div>
               </div>
-            </div>
-
-            {/* Bottom 3 Status Pillars */}
-            <div className="flex flex-wrap border-t border-[rgba(242,239,233,0.14)]">
-              <div className="flex-1 min-w-[150px] p-4 sm:p-5 border-r border-[rgba(242,239,233,0.14)]">
-                <div className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider text-[#9A968F]">
-                  CẢNH BÁO
-                </div>
-                <div className="mt-1.5 text-[15px] font-semibold">Rời khỏi khung hình</div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] text-[#FF5D23] font-medium">
-                  TS-0142 · 00:12:40
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-[150px] p-4 sm:p-5 border-r border-[rgba(242,239,233,0.14)]">
-                <div className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider text-[#9A968F]">
-                  CẢNH BÁO
-                </div>
-                <div className="mt-1.5 text-[15px] font-semibold">Phát hiện máy ảo</div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] text-[#FF5D23] font-medium">
-                  TS-0088 · 00:31:05
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-[150px] p-4 sm:p-5">
-                <div className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider text-[#9A968F]">
-                  ĐANG THI
-                </div>
-                <div className="mt-1.5 text-[15px] font-semibold">198 / 200 bình thường</div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] text-[#8E8B85]">
-                  Điểm rủi ro TB 0.07
-                </div>
+              <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-xl">
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">AN TOÀN DỮ LIỆU</div>
+                <div className="text-lg font-bold text-blue-400 mt-1">Mã hóa AES-256</div>
+                <div className="text-xs text-slate-300 mt-1">Lưu trữ nội địa (Nghị định 13/2023/NĐ-CP)</div>
               </div>
             </div>
           </div>
@@ -260,94 +276,137 @@ export default function Landing({ plans = [] }: Props) {
       </section>
 
       {/* =========================================================================
-          TICKER BAR (MARQUEE INFINITE)
+          TICKER BAR: CÁC ĐẶC TÍNH KỸ THUẬT CHUẨN XÁC
       ========================================================================= */}
-      <div className="overflow-hidden border-b border-[rgba(242,239,233,0.14)] bg-[#0B0B0C]">
-        <div className="flex w-max animate-[fxTicker_38s_linear_infinite] hover:[animation-play-state:paused] font-['IBM_Plex_Mono',monospace] text-[12.5px] tracking-[0.14em] uppercase text-[#8E8B85]">
+      <div className="overflow-hidden border-b border-blue-200 bg-blue-50/80 py-3 text-blue-900 font-semibold text-[13px] tracking-wide">
+        <div className="flex w-max animate-[fxTicker_38s_linear_infinite] hover:[animation-play-state:paused]">
           {[1, 2].map((i) => (
-            <div key={i} className="flex gap-10 py-3.5 px-5">
-              <span>Nhận diện khuôn mặt</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Lockdown Browser</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Chống máy ảo &amp; Remote</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Camera phụ qua QR</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Điểm rủi ro theo thời gian thực</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Hồ sơ bằng chứng PDF/CSV</span>
-              <span className="text-[#FF5D23]">✳</span>
-              <span>Trộn đề tự động</span>
-              <span className="text-[#FF5D23]">✳</span>
+            <div key={i} className="flex gap-10 px-5 items-center">
+              <span>Ứng dụng Lockdown Kiosk Mode</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Xác thực khuôn mặt MobileFaceNet</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Phát hiện vật cấm thị giác YOLOX</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Độ trễ cảnh báo thời gian thực ≤ 2 giây</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Trích xuất video bằng chứng xác thực toàn vẹn</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Camera phụ góc rộng liên kết qua mã QR</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Tuân thủ Nghị định số 13/2023/NĐ-CP</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Cơ chế bộ đệm ngoại tuyến (Offline Cache)</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Tối ưu hóa kinh phí từ 4.500 đ/lượt</span>
+              <span className="text-blue-500 font-bold">●</span>
+              <span>Tích hợp hệ thống quản lý học tập Moodle LMS</span>
+              <span className="text-blue-500 font-bold">●</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* =========================================================================
-          REALITY CHECK SECTION (LIGHT BACKGROUND CONTRAST #F2EFE9, TEXT #0B0B0C)
+          SECTION: VIDEO THỰC NGHIỆM VẬN HÀNH (#demo)
       ========================================================================= */}
-      <section className="bg-[#F2EFE9] text-[#0B0B0C]">
-        <div className="grid grid-cols-1 md:grid-cols-2 max-w-[1440px] mx-auto">
-          {/* Left Reality statement */}
-          <div className="p-8 sm:p-14 lg:p-16 md:border-r border-[rgba(11,11,12,0.14)]">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[12px] font-bold tracking-wider uppercase text-[#A8380F]">
-              Thực tế hiện nay
-            </div>
-            <h2 className="mt-5 text-3xl sm:text-5xl font-extrabold leading-[1.04] tracking-[-0.035em] max-w-[460px] text-[#0B0B0C]">
-              Zoom cộng Google Form không phải một kỳ thi.
-            </h2>
-            <p className="mt-5 max-w-[440px] text-[17px] font-normal leading-[1.7] text-[#26231F]">
-              Giám thị nhìn 40 khung hình tí xíu, máy thí sinh là vùng tối hoàn toàn, và khi có
-              khiếu nại thì không ai giữ được bằng chứng nào.
-            </p>
+      <section id="demo" className="py-14 sm:py-20 bg-slate-50/70 border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100/90 border border-blue-200 text-blue-900 text-[12.5px] font-bold mb-4 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            SẢN PHẨM MẪU ĐÃ VẬN HÀNH THỰC TẾ · KHOA CÔNG NGHỆ THÔNG TIN - ĐH MỞ TP.HCM
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Video Thực Nghiệm Vận Hành Hệ Thống Exam Guard
+          </h2>
+          <p className="mt-3 text-[15.5px] text-slate-600 max-w-[800px] mx-auto leading-relaxed">
+            Minh họa quy trình giám sát thực nghiệm: ứng dụng Exam Guard Client khóa môi trường thi trên phần cứng phổ thông, mô hình AI phát hiện vật cấm và sự cố bất thường, truyền dữ liệu thời gian thực về bảng điều khiển giám thị với độ trễ ≤ 2 giây.
+          </p>
+
+          <div className="mt-8 max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-300 bg-black aspect-video">
+            <iframe
+              src="https://drive.google.com/file/d/1U-k20_mAvNmi8x24-qqgtex1-4MBj2zJ/preview"
+              className="w-full h-full border-0"
+              allow="autoplay; encrypted-media; fullscreen"
+              allowFullScreen
+              title="Exam Guard System Demo Video"
+            />
           </div>
 
-          {/* Right 3 Pain Points */}
-          <div>
-            <div className="p-8 border-b border-[rgba(11,11,12,0.14)] grid grid-cols-[54px_1fr] gap-4">
-              <span className="font-['IBM_Plex_Mono',monospace] text-[14px] font-bold text-[#A8380F]">
-                01
-              </span>
-              <div>
-                <div className="text-[20px] font-bold tracking-tight text-[#0B0B0C]">
-                  Một người, hai trăm webcam
-                </div>
-                <p className="mt-2 text-[15.5px] font-normal leading-relaxed text-[#26231F]">
-                  Bỏ lọt vi phạm là mặc định, không phải ngoại lệ khi con người phải quan sát quá
-                  nhiều camera cùng lúc.
-                </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-700 font-medium">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              Khóa môi trường Kiosk Mode trên hệ điều hành
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              Mô hình AI hai tầng: Edge AI phân tán &amp; Server AI
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              Bảng điều khiển giám thị thời gian thực (≤ 2 giây)
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              Tự động trích đoạn video đối soát có mã băm toàn vẹn
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 01: THỰC TRẠNG KHẢO THÍ & TÍNH CẤP THIẾT CỦA ĐỀ TÀI
+      ========================================================================= */}
+      <section className="py-14 sm:py-20 bg-white border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            <div>
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                01 — Thực trạng &amp; Tính cấp thiết của đề tài
               </div>
+              <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+                Những hạn chế cốt lõi trong phương thức coi thi trực tuyến truyền thống
+              </h2>
+              <p className="mt-4 text-[15.5px] text-slate-700 leading-relaxed">
+                Thực tế tại các cơ sở đào tạo, việc phối hợp các phần mềm hội nghị trực tuyến (Zoom, MS Teams, Google Meet) với hệ thống thi trắc nghiệm tồn tại nhiều bất cập nghiêm trọng về an ninh học thuật, gây áp lực kiểm soát thị giác và thiếu căn cứ pháp lý giải quyết khiếu nại.
+              </p>
             </div>
 
-            <div className="p-8 border-b border-[rgba(11,11,12,0.14)] grid grid-cols-[54px_1fr] gap-4">
-              <span className="font-['IBM_Plex_Mono',monospace] text-[14px] font-bold text-[#A8380F]">
-                02
-              </span>
-              <div>
-                <div className="text-[20px] font-bold tracking-tight text-[#0B0B0C]">
-                  Trình duyệt không thấy gì
+            <div className="space-y-4">
+              <div className="p-5 border border-slate-200 bg-slate-50/60 rounded-xl flex gap-4 items-start">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                  01
                 </div>
-                <p className="mt-2 text-[15.5px] font-normal leading-relaxed text-[#26231F]">
-                  Máy ảo, phần mềm điều khiển từ xa UltraViewer/AnyDesk, tab tài liệu mở sẵn hoặc
-                  ChatGPT cạnh bên — đều vô hình trên web thông thường.
-                </p>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Quá tải giám sát thị giác và rủi ro bỏ sót vi phạm</h3>
+                  <p className="text-[14.5px] text-slate-600 mt-1 leading-relaxed">
+                    Một cán bộ coi thi phải quan sát đồng thời 25–40 luồng video trong 90–120 phút. Giới hạn nhận thức thị giác và mệt mỏi thể chất dẫn đến nguy cơ bỏ sót các hành vi vi phạm như tráo đổi người thi, tra cứu tài liệu ngoài khung hình hoặc sử dụng thiết bị phụ trợ.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="p-8 grid grid-cols-[54px_1fr] gap-4">
-              <span className="font-['IBM_Plex_Mono',monospace] text-[14px] font-bold text-[#A8380F]">
-                03
-              </span>
-              <div>
-                <div className="text-[20px] font-bold tracking-tight text-[#0B0B0C]">
-                  Kết luận dựa vào cảm tính
+              <div className="p-5 border border-slate-200 bg-slate-50/60 rounded-xl flex gap-4 items-start">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                  02
                 </div>
-                <p className="mt-2 text-[15.5px] font-normal leading-relaxed text-[#26231F]">
-                  Không log, không ảnh, không video bằng chứng mốc thời gian — uy tín kỳ thi và hội
-                  đồng chấm bị đặt dấu hỏi lớn khi sinh viên khiếu nại.
-                </p>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Môi trường máy tính của thí sinh không được kiểm soát</h3>
+                  <p className="text-[14.5px] text-slate-600 mt-1 leading-relaxed">
+                    Trình duyệt web thông thường không thể can thiệp khóa hệ điều hành, không vô hiệu hóa được phần mềm điều khiển từ xa (AnyDesk, UltraViewer), môi trường máy ảo (VMware) hay thao tác tương tác với công cụ trí tuệ nhân tạo tạo sinh.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 border border-slate-200 bg-slate-50/60 rounded-xl flex gap-4 items-start">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                  03
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Thiếu căn cứ dữ liệu số có giá trị pháp lý khi xử lý khiếu nại</h3>
+                  <p className="text-[14.5px] text-slate-600 mt-1 leading-relaxed">
+                    Việc lưu trữ toàn bộ phiên thi video gây lãng phí dung lượng và tốn kém thời gian hậu kiểm. Khi phát sinh khiếu nại, nhà trường thiếu các đoạn trích xuất chính xác thời điểm xảy ra sự cố kèm chữ ký số xác thực tính toàn vẹn của dữ liệu.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -355,183 +414,245 @@ export default function Landing({ plans = [] }: Props) {
       </section>
 
       {/* =========================================================================
-          SECTION 01: NĂNG LỰC (6 TÍN HIỆU, 1 ĐIỂM RỦI RO)
+          SECTION 02: 6 TRỤ CỘT CÔNG NGHỆ CỐT LÕI (CHUẨN THUYẾT MINH)
       ========================================================================= */}
-      <section id="nang-luc" className="border-t border-[rgba(242,239,233,0.14)]">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="p-8 sm:p-14 flex flex-wrap gap-6 items-end justify-between border-b border-[rgba(242,239,233,0.14)]">
+      <section id="nang-luc" className="py-16 sm:py-20 bg-slate-50/50 border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="flex flex-wrap gap-4 items-end justify-between border-b border-slate-200 pb-8">
             <div>
-              <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#FF5D23]">
-                01 — Năng lực
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                02 — Kiến trúc giải pháp kỹ thuật
               </div>
-              <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight tracking-[-0.035em] max-w-[560px]">
-                Sáu tín hiệu, một điểm rủi ro
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+                Hệ sinh thái Exam Guard: 6 giải pháp kỹ thuật tích hợp
               </h2>
             </div>
-            <p className="max-w-[400px] text-[16px] font-normal leading-relaxed text-[#D2CEC5]">
-              Mọi lớp giám sát chạy song song và cùng đổ về một con số, nên giám thị chỉ xem những
-              gì đáng xem.
+            <p className="max-w-[540px] text-[15px] text-slate-600 leading-relaxed">
+              Kiến trúc phân tán kết hợp xử lý AI tại biên (Edge AI) và máy chủ truyền thông WebRTC SFU (LiveKit), vận hành ổn định trên máy tính phổ thông và hạ tầng máy chủ tiêu chuẩn, không đòi hỏi phần cứng GPU đắt đỏ.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {/* Feature 01 */}
-            <div className="p-8 border-r border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.01</span>
-                <span className="text-[#FF5D23] font-bold">CAMERA</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+            {/* Pillar 01 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <Lock className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Nhận diện khuôn mặt liên tục
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Đối chiếu ảnh định danh, phát hiện vắng mặt, thay người thi hộ, nhiều người trong
-                khung hình hoặc mắt rời màn hình quá lâu.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.01 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Ứng dụng kiểm soát môi trường (Lockdown Kiosk)</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Xây dựng trên nền tảng Tauri v2 và Rust. Khóa giao diện toàn màn hình, vô hiệu hóa các tổ hợp phím hệ thống (Alt+Tab, Windows Key), ngăn chặn đa nhiệm, phát hiện môi trường máy ảo và các tiến trình điều khiển từ xa.
               </p>
             </div>
 
-            {/* Feature 02 */}
-            <div className="p-8 border-r border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.02</span>
-                <span className="text-[#FF5D23] font-bold">HỆ ĐIỀU HÀNH</span>
+            {/* Pillar 02 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <Users className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Lockdown Browser (Tauri)
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Khóa toàn màn hình, vô hiệu hóa phím tắt hệ thống (Alt+Tab, Windows key), chặn
-                copy/paste và không cho mở ứng dụng khác trong lúc thi.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.02 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Xác thực khuôn mặt &amp; Chống thi hộ</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Xác minh danh tính thí sinh khi nhập phòng; liên tục đối soát sinh trắc trong suốt thời gian làm bài; tự động phát hiện tình trạng vắng mặt hoặc sự xuất hiện của đối tượng thứ hai trước ống kính (mô hình MobileFaceNet tối ưu hóa).
               </p>
             </div>
 
-            {/* Feature 03 */}
-            <div className="p-8 border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.03</span>
-                <span className="text-[#FF5D23] font-bold">TELEMETRY</span>
+            {/* Pillar 03 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <Cpu className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Chống máy ảo &amp; remote
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Đọc dấu vết phần cứng BIOS/MAC, IP/VPN, tiến trình đang chạy để phát hiện VMware,
-                VirtualBox hay phần mềm điều khiển từ xa.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.03 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Nhận diện thiết bị cấm &amp; Bất thường hành vi</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Phát hiện điện thoại di động, tai nghe và tài liệu không được phép thông qua mô hình thị giác máy tính YOLOX; phân tích hướng nhìn và cảnh báo khi thí sinh quay đầu hoặc rời mắt khỏi màn hình quá ngưỡng quy định.
               </p>
             </div>
 
-            {/* Feature 04 */}
-            <div className="p-8 border-r border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.04</span>
-                <span className="text-[#FF5D23] font-bold">GÓC QUAY 2</span>
+            {/* Pillar 04 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <Monitor className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Camera phụ qua điện thoại
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Quét QR để biến điện thoại thành góc quay thứ hai: thấy tay, bàn phím, mặt bàn và
-                toàn bộ không gian xung quanh thí sinh.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.04 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Bảng điều khiển giám thị thời gian thực (≤ 2s)</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Truyền tải trạng thái phòng thi và luồng giám sát qua giao thức WebRTC SFU / WebSocket với độ trễ thấp; tự động phân loại mức độ rủi ro, nâng cao năng lực quản lý của một giám thị lên đến 80 thí sinh đồng thời.
               </p>
             </div>
 
-            {/* Feature 05 */}
-            <div className="p-8 border-r border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.05</span>
-                <span className="text-[#FF5D23] font-bold">BẰNG CHỨNG</span>
+            {/* Pillar 05 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <FileCheck className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Dòng thời gian vi phạm
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Mỗi thí sinh có timeline mốc thời gian kèm ảnh chụp và video tại đúng thời điểm nghi
-                vấn, xuất PDF/CSV cho hội đồng xử lý.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.05 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Trích xuất dữ liệu bằng chứng bảo đảm toàn vẹn</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Hệ thống tự động ghi lại đoạn video ngắn ngay tại thời điểm ghi nhận bất thường; dữ liệu được gắn mã băm toàn vẹn (Integrity Hash), phục vụ công tác thanh tra và giải quyết khiếu nại học thuật minh bạch.
               </p>
             </div>
 
-            {/* Feature 06 */}
-            <div className="p-8 border-b border-[rgba(242,239,233,0.14)] hover:bg-[#121215] transition-colors">
-              <div className="flex items-baseline justify-between gap-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider text-[#B5B1A8]">
-                <span>F.06</span>
-                <span className="text-[#FF5D23] font-bold">QUẢN TRỊ</span>
+            {/* Pillar 06 */}
+            <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs hover:border-blue-400 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center mb-5">
+                <QrCode className="w-6 h-6 stroke-[2.2]" />
               </div>
-              <h3 className="mt-5 text-[21px] font-bold tracking-tight text-[#F2EFE9]">
-                Tạo &amp; trộn đề trên web
-              </h3>
-              <p className="mt-3 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Nhập câu hỏi từ Excel hoặc soạn LeetCode đề bài, tự động trộn đề theo từng thí sinh,
-                chọn mức giám sát Web hoặc Strict cho từng kỳ thi.
+              <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">T.06 · HOÀN THÀNH</div>
+              <h3 className="text-xl font-bold text-slate-900 mt-2">Camera phụ góc rộng liên kết qua mã QR</h3>
+              <p className="text-[14.5px] text-slate-600 mt-3 leading-relaxed">
+                Thí sinh sử dụng thiết bị di động quét mã QR để thiết lập luồng camera thứ hai quan sát bàn phím, thao tác tay và không gian xung quanh; hoạt động trực tiếp trên nền web di động, không yêu cầu cài đặt ứng dụng bổ sung.
               </p>
+            </div>
+          </div>
+
+          {/* Lộ trình tiếp theo */}
+          <div className="mt-8 p-5 bg-blue-50 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-blue-700 text-white text-xs font-bold rounded">
+                ĐỊNH HƯỚNG MỞ RỘNG (2026 – 2027)
+              </span>
+              <span className="text-[14px] text-blue-950 font-medium leading-relaxed">
+                Giám sát đồng bộ thi phòng máy và thi kết hợp (Hybrid) · Phân tích nhịp gõ phím và nhật ký clipboard phát hiện can thiệp của AI tạo sinh · Tích hợp Moodle LMS theo chuẩn LTI 1.3.
+              </span>
             </div>
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 02: VẬN HÀNH (4 BƯỚC)
+          SECTION 03: ĐÁNH GIÁ TÍNH CẠNH TRANH & HIỆU QUẢ KINH TẾ
       ========================================================================= */}
-      <section id="van-hanh" className="border-b border-[rgba(242,239,233,0.14)]">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="p-8 sm:p-14 border-b border-[rgba(242,239,233,0.14)]">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#FF5D23]">
-              02 — Vận hành
+      <section id="so-sanh" className="py-16 sm:py-20 bg-white border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="flex flex-wrap gap-4 items-end justify-between border-b border-slate-200 pb-8">
+            <div>
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                03 — Đánh giá tính cạnh tranh &amp; Lợi thế công nghệ
+              </div>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+                So sánh các chỉ số kỹ thuật và hiệu quả kinh tế
+              </h2>
             </div>
-            <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight tracking-[-0.035em] max-w-[500px]">
-              Từ tạo đề đến báo cáo: bốn bước
-            </h2>
-            <p className="mt-4 max-w-[460px] text-[16px] font-normal leading-relaxed text-[#D2CEC5]">
-              Giám thị không cần cài gì cả — mọi thứ diễn ra trên web. Thí sinh chỉ cài app một lần
-              nhẹ nhàng.
+            <p className="max-w-[520px] text-[15px] text-slate-600 leading-relaxed">
+              Exam Guard giúp các cơ sở giáo dục tiết kiệm 85–90% kinh phí bản quyền so với giải pháp quốc tế, đồng thời bảo đảm tuân thủ quy định pháp luật Việt Nam về bảo vệ dữ liệu cá nhân.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Comparison Table */}
+          <div className="mt-8 overflow-x-auto rounded-xl border border-slate-200 shadow-xs">
+            <table className="w-full text-left border-collapse text-[15px]">
+              <thead>
+                <tr className="bg-slate-100 text-slate-800 text-[13.5px] font-bold border-b border-slate-200">
+                  <th className="p-4 sm:p-5 w-1/4">Chỉ tiêu đánh giá</th>
+                  <th className="p-4 sm:p-5 w-1/4">Giải pháp Quốc tế<br /><span className="text-xs text-slate-500 font-normal">(Proctorio, Honorlock, ProctorU)</span></th>
+                  <th className="p-4 sm:p-5 w-1/4">Giải pháp Nội địa truyền thống<br /><span className="text-xs text-slate-500 font-normal">(Azota; Safe Exam Browser + Zoom)</span></th>
+                  <th className="p-4 sm:p-5 bg-blue-100/70 text-blue-900 w-1/4 border-l-2 border-r-2 border-blue-500">Exam Guard (ĐH Mở TP.HCM)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                <tr className="hover:bg-slate-50/50">
+                  <td className="p-4 sm:p-5 font-bold text-slate-900">Định mức chi phí trên mỗi lượt thi</td>
+                  <td className="p-4 sm:p-5 text-slate-600">78.000 – 130.000 đ (tự động); lên tới 340.000 đ (có người giám sát)</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Miễn phí cơ bản hoặc thuê bao cá nhân theo giảng viên</td>
+                  <td className="p-4 sm:p-5 bg-blue-50/50 font-bold text-blue-900 border-l-2 border-r-2 border-blue-500">
+                    4.500 – 7.500 đ / lượt<br />
+                    <span className="text-xs font-semibold text-emerald-700">Tiết kiệm 85–90% so với giải pháp ngoại nhập</span>
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-slate-50/50">
+                  <td className="p-4 sm:p-5 font-bold text-slate-900">Kiến trúc xử lý &amp; Cơ chế giám sát</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Xử lý tập trung trên đám mây quốc tế, tiêu tốn băng thông đường truyền lớn</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Giới hạn ở mức kiểm tra chuyển tab trình duyệt, xử lý sau ca thi</td>
+                  <td className="p-4 sm:p-5 bg-blue-50/50 font-semibold text-slate-900 border-l-2 border-r-2 border-blue-500">
+                    Mô hình AI hai tầng trên thiết bị (Edge AI); cảnh báo thời gian thực với độ trễ ≤ 2 giây
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-slate-50/50">
+                  <td className="p-4 sm:p-5 font-bold text-slate-900">Lưu trữ dữ liệu &amp; Cơ sở pháp lý</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Dữ liệu lưu trữ máy chủ nước ngoài; thủ tục chuyển giao dữ liệu phức tạp</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Phụ thuộc hoàn toàn vào hạ tầng đám mây công cộng của bên thứ ba</td>
+                  <td className="p-4 sm:p-5 bg-blue-50/50 font-semibold text-slate-900 border-l-2 border-r-2 border-blue-500">
+                    Dữ liệu lưu trữ nội địa tại Việt Nam; tuân thủ Nghị định 13/2023/NĐ-CP; chỉ lưu đoạn trích xuất vi phạm
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-slate-50/50">
+                  <td className="p-4 sm:p-5 font-bold text-slate-900">Phương thức hỗ trợ kỹ thuật</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Ngôn ngữ tiếng Anh; chênh lệch múi giờ; không có nhân sự hỗ trợ ca thi</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Tự vận hành nội bộ; cán bộ coi thi phải kiêm nhiệm xử lý sự cố thiết bị</td>
+                  <td className="p-4 sm:p-5 bg-blue-50/50 font-semibold text-slate-900 border-l-2 border-r-2 border-blue-500">
+                    Hỗ trợ tiếng Việt; bố trí nhân sự kỹ thuật trực song song xử lý sự cố trong suốt ca thi
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-slate-50/50">
+                  <td className="p-4 sm:p-5 font-bold text-slate-900">Phạm vi hình thức tổ chức thi</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Chuyên biệt cho hình thức thi trực tuyến từ xa</td>
+                  <td className="p-4 sm:p-5 text-slate-600">Phân tách rời rạc giữa thi trực tuyến và phần mềm phòng máy tính</td>
+                  <td className="p-4 sm:p-5 bg-blue-50/50 font-semibold text-slate-900 border-l-2 border-r-2 border-blue-500">
+                    Nền tảng hợp nhất dùng chung cho thi trực tuyến, thi tại phòng máy và thi kết hợp (Hybrid)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 04: QUY TRÌNH TỔ CHỨC KHẢO THÍ CHUẨN HÓA
+      ========================================================================= */}
+      <section id="van-hanh" className="py-16 sm:py-20 bg-slate-50/60 border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="border-b border-slate-200 pb-8">
+            <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+              04 — Quy trình tổ chức khảo thí
+            </div>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+              Quy trình 4 giai đoạn chuẩn hóa trong tổ chức kỳ thi
+            </h2>
+            <p className="mt-3 max-w-[620px] text-[15.5px] text-slate-600 leading-relaxed">
+              Hội đồng Khảo thí và cán bộ coi thi thực hiện toàn bộ nghiệp vụ quản trị trên giao diện Web. Thí sinh sử dụng ứng dụng Exam Guard Client đóng gói sẵn, vận hành độc lập không đòi hỏi quyền quản trị hệ thống (Admin).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
             {/* Step 01 */}
-            <div className="p-8 border-r border-b lg:border-b-0 border-[rgba(242,239,233,0.14)]">
-              <div className="text-5xl font-black tracking-tight text-[#FF5D23] leading-none">
-                01
-              </div>
-              <h3 className="mt-4 text-[19px] font-bold text-[#F2EFE9]">Tạo kỳ thi</h3>
-              <p className="mt-2.5 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Nhập đề thi trắc nghiệm hoặc bài toán lập trình, đặt thời lượng, trộn câu hỏi và chọn
-                mức giám sát phù hợp.
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+              <div className="text-4xl font-black text-blue-600 font-mono">01</div>
+              <h3 className="text-lg font-bold text-slate-900 mt-3">Khởi tạo đề thi &amp; Thiết lập tham số</h3>
+              <p className="text-[14px] text-slate-600 mt-2 leading-relaxed">
+                Cán bộ khảo thí nhập ngân hàng câu hỏi (trắc nghiệm, tự luận hoặc lập trình), cấu hình xáo trộn đề ngẫu nhiên theo từng mã thí sinh và ấn định các mốc thời gian làm bài.
               </p>
             </div>
 
             {/* Step 02 */}
-            <div className="p-8 border-r border-b lg:border-b-0 border-[rgba(242,239,233,0.14)]">
-              <div className="text-5xl font-black tracking-tight text-[#FF5D23] leading-none">
-                02
-              </div>
-              <h3 className="mt-4 text-[19px] font-bold text-[#F2EFE9]">Kiểm tra thiết bị</h3>
-              <p className="mt-2.5 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                App tự động kiểm tra camera, mic, kết nối mạng, chụp ảnh định danh và quét mã QR cho
-                camera phụ điện thoại.
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+              <div className="text-4xl font-black text-blue-600 font-mono">02</div>
+              <h3 className="text-lg font-bold text-slate-900 mt-3">Kiểm tra thiết bị &amp; Đối soát sinh trắc</h3>
+              <p className="text-[14px] text-slate-600 mt-2 leading-relaxed">
+                Thí sinh khởi chạy ứng dụng Exam Guard Client; hệ thống tự động kiểm tra phần cứng camera, micro, tính toàn vẹn hệ điều hành, đối soát khuôn mặt và liên kết camera phụ.
               </p>
             </div>
 
             {/* Step 03 */}
-            <div className="p-8 border-r border-b sm:border-b-0 border-[rgba(242,239,233,0.14)]">
-              <div className="text-5xl font-black tracking-tight text-[#FF5D23] leading-none">
-                03
-              </div>
-              <h3 className="mt-4 text-[19px] font-bold text-[#F2EFE9]">AI canh, người quyết</h3>
-              <p className="mt-2.5 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Danh sách thí sinh tự động sắp xếp theo điểm rủi ro. Giám thị chỉ cần click nhắc nhở,
-                chat riêng hoặc tạm dừng bài thi.
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+              <div className="text-4xl font-black text-blue-600 font-mono">03</div>
+              <h3 className="text-lg font-bold text-slate-900 mt-3">Giám sát trực tuyến &amp; Phân tích rủi ro</h3>
+              <p className="text-[14px] text-slate-600 mt-2 leading-relaxed">
+                Mô hình Edge AI phân tích hành vi trực tiếp trên máy thí sinh. Giám thị nhận cảnh báo kèm hình ảnh và video trong ≤ 2 giây để chủ động nhắc nhở hoặc lập biên bản sự cố.
               </p>
             </div>
 
             {/* Step 04 */}
-            <div className="p-8">
-              <div className="text-5xl font-black tracking-tight text-[#FF5D23] leading-none">
-                04
-              </div>
-              <h3 className="mt-4 text-[19px] font-bold text-[#F2EFE9]">Xuất hồ sơ</h3>
-              <p className="mt-2.5 text-[15px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Điểm số, thống kê toàn kỳ thi và danh sách nghi vấn kèm bằng chứng mốc thời gian — xuất
-                ngay dạng PDF hoặc CSV.
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+              <div className="text-4xl font-black text-blue-600 font-mono">04</div>
+              <h3 className="text-lg font-bold text-slate-900 mt-3">Tổng hợp hồ sơ &amp; Nghiệm thu kết quả</h3>
+              <p className="text-[14px] text-slate-600 mt-2 leading-relaxed">
+                Hệ thống tự động kết xuất hồ sơ ca thi gồm bảng điểm, nhật ký sự cố chi tiết và các tệp video bằng chứng có mã băm toàn vẹn, sẵn sàng xuất báo cáo chuẩn PDF/Excel.
               </p>
             </div>
           </div>
@@ -539,621 +660,785 @@ export default function Landing({ plans = [] }: Props) {
       </section>
 
       {/* =========================================================================
-          SECTION 03: DEMO (SẢN PHẨM THẬT, CHỤP THẬT - LIGHT CONTRAST)
+          SECTION 05: KHUNG ĐỊNH MỨC KINH PHÍ DỊCH VỤ DỰ KIẾN
       ========================================================================= */}
-      <section id="demo" className="bg-[#F2EFE9] text-[#0B0B0C]">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="p-8 sm:p-14 flex flex-wrap gap-4 items-end justify-between border-b border-[rgba(11,11,12,0.14)]">
+      <section id="gia" className="py-16 sm:py-20 bg-white border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="flex flex-wrap gap-6 items-end justify-between border-b border-slate-200 pb-8">
             <div>
-              <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#7A5240]">
-                03 — Demo
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                05 — Khung định mức kinh phí dự kiến
               </div>
-              <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight tracking-[-0.035em]">
-                Sản phẩm thật, chạy thật
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+                Khung Định Mức Kinh Phí Dịch Vụ Exam Guard
               </h2>
-            </div>
-            <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#9A968F]">
-              Kéo ngang để xem các giao diện →
-            </div>
-          </div>
-
-          {/* Horizontal Snapshot Slider */}
-          <div className="flex gap-0 overflow-x-auto scrollbar-none snap-x snap-mandatory border-b border-[rgba(11,11,12,0.14)]">
-            <figure className="m-0 shrink-0 w-[min(540px,85vw)] snap-start border-r border-[rgba(11,11,12,0.14)] p-6 bg-white">
-              <div className="aspect-[16/10] bg-[#E4E0D8] flex items-center justify-center font-['IBM_Plex_Mono',monospace] text-xs text-[#7A5240] border border-[rgba(11,11,12,0.1)] p-4 text-center">
-                Màn hình Dashboard Giám thị Realtime
-              </div>
-              <figcaption className="pt-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#4A463F]">
-                01 / Dashboard giám thị trực quan
-              </figcaption>
-            </figure>
-
-            <figure className="m-0 shrink-0 w-[min(540px,85vw)] snap-start border-r border-[rgba(11,11,12,0.14)] p-6 bg-white">
-              <div className="aspect-[16/10] bg-[#E4E0D8] flex items-center justify-center font-['IBM_Plex_Mono',monospace] text-xs text-[#7A5240] border border-[rgba(11,11,12,0.1)] p-4 text-center">
-                Cảnh báo AI: Nhận diện khuôn mặt &amp; vật cấm
-              </div>
-              <figcaption className="pt-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#4A463F]">
-                02 / Cảnh báo AI thời gian thực
-              </figcaption>
-            </figure>
-
-            <figure className="m-0 shrink-0 w-[min(540px,85vw)] snap-start border-r border-[rgba(11,11,12,0.14)] p-6 bg-white">
-              <div className="aspect-[16/10] bg-[#E4E0D8] flex items-center justify-center font-['IBM_Plex_Mono',monospace] text-xs text-[#7A5240] border border-[rgba(11,11,12,0.1)] p-4 text-center">
-                FoxyClient Desktop App Chế độ Lockdown
-              </div>
-              <figcaption className="pt-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#4A463F]">
-                03 / App thi chế độ Lockdown
-              </figcaption>
-            </figure>
-
-            <figure className="m-0 shrink-0 w-[min(540px,85vw)] snap-start p-6 bg-white">
-              <div className="aspect-[16/10] bg-[#E4E0D8] flex items-center justify-center font-['IBM_Plex_Mono',monospace] text-xs text-[#7A5240] border border-[rgba(11,11,12,0.1)] p-4 text-center">
-                Báo cáo &amp; Dòng thời gian bằng chứng
-              </div>
-              <figcaption className="pt-3 font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#4A463F]">
-                04 / Báo cáo &amp; hồ sơ bằng chứng
-              </figcaption>
-            </figure>
-          </div>
-
-          {/* Two Comparison Modes: Web vs Desktop Strict */}
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            {/* Mode 1: Web */}
-            <div className="p-8 sm:p-12 md:border-r border-[rgba(11,11,12,0.14)]">
-              <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#7A3516]">
-                Chế độ Web · Không cài đặt
-              </div>
-              <h3 className="mt-3 text-[27px] font-extrabold tracking-tight text-[#0B0B0C]">
-                Thi trên trình duyệt
-              </h3>
-              <div className="mt-6 space-y-0 text-[15.5px]">
-                <div className="flex gap-3 py-3 border-t border-[rgba(11,11,12,0.12)] text-[#24211D] font-normal">
-                  <span className="text-[#A8380F] font-bold">✓</span> Mở bằng link trên mọi trình duyệt
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(11,11,12,0.12)] text-[#24211D] font-normal">
-                  <span className="text-[#A8380F] font-bold">✓</span> AI nhận diện khuôn mặt qua webcam
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(11,11,12,0.12)] text-[#24211D] font-normal">
-                  <span className="text-[#A8380F] font-bold">✓</span> Ghi nhận chuyển tab, thoát toàn màn hình
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(11,11,12,0.12)] text-[#6B6862] font-normal">
-                  <span className="font-bold">✕</span> Không khóa được hệ điều hành
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(11,11,12,0.12)] text-[#6B6862] font-normal">
-                  <span className="font-bold">✕</span> Không phát hiện phần mềm cấm / máy ảo
-                </div>
-              </div>
-              <Link
-                href="/login"
-                className="inline-flex items-center mt-7 px-6 py-3.5 border border-[rgba(11,11,12,0.3)] text-[#0B0B0C] text-[15px] font-bold hover:bg-[#0B0B0C] hover:text-[#F2EFE9] transition-colors"
-              >
-                Mở trang thi Web →
-              </Link>
+              <p className="mt-3 max-w-[660px] text-[15.5px] text-slate-600 leading-relaxed">
+                Định mức tài chính được xây dựng trên cơ sở biến phí vận hành thực tế (~3.000 đ/lượt thi). Quy mô các gói học kỳ đều dưới 100 triệu đồng, phù hợp quy định áp dụng hình thức chỉ định thầu rút gọn theo Nghị định 214/2025/NĐ-CP và Luật Đấu thầu số 22/2023/QH15.
+              </p>
             </div>
 
-            {/* Mode 2: Strict Desktop (Dark High Contrast Card) */}
-            <div className="p-8 sm:p-12 bg-[#0B0B0C] text-[#F2EFE9]">
-              <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#FF5D23]">
-                Chế độ Strict · Khuyến nghị
-              </div>
-              <h3 className="mt-3 text-[27px] font-extrabold tracking-tight text-[#F2EFE9]">
-                Thi qua app desktop
-              </h3>
-              <div className="mt-6 space-y-0 text-[15.5px]">
-                <div className="flex gap-3 py-3 border-t border-[rgba(242,239,233,0.14)] text-[#E8E4DA] font-normal">
-                  <span className="text-[#FF5D23] font-bold">✓</span> Lockdown khóa toàn bộ máy tính
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(242,239,233,0.14)] text-[#E8E4DA] font-normal">
-                  <span className="text-[#FF5D23] font-bold">✓</span> Phát hiện phần mềm cấm, máy ảo, remote
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(242,239,233,0.14)] text-[#E8E4DA] font-normal">
-                  <span className="text-[#FF5D23] font-bold">✓</span> Chặn phím tắt &amp; chia sẻ màn hình
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(242,239,233,0.14)] text-[#E8E4DA] font-normal">
-                  <span className="text-[#FF5D23] font-bold">✓</span> Ghi hình liên tục + camera phụ QR
-                </div>
-                <div className="flex gap-3 py-3 border-t border-[rgba(242,239,233,0.14)] text-[#E8E4DA] font-normal">
-                  <span className="text-[#FF5D23] font-bold">✓</span> Hồ sơ bằng chứng đầy đủ cho hội đồng
-                </div>
-              </div>
-              <a
-                href="#tai-app"
-                className="inline-flex items-center mt-7 px-6 py-3.5 bg-[#FF5D23] text-[#0B0B0C] text-[15px] font-bold hover:bg-[#F2EFE9] transition-colors"
-              >
-                Tải app desktop →
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION: TẢI VỀ APP CLIENT (#tai-app)
-      ========================================================================= */}
-      <section id="tai-app" className="border-b border-[rgba(242,239,233,0.14)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] max-w-[1440px] mx-auto">
-          {/* Left spec info */}
-          <div className="p-8 sm:p-14 lg:border-r border-[rgba(242,239,233,0.14)]">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#FF5D23]">
-              Tải về
-            </div>
-            <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight tracking-[-0.035em] max-w-[380px]">
-              Foxy Exam Client
-            </h2>
-            <p className="mt-4 max-w-[380px] text-[16px] font-normal leading-relaxed text-[#D2CEC5]">
-              Cài một lần, dùng cho mọi kỳ thi chế độ Strict. Nhẹ, tự cập nhật, không cần quyền admin.
-            </p>
-            <div className="mt-6 font-['IBM_Plex_Mono',monospace] text-[12px] font-medium leading-loose text-[#B5B1A8]">
-              <div>PHIÊN BẢN &nbsp;1.4.2</div>
-              <div>DUNG LƯỢNG &nbsp;86 MB (Tauri v2 + Rust)</div>
-              <div>CẬP NHẬT &nbsp;09 / 2026</div>
-            </div>
-          </div>
-
-          {/* Right Download Boxes */}
-          <div>
-            {/* Windows Box */}
-            <div className="p-8 sm:p-10 border-b border-[rgba(242,239,233,0.14)] flex flex-wrap gap-5 items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-2xl font-extrabold tracking-tight text-[#F2EFE9]">Windows</h3>
-                  <span className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider px-2 py-1 bg-[#FF5D23] text-[#0B0B0C] font-bold">
-                    CÓ SẴN
-                  </span>
-                </div>
-                <p className="mt-2 text-[15px] font-normal leading-relaxed text-[#D8D4CA]">
-                  Windows 10 &amp; 11 · 64-bit · Khóa phím tắt OS, chống máy ảo
-                </p>
-              </div>
-              <a
-                href="#lien-he"
-                className="px-7 py-3.5 bg-[#FF5D23] text-[#0B0B0C] text-[15px] font-bold whitespace-nowrap hover:bg-[#F2EFE9] transition-colors flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Tải .exe
-              </a>
-            </div>
-
-            {/* macOS Box */}
-            <div className="p-8 sm:p-10 border-b border-[rgba(242,239,233,0.14)] flex flex-wrap gap-5 items-center justify-between bg-[#121215]">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-2xl font-extrabold tracking-tight text-[#A8A5A0]">macOS</h3>
-                  <span className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider px-2 py-1 border border-[rgba(242,239,233,0.28)] text-[#D8D4CA] font-semibold">
-                    SẮP RA MẮT
-                  </span>
-                </div>
-                <p className="mt-2 text-[15px] font-normal leading-relaxed text-[#B5B1A8]">
-                  Intel &amp; Apple Silicon · Dự kiến Q4/2026 · Hiện dùng chế độ Web
-                </p>
-              </div>
-              <a
-                href="#lien-he"
-                className="px-7 py-3.5 border border-[rgba(242,239,233,0.28)] text-[#F2EFE9] text-[15px] font-semibold whitespace-nowrap hover:bg-[#F2EFE9]/10 transition-colors"
-              >
-                Nhận thông báo
-              </a>
-            </div>
-
-            <div className="p-6 text-[14.5px] font-normal text-[#C2BEB4]">
-              Cần bản cài theo phòng máy trường học (.msi) hoặc mã nguồn kiểm thử?{' '}
-              <a href="#lien-he" className="text-[#FF5D23] font-bold underline underline-offset-4">
-                Liên hệ đội ngũ Foxy Exam →
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 04: BẢNG GIÁ SAAS (#gia) (KẾT NỐI PROPS DATABASE)
-      ========================================================================= */}
-      <section id="gia" className="border-b border-[rgba(242,239,233,0.14)]">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="p-8 sm:p-14 border-b border-[rgba(242,239,233,0.14)] flex flex-wrap gap-6 items-end justify-between">
-            <div>
-              <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase text-[#FF5D23]">
-                04 — Giá
-              </div>
-              <h2 className="mt-4 text-3xl sm:text-5xl font-extrabold leading-tight tracking-[-0.035em]">
-                Trả theo quy mô kỳ thi
-              </h2>
-            </div>
-
-            {/* Toggle Monthly / Yearly */}
-            <div className="flex border border-[rgba(242,239,233,0.22)]">
+            {/* Tab Buttons */}
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
               <button
                 type="button"
-                onClick={() => setIsYearly(false)}
-                className={`px-5 py-3 font-['IBM_Plex_Mono',monospace] text-[12px] tracking-wider uppercase font-semibold transition-colors ${
-                  !isYearly
-                    ? 'bg-[#FF5D23] text-[#0B0B0C]'
-                    : 'bg-transparent text-[#8E8B85] hover:text-[#F2EFE9]'
+                onClick={() => setPricingTab('semester')}
+                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                  pricingTab === 'semester'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Theo tháng
+                Gói Học kỳ (Quy mô cơ sở)
               </button>
               <button
                 type="button"
-                onClick={() => setIsYearly(true)}
-                className={`px-5 py-3 font-['IBM_Plex_Mono',monospace] text-[12px] tracking-wider uppercase font-semibold transition-colors ${
-                  isYearly
-                    ? 'bg-[#FF5D23] text-[#0B0B0C]'
-                    : 'bg-transparent text-[#B5B1A8] hover:text-[#F2EFE9]'
+                onClick={() => setPricingTab('per_exam')}
+                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                  pricingTab === 'per_exam'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Theo năm −17%
+                Gói Ca thi độc lập
               </button>
-            </div>
-          </div>
-
-          {/* Pricing 3 Tiers */}
-          <div className="grid grid-cols-1 md:grid-cols-3">
-            {/* Tier 01: Free / Trial */}
-            <div className="p-8 sm:p-10 border-r border-b md:border-b-0 border-[rgba(242,239,233,0.14)] flex flex-col justify-between">
-              <div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                  Gói 01 · Dùng thử
-                </div>
-                <div className="mt-5 text-5xl font-black tracking-[-0.04em] leading-none text-[#F2EFE9]">
-                  0đ
-                </div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[12px] font-medium text-[#C5C1B6] mt-2">
-                  Miễn phí vĩnh viễn
-                </div>
-                <div className="mt-7 space-y-0 text-[15px]">
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> 1 kỳ thi, tối đa 30 thí sinh
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Chế độ Web + AI khuôn mặt
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Báo cáo cơ bản, lưu 7 ngày
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Đầy đủ trình chấm mã nguồn cơ bản
-                  </div>
-                </div>
-              </div>
-              <Link
-                href="/login"
-                className="inline-flex mt-8 px-6 py-3.5 border border-[rgba(242,239,233,0.28)] text-[#F2EFE9] text-[15px] font-bold hover:bg-[#F2EFE9]/10 transition-colors justify-center text-center"
-              >
-                Bắt đầu miễn phí
-              </Link>
-            </div>
-
-            {/* Tier 02: Pro (Center Light Contrast Highlighting) */}
-            <div className="p-8 sm:p-10 border-r border-b md:border-b-0 border-[rgba(242,239,233,0.14)] bg-[#F2EFE9] text-[#0B0B0C] flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-bold tracking-wider uppercase text-[#8B3A18]">
-                    Gói 02 · Trường &amp; trung tâm
-                  </div>
-                  <span className="font-['IBM_Plex_Mono',monospace] text-[10.5px] tracking-wider px-2 py-1 bg-[#FF5D23] text-[#0B0B0C] font-bold">
-                    PHỔ BIẾN
-                  </span>
-                </div>
-                <div className="mt-5 text-5xl font-black tracking-[-0.04em] leading-none text-[#0B0B0C]">
-                  {proPrice}
-                </div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[12px] font-semibold text-[#38342F] mt-2">
-                  {proPriceNote}
-                </div>
-                <div className="mt-7 space-y-0 text-[15px]">
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(11,11,12,0.14)] text-[#1C1A17] font-normal">
-                    <span className="text-[#A8380F] font-bold">✓</span> 1.000 lượt thi mỗi tháng
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(11,11,12,0.14)] text-[#1C1A17] font-normal">
-                    <span className="text-[#A8380F] font-bold">✓</span> App Lockdown + chống máy ảo &amp; remote
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(11,11,12,0.14)] text-[#1C1A17] font-normal">
-                    <span className="text-[#A8380F] font-bold">✓</span> Camera phụ QR, ghi hình toàn kỳ thi
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(11,11,12,0.14)] text-[#1C1A17] font-normal">
-                    <span className="text-[#A8380F] font-bold">✓</span> Hồ sơ bằng chứng, xuất PDF/CSV
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(11,11,12,0.14)] text-[#1C1A17] font-normal">
-                    <span className="text-[#A8380F] font-bold">✓</span> Giám thị không giới hạn · Hỗ trợ kỹ thuật 24h
-                  </div>
-                </div>
-              </div>
-              <Link
-                href="/login"
-                className="inline-flex mt-8 px-6 py-3.5 bg-[#0B0B0C] text-[#F2EFE9] text-[15px] font-bold hover:bg-[#FF5D23] hover:text-[#0B0B0C] transition-colors justify-center text-center"
-              >
-                Dùng thử 14 ngày
-              </Link>
-            </div>
-
-            {/* Tier 03: Enterprise */}
-            <div className="p-8 sm:p-10 flex flex-col justify-between">
-              <div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                  Gói 03 · Đại học &amp; doanh nghiệp
-                </div>
-                <div className="mt-5 text-5xl font-black tracking-[-0.04em] leading-none text-[#F2EFE9]">
-                  Liên hệ
-                </div>
-                <div className="font-['IBM_Plex_Mono',monospace] text-[12px] font-medium text-[#C5C1B6] mt-2">
-                  Báo giá theo số lượt thi hoặc trường
-                </div>
-                <div className="mt-7 space-y-0 text-[15px]">
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Không giới hạn lượt thi &amp; kỳ thi song song
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> SSO, tích hợp hệ thống LMS qua REST API
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> On-premise, dữ liệu máy chủ lưu tại Việt Nam
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Giao diện tùy biến theo thương hiệu nhà trường
-                  </div>
-                  <div className="flex gap-3 py-2.5 border-t border-[rgba(242,239,233,0.12)] text-[#E2DFD6] font-normal">
-                    <span className="text-[#FF5D23] font-bold">✓</span> Cam kết SLA &amp; kỹ sư trực thi riêng
-                  </div>
-                </div>
-              </div>
-              <a
-                href="#lien-he"
-                className="inline-flex mt-8 px-6 py-3.5 border border-[rgba(242,239,233,0.28)] text-[#F2EFE9] text-[15px] font-bold hover:bg-[#F2EFE9]/10 transition-colors justify-center text-center"
-              >
-                Nhận báo giá
-              </a>
-            </div>
-          </div>
-
-          <div className="p-5 sm:px-8 font-['IBM_Plex_Mono',monospace] text-[11.5px] font-medium tracking-wider uppercase text-[#B5B1A8] border-t border-[rgba(242,239,233,0.14)]">
-            Giá chưa gồm VAT · Ưu đãi 30% cho trường công lập và tổ chức giáo dục phi lợi nhuận
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          FAQ SECTION (ACCORDION QUESTIONS)
-      ========================================================================= */}
-      <section className="border-b border-[rgba(242,239,233,0.14)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] max-w-[1440px] mx-auto">
-          {/* Left Title */}
-          <div className="p-8 sm:p-14 lg:border-r border-[rgba(242,239,233,0.14)]">
-            <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight tracking-[-0.035em] max-w-[360px]">
-              Câu hỏi thường gặp
-            </h2>
-            <p className="mt-4 max-w-[340px] text-[16px] font-normal leading-relaxed text-[#D2CEC5]">
-              Còn thắc mắc khác? Nhắn cho chúng tôi ở form bên dưới, đội ngũ phản hồi trong 24 giờ.
-            </p>
-          </div>
-
-          {/* Right Accordions */}
-          <div>
-            <details className="group p-6 sm:p-8 border-b border-[rgba(242,239,233,0.14)] cursor-pointer">
-              <summary className="text-[17.5px] font-bold flex items-center justify-between list-none">
-                <span>Thí sinh có cần máy cấu hình cao?</span>
-                <span className="font-mono text-[#FF5D23] transition-transform group-open:rotate-90">→</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Không. Máy tính chạy Windows 10 trở lên, 4GB RAM và một webcam thông thường là đủ. Toàn
-                bộ quá trình xử lý AI nặng được tính toán song song trên máy chủ hoặc cụm GPU worker.
-              </p>
-            </details>
-
-            <details className="group p-6 sm:p-8 border-b border-[rgba(242,239,233,0.14)] cursor-pointer">
-              <summary className="text-[17.5px] font-bold flex items-center justify-between list-none">
-                <span>Mất mạng giữa bài thi thì sao?</span>
-                <span className="font-mono text-[#FF5D23] transition-transform group-open:rotate-90">→</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Câu trả lời và mã code được lưu trữ cục bộ có mã hóa và tự động đồng bộ lại khi kết nối
-                mạng phục hồi. Khoảng thời gian mất kết nối được ghi chính xác vào nhật ký giám thị.
-              </p>
-            </details>
-
-            <details className="group p-6 sm:p-8 border-b border-[rgba(242,239,233,0.14)] cursor-pointer">
-              <summary className="text-[17.5px] font-bold flex items-center justify-between list-none">
-                <span>Dữ liệu camera lưu ở đâu, bao lâu?</span>
-                <span className="font-mono text-[#FF5D23] transition-transform group-open:rotate-90">→</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Hạ tầng lưu trữ đặt tại Việt Nam, dữ liệu được mã hóa cả khi truyền (TLS 1.3) và khi
-                lưu. Mặc định hệ thống lưu 90 ngày phục vụ đối soát, sau đó tự hủy theo cấu hình nhà trường.
-              </p>
-            </details>
-
-            <details className="group p-6 sm:p-8 border-b border-[rgba(242,239,233,0.14)] cursor-pointer">
-              <summary className="text-[17.5px] font-bold flex items-center justify-between list-none">
-                <span>AI có tự ý đánh trượt thí sinh?</span>
-                <span className="font-mono text-[#FF5D23] transition-transform group-open:rotate-90">→</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Không. AI chỉ đóng vai trò trợ lý gắn cờ cảnh báo và tính điểm rủi ro vi phạm. Quyết định
-                xử lý kỷ luật cuối cùng luôn thuộc về giám thị coi thi và hội đồng khảo thí.
-              </p>
-            </details>
-
-            <details className="group p-6 sm:p-8 cursor-pointer">
-              <summary className="text-[17.5px] font-bold flex items-center justify-between list-none">
-                <span>Tích hợp được với hệ thống LMS của trường?</span>
-                <span className="font-mono text-[#FF5D23] transition-transform group-open:rotate-90">→</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] font-normal leading-[1.65] text-[#D8D4CA]">
-                Có. Gói Enterprise cung cấp đầy đủ chuẩn REST API và SSO để đồng bộ danh sách lớp học,
-                thí sinh, môn thi và trả kết quả điểm thi về hệ thống quản lý sẵn có của nhà trường.
-              </p>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION: BẮT ĐẦU / LIÊN HỆ (#lien-he) (SPLIT BRIGHT ORANGE & OBSIDIAN)
-      ========================================================================= */}
-      <section id="lien-he" className="grid grid-cols-1 lg:grid-cols-2 bg-[#FF5D23] text-[#0B0B0C]">
-        {/* Left Orange Column */}
-        <div className="p-8 sm:p-14 lg:p-18 max-w-[720px] ml-auto w-full">
-          <div className="font-['IBM_Plex_Mono',monospace] text-[11.5px] tracking-wider uppercase font-bold text-[#0B0B0C]">
-            Bắt đầu
-          </div>
-          <h2 className="mt-5 text-4xl sm:text-6xl font-black leading-[0.98] tracking-[-0.04em] max-w-[440px]">
-            Chúng tôi dựng kỳ thi mẫu bằng đề của bạn.
-          </h2>
-          <p className="mt-5 max-w-[440px] text-[17px] font-normal leading-relaxed text-[#0B0B0C]">
-            Để lại thông tin, trong 15 phút demo bạn sẽ thấy đúng kỳ thi của trường mình chạy hoàn hảo
-            trên Foxy Exam.
-          </p>
-
-          <div className="mt-9 space-y-0 font-['IBM_Plex_Mono',monospace] text-[13.5px] font-medium">
-            <div className="flex gap-4 py-3 border-t border-[#0B0B0C]/25">
-              <span className="w-20 font-bold opacity-75">EMAIL</span> hello@foxyexam.vn
-            </div>
-            <div className="flex gap-4 py-3 border-t border-[#0B0B0C]/25">
-              <span className="w-20 font-bold opacity-75">HOTLINE</span> 0900 000 000
-            </div>
-            <div className="flex gap-4 py-3 border-t border-b border-[#0B0B0C]/25">
-              <span className="w-20 font-bold opacity-75">ĐỊA CHỈ</span> TP. Hồ Chí Minh · Hà Nội
-            </div>
-          </div>
-        </div>
-
-        {/* Right Obsidian Form Column */}
-        <div className="p-8 sm:p-14 lg:p-18 bg-[#0B0B0C] text-[#F2EFE9] max-w-[720px] mr-auto w-full flex flex-col justify-center">
-          {isSubmitted ? (
-            <div className="py-12 space-y-3">
-              <div className="text-2xl font-bold text-[#FF5D23] flex items-center gap-2">
-                <CheckCircle2 className="w-6 h-6" />
-                Đã nhận thông tin của bạn.
-              </div>
-              <p className="text-[15.5px] font-normal leading-relaxed text-[#D8D4CA]">
-                Đội ngũ chuyên viên giải pháp Foxy Exam sẽ liên hệ qua email <strong>{formEmail}</strong>{' '}
-                trong vòng một ngày làm việc để gửi tài liệu và bố trí lịch demo.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="grid gap-5">
-              <label className="grid gap-2 font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                Họ và tên *
-                <input
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                  className="h-12 px-1 border-b border-[rgba(242,239,233,0.28)] bg-transparent text-[#F2EFE9] text-[16px] font-['Be_Vietnam_Pro',sans-serif] font-normal outline-none focus:border-[#FF5D23] transition-colors placeholder:text-[#66645E]"
-                />
-              </label>
-
-              <label className="grid gap-2 font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                Email công việc *
-                <input
-                  type="email"
-                  placeholder="ten@truong.edu.vn"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  required
-                  className="h-12 px-1 border-b border-[rgba(242,239,233,0.28)] bg-transparent text-[#F2EFE9] text-[16px] font-['Be_Vietnam_Pro',sans-serif] font-normal outline-none focus:border-[#FF5D23] transition-colors placeholder:text-[#66645E]"
-                />
-              </label>
-
-              <label className="grid gap-2 font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                Đơn vị / Trường học
-                <input
-                  type="text"
-                  placeholder="Trường / Khoa CNTT / Doanh nghiệp"
-                  value={formOrg}
-                  onChange={(e) => setFormOrg(e.target.value)}
-                  className="h-12 px-1 border-b border-[rgba(242,239,233,0.28)] bg-transparent text-[#F2EFE9] text-[16px] font-['Be_Vietnam_Pro',sans-serif] font-normal outline-none focus:border-[#FF5D23] transition-colors placeholder:text-[#66645E]"
-                />
-              </label>
-
-              <label className="grid gap-2 font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wider uppercase text-[#B5B1A8]">
-                Quy mô kỳ thi
-                <input
-                  type="text"
-                  placeholder="Ví dụ: 600 thí sinh / học kỳ"
-                  value={formScale}
-                  onChange={(e) => setFormScale(e.target.value)}
-                  className="h-12 px-1 border-b border-[rgba(242,239,233,0.28)] bg-transparent text-[#F2EFE9] text-[16px] font-['Be_Vietnam_Pro',sans-serif] font-normal outline-none focus:border-[#FF5D23] transition-colors placeholder:text-[#66645E]"
-                />
-              </label>
-
               <button
-                type="submit"
-                className="mt-3 py-4 px-6 bg-[#FF5D23] text-[#0B0B0C] text-[15.5px] font-bold font-['Be_Vietnam_Pro',sans-serif] hover:bg-[#F2EFE9] transition-colors cursor-pointer"
+                type="button"
+                onClick={() => setPricingTab('on_premise')}
+                className={`px-4 sm:px-5 py-2.5 rounded-md text-[13px] font-bold transition-all ${
+                  pricingTab === 'on_premise'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                Gửi yêu cầu demo
+                Cài đặt tại chỗ (On-Premise)
               </button>
+            </div>
+          </div>
 
-              <p className="font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wide text-[#B5B1A8]">
-                Thông tin chỉ dùng để liên hệ tư vấn giải pháp thi Foxy Exam.
-              </p>
-            </form>
+          {/* TAB 1: GÓI HỌC KỲ (SEMESTER) */}
+          {pricingTab === 'semester' && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10">
+              {/* Pilot */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    GÓI THÍ ĐIỂM (PILOT)
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-3">0 đ</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1">Áp dụng đơn vị triển khai thử nghiệm</div>
+                  <div className="mt-6 space-y-2.5 text-[14px]">
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Hạn mức tối đa 200 lượt thi</strong> (01 học phần thực tế)</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Đầy đủ tính năng AI giám sát và ứng dụng Lockdown Kiosk</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Nhân sự kỹ thuật hỗ trợ trực tiếp trong suốt ca thi</span>
+                    </div>
+                    <div className="text-xs text-slate-500 pt-2 border-t border-slate-100">
+                      Yêu cầu bàn giao: Biên bản nghiệm thu và phiếu đánh giá chuyên môn
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center block"
+                >
+                  Đăng ký tham gia thí điểm
+                </a>
+              </div>
+
+              {/* Semester S */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-700 font-mono">
+                    HỌC KỲ S · CẤP KHOA
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-3">15.000.000 đ</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1">Một học kỳ chính quy</div>
+                  <div className="mt-6 space-y-2.5 text-[14px]">
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>20 lớp học phần</strong> (≤ 100 SV/lớp)</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Hạn mức: Tương đương 2.000 lượt thi/học kỳ (7.500 đ/lượt)</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Toàn quyền khai thác mô hình AI và bảng điều khiển giám thị</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Chi phí phát sinh vượt hạn mức: 7.000 đ/lượt thi</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center block"
+                >
+                  Lựa chọn Gói Học kỳ S
+                </a>
+              </div>
+
+              {/* Semester M (Featured / Recommended) */}
+              <div className="bg-blue-50/50 border-2 border-blue-600 rounded-xl p-6 shadow-md flex flex-col justify-between relative">
+                <div className="absolute -top-3 right-4 bg-blue-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                  KHUYÊN DÙNG
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-800 font-mono">
+                    HỌC KỲ M · KHOA LỚN / TRƯỜNG VỪA
+                  </div>
+                  <div className="text-3xl font-black text-blue-900 mt-3">32.500.000 đ</div>
+                  <div className="text-xs text-blue-700 font-semibold mt-1">Một học kỳ chính quy</div>
+                  <div className="mt-6 space-y-2.5 text-[14px]">
+                    <div className="text-slate-800 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                      <span><strong>50 lớp học phần</strong> (≤ 100 SV/lớp)</span>
+                    </div>
+                    <div className="text-slate-800 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                      <span>Hạn mức: Tương đương 5.000 lượt thi/học kỳ (6.500 đ/lượt)</span>
+                    </div>
+                    <div className="text-slate-800 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                      <span>Bố trí nhân sự kỹ thuật trực song song hỗ trợ ca thi</span>
+                    </div>
+                    <div className="text-slate-800 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                      <span>Chi phí phát sinh vượt hạn mức ưu đãi: 6.500 đ/lượt thi</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-blue-600 text-white text-[14px] font-bold rounded-lg hover:bg-blue-700 transition-colors text-center block shadow-sm"
+                >
+                  Lựa chọn Gói Học kỳ M
+                </a>
+              </div>
+
+              {/* Semester L */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    HỌC KỲ L · TOÀN TRƯỜNG
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-3">60.000.000 đ</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1">Một học kỳ chính quy</div>
+                  <div className="mt-6 space-y-2.5 text-[14px]">
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>10.000 lượt thi/học kỳ</strong> (đơn giá 6.000 đ/lượt)</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Chi phí phát sinh vượt hạn mức ưu đãi: 5.500 đ/lượt thi</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Chương trình tập huấn nghiệp vụ cán bộ khảo thí &amp; giám thị</span>
+                    </div>
+                    <div className="text-slate-700 flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Cam kết chất lượng dịch vụ (SLA) tiếp nhận sự cố &lt; 5 phút</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center block"
+                >
+                  Lựa chọn Gói Học kỳ L
+                </a>
+              </div>
+            </div>
           )}
+
+          {/* TAB 2: GÓI CA LẺ */}
+          {pricingTab === 'per_exam' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+              <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    CA THI · QUY MÔ NHỎ
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-3">300.000 đ</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1">Một ca thi độc lập (≤ 50 thí sinh)</div>
+                  <div className="mt-6 space-y-2.5 text-[14px] text-slate-700">
+                    <div>✓ Đơn giá quy đổi: 6.000 đ/lượt thí sinh</div>
+                    <div>✓ Hỗ trợ kỹ thuật giám sát trực tuyến trong ca thi</div>
+                    <div>✓ Lưu trữ hồ sơ bằng chứng số trong 12 tháng</div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center block"
+                >
+                  Đăng ký ca thi 50 SV
+                </a>
+              </div>
+
+              <div className="bg-blue-50/40 border-2 border-blue-600 rounded-xl p-7 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-700 font-mono">
+                    CA THI · TIÊU CHUẨN
+                  </div>
+                  <div className="text-3xl font-black text-blue-900 mt-3">500.000 đ</div>
+                  <div className="text-xs text-blue-700 font-semibold mt-1">Một ca thi độc lập (≤ 100 thí sinh)</div>
+                  <div className="mt-6 space-y-2.5 text-[14px] text-slate-800">
+                    <div>✓ Đơn giá quy đổi: 5.000 đ/lượt thí sinh</div>
+                    <div>✓ Tích hợp đầy đủ mô hình AI đối soát khuôn mặt và vật cấm</div>
+                    <div>✓ Nhân sự kỹ thuật trực tuyến phối hợp giám sát</div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-blue-600 text-white text-[14px] font-bold rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                >
+                  Đăng ký ca thi 100 SV
+                </a>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                    CA THI · QUY MÔ LỚN
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-3">1.350.000 đ</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1">Một ca thi độc lập (≤ 300 thí sinh)</div>
+                  <div className="mt-6 space-y-2.5 text-[14px] text-slate-700">
+                    <div>✓ Đơn giá ưu đãi: 4.500 đ/lượt thí sinh</div>
+                    <div>✓ Cơ chế phân luồng đa phòng thi song song</div>
+                    <div>✓ Kết xuất hồ sơ tổng hợp &amp; trích xuất video bằng chứng</div>
+                  </div>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="mt-8 px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center block"
+                >
+                  Đăng ký ca thi 300 SV
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: ON-PREMISE */}
+          {pricingTab === 'on_premise' && (
+            <div className="mt-10 p-8 sm:p-12 bg-slate-50 border border-slate-200 rounded-2xl">
+              <div className="max-w-[840px]">
+                <div className="text-xs font-bold uppercase tracking-wider text-blue-700 font-mono">
+                  MÔ HÌNH TRIỂN KHAI TRÊN HẠ TẦNG MÁY CHỦ NỘI BỘ (ON-PREMISE)
+                </div>
+                <h3 className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900">
+                  Exam Guard On-Premise Private Deployment
+                </h3>
+                <p className="mt-3 text-[15.5px] text-slate-600 leading-relaxed">
+                  Chuyển giao và cài đặt trực tiếp trên hệ thống máy chủ nội bộ của nhà trường hoặc cơ quan khảo thí. Toàn bộ luồng truyền phát video, hình ảnh và cơ sở dữ liệu sinh trắc học được lưu trữ và quản lý khép kín trong mạng nội bộ, đáp ứng tiêu chuẩn an toàn thông tin cấp độ cao.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 my-7">
+                  <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs">
+                    <div className="text-xs text-slate-500 font-mono uppercase">PHÍ TRIỂN KHAI &amp; THIẾT LẬP BAN ĐẦU</div>
+                    <div className="text-2xl font-black text-blue-700 mt-2">30.000.000 đ</div>
+                    <p className="text-xs text-slate-500 mt-1">Chi phí thu một lần: Khảo sát, cài đặt hệ thống, kiểm thử tải và chuyển giao kỹ thuật.</p>
+                  </div>
+                  <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs">
+                    <div className="text-xs text-slate-500 font-mono uppercase">PHÍ DUY TRÌ &amp; BẢO TRÌ HÀNG NĂM</div>
+                    <div className="text-2xl font-black text-slate-900 mt-2">70.000.000 đ / năm</div>
+                    <p className="text-xs text-slate-500 mt-1">Cập nhật thuật toán Edge AI, rà soát lỗ hổng an ninh và hỗ trợ kỹ thuật chuyên trách.</p>
+                  </div>
+                </div>
+
+                <a
+                  href="#lien-he"
+                  className="inline-flex px-7 py-3 bg-blue-600 text-white text-[14.5px] font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  Yêu cầu khảo sát kỹ thuật On-premise →
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Add-ons & Policy Banner */}
+          <div className="mt-8 p-6 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-6">
+            <div className="space-y-1">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                TIỆN ÍCH MỞ RỘNG &amp; CHÍNH SÁCH ĐỐI TÁC BAN ĐẦU
+              </div>
+              <p className="text-[14px] text-slate-700">
+                <strong>Dịch vụ bổ sung:</strong> 3.000.000 đ/gói/năm (Gia hạn thời gian lưu trữ video bằng chứng 24 tháng hoặc mô-đun tích hợp Moodle LMS chuẩn LTI 1.3).
+              </p>
+              <p className="text-[14px] text-emerald-800 font-semibold">
+                ★ <strong>Chính sách đối tác sáng lập:</strong> Giảm 30% tổng chi phí năm đầu tiên cho 03 đơn vị tiên phong ký kết thỏa thuận hợp tác thương mại.
+              </p>
+            </div>
+            <div className="text-xs text-slate-500 font-medium">
+              Căn cứ pháp lý: Nghị định số 214/2025/NĐ-CP · Luật Đấu thầu số 22/2023/QH15
+            </div>
+          </div>
         </div>
       </section>
 
       {/* =========================================================================
-          FOOTER (TECHNICAL METADATA & COPYRIGHT)
+          SECTION: ỨNG DỤNG KHẢO THÍ DÀNH CHO THÍ SINH (#tai-app)
       ========================================================================= */}
-      <footer className="border-t border-[rgba(242,239,233,0.14)] bg-[#0B0B0C]">
-        <div className="grid grid-cols-1 sm:grid-cols-3 max-w-[1440px] mx-auto">
-          {/* Col 1 */}
-          <div className="p-8 sm:p-10 border-b sm:border-b-0 sm:border-r border-[rgba(242,239,233,0.14)]">
-            <div className="flex items-center gap-3">
-              <div className="w-[30px] h-[30px] bg-[#FF5D23] flex items-center justify-center font-bold text-[#0B0B0C] text-sm">
-                🦊
+      <section id="tai-app" className="py-16 sm:py-20 bg-slate-50/60 border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-10 items-center">
+            <div>
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                Ứng dụng khảo thí dành cho thí sinh
               </div>
-              <span className="text-[16px] font-bold tracking-tight">FOXY EXAM</span>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+                Exam Guard Client
+              </h2>
+              <p className="mt-3 text-[15.5px] text-slate-600 leading-relaxed">
+                Ứng dụng chuyên dụng khóa môi trường thi (Lockdown Kiosk Mode). Cơ chế vận hành độc lập, tự động đồng bộ khi xảy ra gián đoạn kết nối mạng và không đòi hỏi quyền quản trị hệ thống (Admin).
+              </p>
+              <div className="mt-6 space-y-1.5 text-xs text-slate-600 font-mono">
+                <div>• KIẾN TRÚC: Nền tảng Tauri v2 kết hợp Rust (Tối ưu hóa tài nguyên phần cứng)</div>
+                <div>• CẤU HÌNH PHẦN CỨNG: Tương thích máy tính phổ thông (RAM ≥ 4GB, Webcam tích hợp)</div>
+                <div>• HỆ ĐIỀU HÀNH HỖ TRỢ: Microsoft Windows 10 / 11 (phiên bản 64-bit)</div>
+              </div>
             </div>
-            <p className="mt-4 max-w-[320px] text-[14px] font-normal leading-relaxed text-[#C5C1B6]">
-              Nền tảng thi trực tuyến có giám sát AI, phát triển tại Việt Nam cho những kỳ thi cần
-              tính toàn vẹn cao.
-            </p>
-          </div>
 
-          {/* Col 2 */}
-          <div className="p-8 sm:p-10 border-b sm:border-b-0 sm:border-r border-[rgba(242,239,233,0.14)] grid gap-2.5 text-[14px]">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[11px] font-bold tracking-wider uppercase text-[#B5B1A8]">
-              Sản phẩm
-            </div>
-            <a href="#nang-luc" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              Năng lực giám sát
-            </a>
-            <a href="#van-hanh" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              Quy trình vận hành
-            </a>
-            <a href="#tai-app" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              Tải ứng dụng FoxyClient
-            </a>
-            <a href="#gia" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              Bảng giá dịch vụ
-            </a>
-          </div>
+            <div className="space-y-4">
+              {/* Windows Exe */}
+              <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap gap-4 items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-slate-900">Gói cài đặt độc lập (.exe)</h3>
+                    <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                      BẢN THÍ SINH
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Dành cho thí sinh tham dự kỳ thi cá nhân · Tự động vô hiệu hóa phím tắt hệ thống và ngăn chặn đa nhiệm
+                  </p>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" /> Tải bản .exe
+                </a>
+              </div>
 
-          {/* Col 3 */}
-          <div className="p-8 sm:p-10 grid gap-2.5 text-[14px]">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[11px] font-bold tracking-wider uppercase text-[#B5B1A8]">
-              Liên hệ
+              {/* Room MSI */}
+              <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap gap-4 items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-slate-900">Gói triển khai phòng máy tập trung (.msi)</h3>
+                    <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                      CHO PHÒNG MÁY
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Hỗ trợ cài đặt đồng loạt qua chính sách nhóm Active Directory (GPO) hoặc mạng nội bộ (LAN)
+                  </p>
+                </div>
+                <a
+                  href="#lien-he"
+                  className="px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  Yêu cầu gói phân phối .msi
+                </a>
+              </div>
             </div>
-            <a href="#lien-he" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              Đặt lịch demo trực tuyến
-            </a>
-            <a href="#lien-he" className="text-[#D8D4CA] font-normal hover:text-[#F2EFE9] transition-colors">
-              hello@foxyexam.vn
-            </a>
-            <Link href="/login" className="text-[#FF5D23] font-bold hover:underline">
-              Cổng Giảng viên &amp; Admin →
-            </Link>
           </div>
         </div>
+      </section>
 
-        {/* Bottom Bar */}
-        <div className="p-5 sm:px-8 border-t border-[rgba(242,239,233,0.14)] max-w-[1440px] mx-auto flex flex-wrap gap-3.5 justify-between font-['IBM_Plex_Mono',monospace] text-[11px] font-medium tracking-wider text-[#B5B1A8]">
-          <span>© 2026 FOXY EXAM · ĐỒ ÁN KHÓA LUẬN TỐT NGHIỆP · BẢN DEMO HỌC THUẬT, CHƯA THƯƠNG MẠI</span>
-          <span>MADE IN VIETNAM</span>
+      {/* =========================================================================
+          SECTION 06: ĐỘI NGŨ THỰC HIỆN ĐỀ ÁN (#doi-ngu)
+      ========================================================================= */}
+      <section id="doi-ngu" className="py-16 sm:py-20 bg-white border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="flex flex-wrap gap-4 items-end justify-between border-b border-slate-200 pb-8">
+            <div>
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                06 — Đơn vị chủ trì &amp; Nhóm thực hiện
+              </div>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-slate-900">
+                Đội Ngũ Thực Hiện Đề Án Exam Guard
+              </h2>
+            </div>
+            <div className="text-left sm:text-right">
+              <div className="text-[13px] font-bold text-blue-800">
+                KHOA CÔNG NGHỆ THÔNG TIN · TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH
+              </div>
+              <div className="text-xs text-slate-500">Đề án Tham dự Cuộc thi Khởi nghiệp Sinh viên Năm 2026</div>
+            </div>
+          </div>
+
+          {/* Members Grid (5 Members) */}
+          <div className="mt-10">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono mb-4">
+              DANH SÁCH THÀNH VIÊN NHÓM THỰC HIỆN (KHOA CÔNG NGHỆ THÔNG TIN)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Khôi */}
+              <div className="p-5 bg-white border-2 border-blue-500 rounded-xl shadow-xs relative">
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                  Trưởng nhóm
+                </span>
+                <div className="font-bold text-[16px] text-slate-900 mt-2">Lê Minh Khôi</div>
+                <div className="text-xs font-mono text-slate-500">MSSV: 2351050084</div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Điều phối tổng thể đề án, phụ trách quy trình vận hành kỳ thi và phối hợp phát triển mô hình AI.
+                </p>
+                <div className="text-xs font-bold text-blue-800 mt-3 pt-2 border-t border-slate-100">
+                  0387 291 237
+                </div>
+              </div>
+
+              {/* Triều */}
+              <div className="p-5 bg-slate-50/60 border border-slate-200 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded uppercase">
+                  Kỹ thuật &amp; Hạ tầng
+                </span>
+                <div className="font-bold text-[16px] text-slate-900 mt-2">Nguyễn Thanh Triều</div>
+                <div className="text-xs font-mono text-slate-500">MSSV: 2251052127</div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Phát triển ứng dụng Client, máy chủ backend, kiểm thử tải và tích hợp Edge AI.
+                </p>
+                <div className="text-xs text-slate-600 mt-3 pt-2 border-t border-slate-200">
+                  0772 816 986
+                </div>
+              </div>
+
+              {/* Kiều */}
+              <div className="p-5 bg-slate-50/60 border border-slate-200 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded uppercase">
+                  Tài chính &amp; Quản trị rủi ro
+                </span>
+                <div className="font-bold text-[16px] text-slate-900 mt-2">Phạm Thị Diễm Kiều</div>
+                <div className="text-xs font-mono text-slate-500">MSSV: 2551050116</div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Xây dựng mô hình tài chính, định mức kinh phí và hồ sơ đánh giá tác động dữ liệu (DPIA).
+                </p>
+                <div className="text-xs text-slate-600 mt-3 pt-2 border-t border-slate-200">
+                  0387 631 476
+                </div>
+              </div>
+
+              {/* Trân */}
+              <div className="p-5 bg-slate-50/60 border border-slate-200 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded uppercase">
+                  Pháp chế &amp; Bảo mật
+                </span>
+                <div className="font-bold text-[16px] text-slate-900 mt-2">Cao Đỗ Huyền Trân</div>
+                <div className="text-xs font-mono text-slate-500">MSSV: 2454050030</div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Xây dựng khung tuân thủ Nghị định 13/2023/NĐ-CP và thỏa thuận xử lý dữ liệu (DPA).
+                </p>
+                <div className="text-xs text-slate-600 mt-3 pt-2 border-t border-slate-200">
+                  2454050030tran@ou.edu.vn
+                </div>
+              </div>
+
+              {/* Trang */}
+              <div className="p-5 bg-slate-50/60 border border-slate-200 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded uppercase">
+                  Thị trường &amp; Đối tác
+                </span>
+                <div className="font-bold text-[16px] text-slate-900 mt-2">Lê Phan Huyền Trang</div>
+                <div className="text-xs font-mono text-slate-500">MSSV: 2454052084</div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Phụ trách liên kết hợp tác B2B, khảo sát nhu cầu thí điểm tại các cơ sở đào tạo.
+                </p>
+                <div className="text-xs text-slate-600 mt-3 pt-2 border-t border-slate-200">
+                  0868 772 951
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          FAQ SECTION: HỎI ĐÁP CHUYÊN MÔN
+      ========================================================================= */}
+      <section className="py-16 sm:py-20 bg-slate-50/50 border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-10">
+            <div>
+              <div className="text-[13px] font-bold uppercase tracking-wider text-blue-700">
+                Hỏi đáp chuyên môn
+              </div>
+              <h2 className="mt-2 text-3xl font-extrabold text-slate-900 leading-tight">
+                Giải đáp các nội dung trọng tâm từ Hội đồng Khảo thí
+              </h2>
+              <p className="mt-3 text-[15px] text-slate-600 leading-relaxed">
+                Thông tin chi tiết về cơ sở kỹ thuật, an toàn dữ liệu và phương thức triển khai thực nghiệm.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <details className="group p-5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                <summary className="text-[16px] font-bold text-slate-900 flex items-center justify-between list-none">
+                  <span>Nhà trường có cần đầu tư máy chủ chuyên dụng GPU để vận hành hệ thống không?</span>
+                  <span className="font-bold text-blue-600 transition-transform group-open:rotate-90">→</span>
+                </summary>
+                <p className="mt-3 text-[14.5px] text-slate-600 leading-relaxed">
+                  Không. Giải pháp kỹ thuật của Exam Guard là phân bổ các mô hình nhận diện thị giác máy tính (YOLOX, MobileFaceNet) xử lý trực tiếp tại thiết bị của thí sinh (Edge AI). Máy chủ của nhà trường hoặc đám mây chỉ làm nhiệm vụ điều phối tín hiệu WebRTC và tiếp nhận dữ liệu nhật ký, do đó hoàn toàn không đòi hỏi hạ tầng máy chủ GPU đắt đỏ.
+                </p>
+              </details>
+
+              <details className="group p-5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                <summary className="text-[16px] font-bold text-slate-900 flex items-center justify-between list-none">
+                  <span>Phương án xử lý kỹ thuật khi thí sinh gặp sự cố gián đoạn kết nối Internet trong lúc làm bài?</span>
+                  <span className="font-bold text-blue-600 transition-transform group-open:rotate-90">→</span>
+                </summary>
+                <p className="mt-3 text-[14.5px] text-slate-600 leading-relaxed">
+                  Ứng dụng Exam Guard Client tích hợp cơ chế bộ đệm ngoại tuyến (Offline Cache) có gắn mã kiểm tra toàn vẹn (Checksum). Khi xảy ra mất kết nối mạng đột ngột trong khoảng 3–5 phút, phiên thi vẫn được duy trì an toàn; thí sinh tiếp tục làm bài và hệ thống tự động đồng bộ đầy đủ bài thi ngay khi kết nối được khôi phục.
+                </p>
+              </details>
+
+              <details className="group p-5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                <summary className="text-[16px] font-bold text-slate-900 flex items-center justify-between list-none">
+                  <span>Hệ thống bảo đảm an toàn dữ liệu sinh trắc học và tuân thủ pháp lý như thế nào?</span>
+                  <span className="font-bold text-blue-600 transition-transform group-open:rotate-90">→</span>
+                </summary>
+                <p className="mt-3 text-[14.5px] text-slate-600 leading-relaxed">
+                  Đề án thiết kế tuân thủ nguyên tắc "Tối thiểu hóa dữ liệu" (Data Minimization) theo quy định của Nghị định số 13/2023/NĐ-CP: Hệ thống chỉ lưu lại các đoạn video ngắn (15–30 giây) khi phát hiện sự cố bất thường, không lưu trữ tràn lan luồng video toàn phiên. Dữ liệu được mã hóa chuẩn AES-256, lưu trữ hoàn toàn trên hệ thống máy chủ đặt tại Việt Nam và tự động hủy sau 12 tháng.
+                </p>
+              </details>
+
+              <details className="group p-5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                <summary className="text-[16px] font-bold text-slate-900 flex items-center justify-between list-none">
+                  <span>Mô hình trí tuệ nhân tạo (AI) có quyền tự động đình chỉ hay hủy bài thi của thí sinh không?</span>
+                  <span className="font-bold text-blue-600 transition-transform group-open:rotate-90">→</span>
+                </summary>
+                <p className="mt-3 text-[14.5px] text-slate-600 leading-relaxed">
+                  Không. Trí tuệ nhân tạo chỉ đóng vai trò hỗ trợ phân loại mức độ rủi ro và gửi cảnh báo kèm đoạn video bằng chứng đến bảng điều khiển của giám thị. Toàn bộ thẩm quyền quyết định nhắc nhở, lập biên bản vi phạm hoặc đình chỉ thi thuộc về cán bộ coi thi và Hội đồng Khảo thí của nhà trường.
+                </p>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION: ĐĂNG KÝ THÍ ĐIỂM / LIÊN HỆ HỢP TÁC (#lien-he)
+      ========================================================================= */}
+      <section id="lien-he" className="py-16 sm:py-20 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Column */}
+            <div>
+              <div className="inline-block px-3 py-1 bg-blue-500/30 border border-blue-400/40 rounded-full text-xs font-bold uppercase tracking-wider text-blue-100">
+                HỢP TÁC &amp; TRIỂN KHAI THÍ ĐIỂM
+              </div>
+              <h2 className="mt-4 text-3xl sm:text-5xl font-black leading-tight text-white">
+                Đăng ký tham gia chương trình thí điểm khảo thí
+              </h2>
+              <p className="mt-4 text-[16px] text-blue-100 leading-relaxed max-w-[520px]">
+                Ban điều hành dự án Exam Guard hỗ trợ các đơn vị giáo dục tổ chức thi thử nghiệm (quy mô tối đa 200 lượt thi) vận hành song song với phương thức hiện hành, nhằm thẩm định khách quan độ chính xác của mô hình và tính tối ưu hóa nhân lực coi thi.
+              </p>
+
+              <div className="mt-8 space-y-3 text-[14px]">
+                <div className="flex items-center gap-3">
+                  <span className="w-24 text-blue-200 font-semibold">TRƯỞNG NHÓM:</span>
+                  <span className="font-bold text-white">Lê Minh Khôi (0387 291 237)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-24 text-blue-200 font-semibold">EMAIL:</span>
+                  <span className="font-bold text-white">minkhoi.dev@gmail.com</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-24 text-blue-200 font-semibold">ĐƠN VỊ:</span>
+                  <span className="text-white">Khoa Công nghệ Thông tin · Trường Đại học Mở TP.HCM</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-24 text-blue-200 font-semibold">ĐỊA CHỈ:</span>
+                  <span className="text-white">35 - 37 Hồ Hảo Hớn, Phường Cô Giang, Quận 1, TP. Hồ Chí Minh</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Clean White Card Form */}
+            <div className="bg-white text-slate-900 rounded-2xl p-8 sm:p-10 shadow-2xl">
+              {isSubmitted ? (
+                <div className="py-8 text-center space-y-3">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900">Đã tiếp nhận yêu cầu từ Quý đơn vị</h3>
+                  <p className="text-[14.5px] text-slate-600 leading-relaxed">
+                    Ban phụ trách dự án Exam Guard sẽ liên hệ qua thư điện tử <strong>{formEmail}</strong> hoặc điện thoại trong vòng 24 giờ làm việc để cung cấp tài liệu kỹ thuật và thống nhất kế hoạch triển khai.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <h3 className="text-xl font-bold text-slate-900">Phiếu Đăng Ký Thí Điểm Khảo Thí</h3>
+                  <p className="text-xs text-slate-500">Dành cho Ban Giám hiệu, Phòng Khảo thí, Phòng Đào tạo và Ban Chủ nhiệm các Khoa.</p>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Họ tên cán bộ đại diện / Giảng viên *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ThS. Nguyễn Văn A"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      required
+                      className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                        Thư điện tử công vụ *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="canbo@ou.edu.vn"
+                        value={formEmail}
+                        onChange={(e) => setFormEmail(e.target.value)}
+                        required
+                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                        Số điện thoại liên hệ *
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="09xx xxx xxx"
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value)}
+                        required
+                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                        Cơ quan / Đơn vị đào tạo
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Trường / Khoa"
+                        value={formOrg}
+                        onChange={(e) => setFormOrg(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                        Quy mô dự kiến
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: 01 học phần (200 sinh viên)"
+                        value={formScale}
+                        onChange={(e) => setFormScale(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-blue-600 text-white text-[15px] font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 cursor-pointer mt-2"
+                  >
+                    Gửi Phiếu Đăng Ký Thí Điểm
+                  </button>
+
+                  <p className="text-[11.5px] text-slate-500 text-center">
+                    Dữ liệu cung cấp chỉ phục vụ công tác trao đổi học thuật và nghiên cứu triển khai giải pháp.
+                  </p>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          FOOTER (BẢN QUYỀN HỌC THUẬT & PHÁP LÝ ĐỀ ÁN)
+      ========================================================================= */}
+      <footer className="bg-slate-950 text-slate-400 border-t border-slate-800">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            {/* Col 1 */}
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center p-1.5 shadow-2xs">
+                  <img src="/mark.png" alt="Exam Guard Logo" className="w-full h-full object-contain" />
+                </div>
+                <span className="text-[17px] font-bold text-white tracking-tight">EXAM GUARD</span>
+              </div>
+              <p className="mt-3 text-xs text-slate-400 leading-relaxed max-w-[320px]">
+                Hệ thống giám sát thi cử trực tuyến thông minh. Đề án phát triển từ đồ án chuyên ngành Công nghệ thông tin, Trường Đại học Mở TP. Hồ Chí Minh.
+              </p>
+            </div>
+
+            {/* Col 2 */}
+            <div className="space-y-2 text-xs">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+                Mục lục đề án
+              </div>
+              <div><a href="#tong-quan" className="hover:text-white transition-colors">Tổng quan &amp; Giá trị dự án</a></div>
+              <div><a href="#demo" className="hover:text-white transition-colors">Video thực nghiệm hệ thống</a></div>
+              <div><a href="#nang-luc" className="hover:text-white transition-colors">Kiến trúc kỹ thuật &amp; Edge AI</a></div>
+              <div><a href="#so-sanh" className="hover:text-white transition-colors">Đánh giá tính cạnh tranh</a></div>
+              <div><a href="#gia" className="hover:text-white transition-colors">Khung định mức kinh phí</a></div>
+              <div><a href="#doi-ngu" className="hover:text-white transition-colors">Đội ngũ thực hiện đề án</a></div>
+            </div>
+
+            {/* Col 3 */}
+            <div className="space-y-2 text-xs">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+                Thông tin liên hệ
+              </div>
+              <div>Thư điện tử: <a href="mailto:minkhoi.dev@gmail.com" className="hover:text-white">minkhoi.dev@gmail.com</a></div>
+              <div>Điện thoại điều phối: 0387 291 237 (Trưởng nhóm)</div>
+              <div>
+                <Link href="/login" className="text-blue-400 hover:text-blue-300 font-bold inline-block pt-1">
+                  Truy cập Cổng Khảo thí →
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-mono">
+            <span>© 2026 EXAM GUARD · TRƯỜNG ĐẠI HỌC MỞ TP. HỒ CHÍ MINH · STEM 2026</span>
+            <span>PHÁT TRIỂN TẠI VIỆT NAM · BẢO MẬT DỮ LIỆU NỘI ĐỊA</span>
+          </div>
         </div>
       </footer>
+
+      {/* =========================================================================
+          NÚT CUỘN LÊN ĐẦU TRANG (BACK TO TOP)
+      ========================================================================= */}
+      <button
+        type="button"
+        onClick={scrollToTop}
+        aria-label="Cuộn lên đầu trang"
+        title="Cuộn lên đầu trang"
+        className={`fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl focus:outline-hidden flex items-center justify-center transition-all duration-300 cursor-pointer ${
+          showScrollTop
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+      </button>
     </div>
   );
 }

@@ -200,14 +200,14 @@ export function OrganizationsTab({ organizations, plans = [], listMeta }: Organi
       >
         <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3">
           <Field label="Tên tổ chức" error={errors.name}>
-            <FxInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: ĐH Khoa học Tự nhiên" />
+            <FxInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: Trường Đại học Mở TP.HCM" />
           </Field>
           <Field label="Mã" error={errors.code}>
             <FxInput
               mono
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20) })}
-              placeholder="KHTN"
+              placeholder="OU"
               className="uppercase"
             />
           </Field>

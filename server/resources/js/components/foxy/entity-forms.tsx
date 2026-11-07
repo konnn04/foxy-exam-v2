@@ -174,13 +174,13 @@ export function OrganizationForm({ user, teams, plans = [], organization }: { us
             <Panel className="flex flex-col gap-3.5">
               <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3">
                 <Field label="Tên tổ chức" error={errors.name}>
-                  <FxInput value={form.name} placeholder="VD: ĐH Khoa học Tự nhiên" onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  <FxInput value={form.name} placeholder="VD: Trường Đại học Mở TP.HCM" onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </Field>
                 <Field label="Mã" error={errors.code}>
                   <FxInput
                     mono
                     value={form.code}
-                    placeholder="KHTN"
+                    placeholder="OU"
                     disabled={isRoot}
                     onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20) })}
                   />
