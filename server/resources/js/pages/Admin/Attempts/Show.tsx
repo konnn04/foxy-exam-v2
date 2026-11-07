@@ -38,7 +38,7 @@ export interface AttemptPayload {
   device_info: Record<string, unknown> | null;
   pending_grading?: number;
   shared_device_with?: { attempt_id: number; name: string | null; username: string | null }[];
-  user: { name: string; username: string; email?: string | null };
+  user: { id?: number | null; name: string; username: string; email?: string | null; has_face_photo?: boolean };
   exam: { id: number; title: string; code: string; type: string; duration_minutes: number; monitoring_config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null };
 }
 
@@ -305,6 +305,8 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
           <SessionMedia
             examId={attempt.exam.id}
             attemptId={attempt.id}
+            studentId={attempt.user.id}
+            hasFacePhoto={attempt.user.has_face_photo}
             at={sel?.timestamp ?? null}
             evidenceId={sel?.evidence_id ?? null}
             evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null}

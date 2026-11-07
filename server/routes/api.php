@@ -20,6 +20,7 @@ Route::prefix('v1')->group(function () {
     // 1. Public Health, Organizations & Tunnel Checks
     Route::get('/health', [TelemetryController::class, 'health']);
     Route::get('/ai/status', [TelemetryController::class, 'aiStatusProxy']);
+    Route::get('/public/violation-rules', [TelemetryController::class, 'violationRules']);
     Route::get('/public/organizations', [\App\Http\Controllers\Api\V1\Public\OrganizationController::class, 'publicList']);
 
     // Phone camera: the token in the link is the credential

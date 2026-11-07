@@ -162,4 +162,15 @@ class TelemetryController extends Controller
             'timestamp' => now()->toIso8601String(),
         ]);
     }
+
+    /**
+     * Danh mục cấu hình tập trung toàn bộ luật vi phạm (Severity, Cooldown, Threshold, Review Mode).
+     */
+    public function violationRules(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => \App\Support\ViolationCatalog::all(),
+        ]);
+    }
 }

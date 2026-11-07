@@ -106,6 +106,8 @@ const mmss = (ms: number) => {
 export function SessionMedia({
   examId,
   attemptId,
+  studentId,
+  hasFacePhoto,
   at,
   evidenceId,
   evidence: evidenceSet,
@@ -115,6 +117,8 @@ export function SessionMedia({
 }: {
   examId: number;
   attemptId: number;
+  studentId?: number | null;
+  hasFacePhoto?: boolean;
   at: string | null;
   evidenceId: string | null;
   evidence?: Record<string, string> | null;
@@ -228,14 +232,26 @@ export function SessionMedia({
       {clipError && <div className="text-xs text-danger-fg">{clipError}</div>}
       {state === 'disabled' && <div className="text-xs text-muted-foreground">Hệ thống ghi hình chưa được bật.</div>}
       {state === 'error' && <div className="text-xs text-danger-fg">Không tải được bản ghi của phiên này.</div>}
-      {(shots.length > 0 || single || clipList.length > 0) && (
+      {(shots.length > 0 || single || clipList.length > 0 || (studentId && hasFacePhoto)) && (
         <div className="overflow-hidden rounded-[10px] border border-border">
           <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground">
             <ImageIcon className="size-3.5" />
-            Minh chứng lúc vi phạm
+            Đối chiếu khuôn mặt sinh trắc &amp; Minh chứng lúc vi phạm
             <span className="ml-auto">bấm ảnh để phóng to</span>
           </div>
           <div className="flex flex-wrap gap-3 p-3">
+            {studentId && hasFacePhoto && (
+              <button
+                type="button"
+                onClick={() => setZoom({ url: `/admin/users/${studentId}/face-photo`, label: 'Khuôn mặt mẫu đã đăng ký sinh trắc' })}
+                className="group relative h-24 w-28 overflow-hidden rounded-lg border-2 border-primary/50 bg-black"
+                title="Ảnh khuôn mặt gốc đã đăng ký để đối chiếu"
+              >
+                <img src={`/admin/users/${studentId}/face-photo`} alt="Khuôn mặt mẫu" className="size-full object-cover" />
+                <span className="absolute left-1 top-1 rounded bg-primary/85 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">Mẫu đăng ký</span>
+                <Maximize2 className="absolute bottom-1 right-1 size-3.5 text-white opacity-0 group-hover:opacity-100" />
+              </button>
+            )}
             {(shots.length > 0 ? shots.map((x) => ({ key: x.k, label: x.label, rec: x.rec! })) : single ? [{ key: 'one', label: 'Minh chứng', rec: single }] : []).map((x) => (
               <button key={x.key} type="button" onClick={() => setZoom({ url: x.rec.url!, label: x.label })} className="group relative h-24 w-40 overflow-hidden rounded-lg border border-border bg-black">
                 <img src={x.rec.url} alt={x.label} className="size-full object-cover" />

@@ -4,7 +4,7 @@ import { SpeechDetector } from "./speech";
 import { systemLoad } from "./sysinfo";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationSeverity, type ViolationType } from "./api";
+import { getViolationRules, reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationRuleSpec, type ViolationSeverity, type ViolationType } from "./api";
 import { bypass } from "./dev";
 import { type RealtimeClient } from "./realtime";
 import {
@@ -86,6 +86,7 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   const clipboardHandled = useRef<WeakSet<Event> | null>(null);
   const allowedApps = useRef<string[]>([]);
   const lastSeen = useRef(new Map<string, number>());
+  const rulesCatalog = useRef<Record<string, ViolationRuleSpec>>({});
   const blockClipboard = useRef(true);
   const extraCamera = useRef(false);
   const micRequired = useRef(false);
@@ -95,12 +96,15 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
   allowedApps.current = (config?.allowed_apps ?? []).map(procName);
 
   const record = useCallback(
-    (type: ViolationType, severity: ViolationSeverity, message: string, details?: Record<string, unknown>) => {
-      // one physical action often raises several identical events (Alt+Tab, a focus flicker): report it once
+    (type: ViolationType, defaultSeverity: ViolationSeverity, message: string, details?: Record<string, unknown>) => {
+      // one physical action often raises several identical events (Alt+Tab, a focus flicker): report it once using centralized rule cooldown
+      const rule = rulesCatalog.current[type];
+      const severity = rule?.severity ?? defaultSeverity;
+      const cooldownMs = rule?.cooldown_seconds !== undefined ? Math.max(DEDUPE_MS, rule.cooldown_seconds * 1000) : DEDUPE_MS;
       const subject = type === "WINDOW_LOST_FOCUS" || type === "APP_NOT_ALLOWED" ? String(details?.process ?? message) : message;
       const key = `${type}|${subject}`;
       const now = Date.now();
-      if (now - (lastSeen.current.get(key) ?? 0) < DEDUPE_MS) return;
+      if (now - (lastSeen.current.get(key) ?? 0) < cooldownMs) return;
       lastSeen.current.set(key, now);
       const v: GuardViolation = { id: ++seq.current, type, severity, message, t: Date.now() };
       setState((s) => ({ ...s, violations: [v, ...s.violations].slice(0, 100) }));
@@ -218,6 +222,11 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
     }
     pasteCount.current = 0;
     setState({ ...INITIAL, active: true });
+    void getViolationRules()
+      .then((res) => {
+        if (res.data) rulesCatalog.current = res.data;
+      })
+      .catch(() => undefined);
 
     const on = <T,>(off: () => T) => cleanup.current.push(off as () => void);
 

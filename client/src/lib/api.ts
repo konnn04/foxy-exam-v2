@@ -810,3 +810,21 @@ export function markNotificationsRead(ids?: number[]): Promise<{ ok: boolean }> 
     body: JSON.stringify(ids ? { ids } : {}),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Centralized violation rules catalog (/public/violation-rules)
+// ---------------------------------------------------------------------------
+
+export interface ViolationRuleSpec {
+  type: ViolationType;
+  label: string;
+  severity: ViolationSeverity;
+  cooldown_seconds: number;
+  threshold_seconds: number;
+  locks_screen: boolean;
+  needs_review: boolean;
+}
+
+export function getViolationRules(): Promise<{ success: boolean; data: Record<string, ViolationRuleSpec> }> {
+  return request<{ success: boolean; data: Record<string, ViolationRuleSpec> }>("/public/violation-rules", {}, { auth: false });
+}

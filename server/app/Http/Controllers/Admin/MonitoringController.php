@@ -811,9 +811,11 @@ HTML;
             'pending_grading' => \App\Models\ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->whereNull('is_correct')
                 ->whereHas('question', fn ($q) => $q->whereIn('type', \App\Http\Controllers\Admin\GradingController::MANUAL))->count(),
             'user' => [
+                'id' => $attempt->user?->id,
                 'name' => $attempt->user?->name ?? 'Thí sinh',
                 'username' => $attempt->user?->username ?? '',
                 'email' => $attempt->user?->email,
+                'has_face_photo' => $attempt->user ? \App\Support\FaceReference::has($attempt->user) : false,
             ],
             'exam' => [
                 'id' => $attempt->exam->id,
