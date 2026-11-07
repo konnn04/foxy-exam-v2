@@ -47,13 +47,23 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/read', [\App\Http\Controllers\NotificationController::class, 'read']);
 });
 
-// 1. Landing Page (Trang chủ, Về chúng tôi, Dự án Exam Guard, Bảng giá)
+// 1. Landing Page & Dedicated Public Pages
 Route::get('/', function () {
     $plans = Plan::where('is_active', true)->get();
     return Inertia::render('Landing', [
         'plans' => $plans,
     ]);
 })->name('landing');
+
+Route::get('/features', fn () => Inertia::render('Public/Features'))->name('features');
+Route::get('/pricing', function () {
+    $plans = Plan::where('is_active', true)->get();
+    return Inertia::render('Public/Pricing', [
+        'plans' => $plans,
+    ]);
+})->name('pricing');
+Route::get('/about', fn () => Inertia::render('Public/About'))->name('about');
+Route::get('/download', fn () => Inertia::render('Public/Download'))->name('download');
 
 // 2. OpenAPI Interactive Documentation for Client App Developers (Scramble)
 Route::get('/docs', function () {
