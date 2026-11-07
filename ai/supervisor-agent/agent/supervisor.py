@@ -64,25 +64,50 @@ class RoomSession:
                 self._published(pub, p)
 
     def _published(self, pub: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant) -> None:
-        # camera only: screen shares are not analysed here and would waste bandwidth
-        if pub.kind == rtc.TrackKind.KIND_VIDEO and pub.source == rtc.TrackSource.SOURCE_CAMERA and classify(self.name, participant.identity):
-            pub.set_subscribed(True)
+        if pub.kind == rtc.TrackKind.KIND_VIDEO and classify(self.name, participant.identity):
+            if pub.source in (rtc.TrackSource.SOURCE_CAMERA, rtc.TrackSource.SOURCE_SCREENSHARE):
+                pub.set_subscribed(True)
 
     def _subscribed(self, track: rtc.Track, pub: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant) -> None:
         target = classify(self.name, participant.identity)
         if not target or track.kind != rtc.TrackKind.KIND_VIDEO:
+            return
+        if pub.source == rtc.TrackSource.SOURCE_SCREENSHARE and target[2][0] == "attempt":
+            wkey = f"{participant.identity}:screen"
+            self._stop(wkey)
+            self.workers[wkey] = asyncio.create_task(self._watch_screen(track, target[2][1]))
             return
         self._stop(participant.identity)
         self.workers[participant.identity] = asyncio.create_task(self._watch(track, target))
         log.info("watching %s in %s", participant.identity, self.name)
 
     def _unsubscribed(self, track, pub, participant) -> None:
-        self._stop(participant.identity)
+        if getattr(pub, "source", None) == rtc.TrackSource.SOURCE_SCREENSHARE:
+            self._stop(f"{participant.identity}:screen")
+        else:
+            self._stop(participant.identity)
 
     def _stop(self, identity: str) -> None:
         t = self.workers.pop(identity, None)
         if t:
             t.cancel()
+        ts = self.workers.pop(f"{identity}:screen", None)
+        if ts:
+            ts.cancel()
+
+    async def _watch_screen(self, track: rtc.Track, attempt_id: int) -> None:
+        """Samples 0.2 fps of the candidate's screen share so violations can bundle a screen snapshot."""
+        throttle = Throttle(0.2)
+        stream = rtc.VideoStream(track, capacity=1, format=rtc.VideoBufferType.RGB24)
+        try:
+            async for ev in stream:
+                if not throttle.allow(time.monotonic()):
+                    continue
+                f = ev.frame
+                rgb = np.frombuffer(f.data, dtype=np.uint8).reshape(f.height, f.width, 3)
+                self.sup.pipeline.record_frame(attempt_id, "screen", to_jpeg(rgb, max_width=960, quality=68))
+        finally:
+            await stream.aclose()
 
     async def _watch(self, track: rtc.Track, target) -> None:
         key, source, args = target

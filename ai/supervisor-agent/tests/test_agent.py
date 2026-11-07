@@ -8,9 +8,9 @@ import pytest
 
 from agent.clients import AI, AttemptInfo, Core
 from agent.config import Config
-from agent.frames import Throttle, to_jpeg
+from agent.frames import Throttle, annotate_boxes, to_jpeg
 from agent.pipeline import Pipeline
-from agent.rules import IdentityRule, ObjectRule
+from agent.rules import IdentityRule, MultiPersonRule, ObjectRule, PhoneDriftRule
 from agent.signing import SIGNATURE, TIMESTAMP, sign
 from agent.supervisor import classify, watched_room
 
@@ -124,12 +124,18 @@ class FakeCore:
 class FakeAI:
     def __init__(self):
         self.labels: dict[str, float] = {}
+        self.objects: list[dict] = []
         self.embeddings: list[tuple[int, np.ndarray | None]] = []
         self.calls = {"prohibited": 0, "embedding": 0}
 
-    async def prohibited(self, jpeg, labels=()):
+    async def detect(self, jpeg, labels=()):
         self.calls["prohibited"] += 1
-        return {k: v for k, v in self.labels.items() if not labels or k in labels}
+        found = {k: v for k, v in self.labels.items() if not labels or k in labels}
+        return found, list(self.objects)
+
+    async def prohibited(self, jpeg, labels=()):
+        found, _ = await self.detect(jpeg, labels)
+        return found
 
     async def embedding(self, jpeg):
         self.calls["embedding"] += 1
@@ -226,6 +232,55 @@ async def test_without_an_enrolled_reference_identity_is_not_judged():
     p, core, ai, run, _ = pipeline(ai_objects=False, has_reference=False)
     await run(n=5)
     assert ai.calls["embedding"] == 0 and core.violations == []
+
+
+@pytest.mark.asyncio
+async def test_multi_stream_evidence_bundling_and_bounding_box_annotation():
+    p, core, ai, run, inf = pipeline()
+    rgb = np.zeros((240, 320, 3), dtype=np.uint8)
+    valid_jpeg = to_jpeg(rgb)
+    # Record companion screen & phone frames first
+    p.record_frame(inf.attempt_id, "screen", valid_jpeg, 0.0)
+    p.record_frame(inf.attempt_id, "phone", valid_jpeg, 0.0)
+
+    ai.labels = {"cell phone": 0.91}
+    ai.objects = [{"label": "cell phone", "score": 0.91, "bbox": [10, 15, 80, 120]}]
+
+    await p.process("a7", "camera", valid_jpeg, lambda: __import__("asyncio").sleep(0, result=inf))
+    p.clock = lambda: 1.0  # type: ignore[assignment]
+    out = await p.process("a7", "camera", valid_jpeg, lambda: __import__("asyncio").sleep(0, result=inf))
+    assert out == ["PROHIBITED_DEVICE"]
+    vtype, severity, details, _ = core.violations[0]
+    assert vtype == "PROHIBITED_DEVICE"
+    assert set(details["evidence"].keys()) == {"camera", "screen", "phone"}
+    assert details["bboxes"] == [[10, 15, 80, 120]]
+
+
+@pytest.mark.asyncio
+async def test_phone_camera_detects_multiple_people_and_angle_drift():
+    p, core, ai, run, _ = pipeline(ai_identity=False)
+    # 2 persons and 1 laptop on phone cam for 2 frames -> MULTIPLE_PEOPLE
+    ai.objects = [
+        {"label": "person", "score": 0.9, "bbox": [10, 10, 50, 90]},
+        {"label": "person", "score": 0.85, "bbox": [60, 10, 100, 90]},
+        {"label": "laptop", "score": 0.88, "bbox": [120, 40, 200, 110]},
+    ]
+    assert await run(source="phone", key="p3-2", n=2) == ["MULTIPLE_PEOPLE"]
+    assert core.violations[0][0] == "MULTIPLE_PEOPLE"
+    assert core.violations[0][2]["person_count"] == 2
+
+    # Now phone camera loses sight of laptop for 4 of 5 frames -> PHONE_ORIENTATION_INVALID
+    core.violations.clear()
+    ai.objects = [{"label": "person", "score": 0.9, "bbox": [10, 10, 50, 90]}]
+    assert await run(source="phone", key="p3-2", n=4) == ["PHONE_ORIENTATION_INVALID"]
+    assert core.violations[0][0] == "PHONE_ORIENTATION_INVALID"
+
+
+def test_annotate_boxes_draws_onto_jpeg():
+    rgb = np.zeros((120, 160, 3), dtype=np.uint8)
+    raw = to_jpeg(rgb)
+    out = annotate_boxes(raw, [{"label": "cell phone", "score": 0.88, "bbox": [10, 10, 60, 80]}])
+    assert out[:2] == b"\xff\xd8" and out != raw
 
 
 # ---------------------------------------------------------------- the HTTP shell

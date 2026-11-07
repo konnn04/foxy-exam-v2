@@ -1,0 +1,48 @@
+services:
+  face-service:
+    build: ./face-service
+    container_name: foxy-face-service
+    restart: unless-stopped
+    ports:
+      - "${AI_FACE_PORT:-8090}:8090"
+    environment:
+      AI_TOKEN: ${AI_TOKEN:-}
+      INSIGHTFACE_MODEL: ${INSIGHTFACE_MODEL:-buffalo_s}
+      FACE_THRESHOLD: ${FACE_THRESHOLD:-0.35}
+    volumes:
+      - ai_models:/models
+
+  object-service:
+    build: ./object-service
+    container_name: foxy-object-service
+    restart: unless-stopped
+    ports:
+      - "${AI_OBJECT_PORT:-8091}:8091"
+    environment:
+      AI_TOKEN: ${AI_TOKEN:-}
+    volumes:
+      - ai_models:/models
+
+  supervisor-agent:
+    build: ./supervisor-agent
+    container_name: foxy-supervisor-agent
+    restart: unless-stopped
+    ports:
+      - "${AI_AGENT_PORT:-8099}:8099"
+    depends_on:
+      - face-service
+      - object-service
+    environment:
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://host.docker.internal:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      CORE_URL: ${CORE_URL:-http://host.docker.internal:8000}
+      RT_INTERNAL_SECRET: ${RT_INTERNAL_SECRET:-}
+      RECORD_URL: ${RECORD_URL:-http://host.docker.internal:8083}
+      AI_FACE_URL: http://face-service:8090
+      AI_OBJECT_URL: http://object-service:8091
+      AI_TOKEN: ${AI_TOKEN:-}
+      AGENT_FPS: ${AGENT_FPS:-1}
+
+volumes:
+  ai_models:

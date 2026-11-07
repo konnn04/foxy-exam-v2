@@ -52,3 +52,23 @@ class IdentityRule:
         if similarity is None:  # no face / several faces: the on-device checks report those, nothing to judge here
             return False
         return self.window.push(similarity < self.threshold, now)
+
+
+class MultiPersonRule:
+    """Fires when >1 person is detected in 2 of the last 3 frames."""
+
+    def __init__(self, cooldown: float = 60.0):
+        self.window = Window(size=3, need=2, cooldown=cooldown)
+
+    def update(self, person_count: int, now: float) -> bool:
+        return self.window.push(person_count > 1, now)
+
+
+class PhoneDriftRule:
+    """Fires when the secondary mobile camera stops seeing a person or laptop in 4 of the last 5 frames."""
+
+    def __init__(self, cooldown: float = 120.0):
+        self.window = Window(size=5, need=4, cooldown=cooldown)
+
+    def update(self, has_person: bool, has_screen: bool, now: float) -> bool:
+        return self.window.push(not (has_person and has_screen), now)

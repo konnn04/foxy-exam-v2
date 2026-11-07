@@ -92,17 +92,23 @@ class AI:
         self.http = http or httpx.AsyncClient(timeout=6.0)
         self.headers = {"X-AI-Token": cfg.ai_token} if cfg.ai_token else {}
 
-    async def prohibited(self, jpeg: bytes, labels: tuple[str, ...] = ()) -> dict[str, float]:
-        """Prohibited labels in the picture with their best score. `labels` is the exam's own list (default: the service's)."""
+    async def detect(self, jpeg: bytes, labels: tuple[str, ...] = ()) -> tuple[dict[str, float], list[dict]]:
+        """Prohibited labels with their best score, plus the raw list of all detected objects with bounding boxes."""
         r = await self.http.post(f"{self.cfg.object_url}/v1/detect", params={"min_score": 0.5}, files={"frame": ("f.jpg", jpeg, "image/jpeg")}, headers=self.headers)
         if r.status_code != 200:
-            return {}
+            return {}, []
         out = r.json()
+        objects = list(out.get("objects", []))
         flagged = set(labels) if labels else set(out.get("prohibited", []))
         best: dict[str, float] = {}
-        for o in out.get("objects", []):
+        for o in objects:
             if o["label"] in flagged:
                 best[o["label"]] = max(best.get(o["label"], 0.0), float(o["score"]))
+        return best, objects
+
+    async def prohibited(self, jpeg: bytes, labels: tuple[str, ...] = ()) -> dict[str, float]:
+        """Prohibited labels in the picture with their best score. `labels` is the exam's own list (default: the service's)."""
+        best, _ = await self.detect(jpeg, labels)
         return best
 
     async def embedding(self, jpeg: bytes) -> tuple[int, np.ndarray | None]:
