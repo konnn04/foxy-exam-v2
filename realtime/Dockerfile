@@ -38,7 +38,9 @@ HEALTHCHECK --interval=15s --timeout=3s --retries=3 CMD wget -qO- http://127.0.0
 ENTRYPOINT ["foxy"]
 
 FROM base AS record
+USER root
 RUN apk add --no-cache ffmpeg
+USER foxy
 COPY --from=build /out/foxy-record /usr/local/bin/foxy
 ENV PORT=8083
 EXPOSE 8083
