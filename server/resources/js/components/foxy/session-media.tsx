@@ -82,6 +82,7 @@ function LiveStreamTile({
       {track ? (
         <video
           ref={ref}
+          data-stream-kind={label}
           autoPlay
           playsInline
           muted
@@ -168,6 +169,8 @@ function Player({
         <div className="relative">
           <video
             ref={ref}
+            data-stream-kind={label}
+            crossOrigin="anonymous"
             src={rec.url}
             muted
             playsInline
@@ -236,6 +239,7 @@ export function SessionMedia({
   at,
   evidenceId,
   evidence: evidenceSet,
+  snapshots,
   clips,
   clipRange,
   config,
@@ -250,6 +254,7 @@ export function SessionMedia({
   at: string | null;
   evidenceId: string | null;
   evidence?: Record<string, string> | null;
+  snapshots?: Record<string, string> | null;
   clips?: Record<string, string> | null;
   clipRange?: { from_ms: number; to_ms: number } | null;
   config?: { ai_face_check?: boolean; require_screen?: boolean; extra_camera?: string } | null;
@@ -352,7 +357,15 @@ export function SessionMedia({
     ['camera', 'Camera chính'],
     ['phone', 'Camera phụ (điện thoại)'],
   ] as const)
-    .map(([k, label]) => ({ k, label, rec: items.find((r) => r.id === (evidenceSet?.[k] ?? null) && r.url) }))
+    .map(([k, label]) => {
+      const rec = items.find((r) => r.id === (evidenceSet?.[k] ?? null) && r.url);
+      if (rec) return { k, label, rec };
+      const inlineDataUrl = snapshots?.[k];
+      if (inlineDataUrl && typeof inlineDataUrl === 'string') {
+        return { k, label, rec: { id: `snap-${k}`, kind: 'evidence', status: 'ready', duration_ms: 0, created_at: 0, url: inlineDataUrl } as RecordingInfo };
+      }
+      return { k, label, rec: undefined };
+    })
     .filter((x) => x.rec);
 
   const clipList = ([

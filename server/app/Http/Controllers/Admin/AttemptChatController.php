@@ -24,7 +24,7 @@ class AttemptChatController extends Controller
 
     private function attempt(int $id): ExamAttempt
     {
-        abort_unless(in_array(Auth::user()?->role, ['SUPER_ADMIN', 'ORG_ADMIN', 'TEACHER'], true), 403);
+        abort_unless(in_array(Auth::user()?->role, ['SUPER_ADMIN', 'ORG_ADMIN', 'TEACHER', 'LECTURER'], true), 403);
         $attempt = ExamAttempt::with('exam')->findOrFail($id);
         abort_unless($attempt->exam, 404);
         $this->tenant->enforceOwnership($attempt->exam);
@@ -61,24 +61,39 @@ class AttemptChatController extends Controller
         return response()->json(['data' => $message->toPayload()], 201);
     }
 
-    /** POST /admin/attempts/{id}/violations — a violation the proctor saw with their own eyes. */
+    /** POST /admin/attempts/{id}/violations — a violation the proctor saw with their own eyes (optionally with captured live frame snapshots). */
     public function violation(Request $request, int $id)
     {
         $attempt = $this->attempt($id);
         $data = $request->validate([
             'severity' => ['required', 'in:LOW,MEDIUM,HIGH,CRITICAL'],
             'message' => ['required', 'string', 'max:500'],
+            'snapshots' => ['nullable', 'array'],
+            'snapshots.camera' => ['nullable', 'string', 'max:500000'],
+            'snapshots.screen' => ['nullable', 'string', 'max:500000'],
+            'snapshots.phone' => ['nullable', 'string', 'max:500000'],
         ]);
+
+        $details = [
+            'message' => trim($data['message']),
+            'source' => 'proctor',
+            'by' => Auth::id(),
+            'by_name' => Auth::user()->name,
+        ];
+        if (!empty($data['snapshots']) && is_array($data['snapshots'])) {
+            $details['snapshots'] = array_filter($data['snapshots'], fn ($v) => is_string($v) && str_starts_with($v, 'data:image/'));
+        }
+
         Violation::create([
             'exam_attempt_id' => $attempt->id,
             'violation_type' => 'MANUAL',
             'severity' => $data['severity'],
-            'details' => ['message' => trim($data['message']), 'source' => 'proctor', 'by' => Auth::id(), 'by_name' => Auth::user()->name],
+            'details' => $details,
             'is_reviewed' => true,
             'timestamp' => now(),
         ]);
         Risk::apply($attempt, Risk::weight($data['severity']));
 
-        return back()->with('success', 'Đã ghi nhận vi phạm.');
+        return back()->with('success', 'Đã ghi nhận vi phạm thủ công kèm ảnh chụp hiện trường.');
     }
 }

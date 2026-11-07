@@ -415,6 +415,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             at={sel?.timestamp ?? null}
             evidenceId={sel?.evidence_id ?? null}
             evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null}
+            snapshots={((sel?.details as { snapshots?: Record<string, string> } | null)?.snapshots) ?? null}
             clips={((sel?.details as { clips?: Record<string, string> } | null)?.clips) ?? null}
             clipRange={((sel?.details as { clip_range?: { from_ms: number; to_ms: number } } | null)?.clip_range) ?? null}
             config={attempt.exam.monitoring_config}

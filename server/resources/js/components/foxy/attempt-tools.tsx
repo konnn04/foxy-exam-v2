@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Download, FileText, Flag, MessageSquare, Send, ShieldCheck } from 'lucide-react';
+import { Camera, Download, FileText, Flag, MessageSquare, Send, ShieldCheck } from 'lucide-react';
 import { useDialog } from './dialogs';
 import { Field, FxButton, FxSelect, FxTextarea, Modal, Panel } from './ui';
 import { AttemptChat } from './attempt-chat';
@@ -12,12 +12,38 @@ const SEVERITIES = [
   { value: 'CRITICAL', label: 'Nghiêm trọng' },
 ];
 
+function captureActiveVideoSnapshots(): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof document === 'undefined') return out;
+  const videos = document.querySelectorAll<HTMLVideoElement>('video[data-stream-kind]');
+  videos.forEach((v) => {
+    if (!v.videoWidth || !v.videoHeight) return;
+    const rawKind = (v.getAttribute('data-stream-kind') ?? '').toLowerCase();
+    const key = rawKind.includes('màn hình') ? 'screen' : rawKind.includes('phụ') ? 'phone' : 'camera';
+    try {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, 640 / v.videoWidth);
+      canvas.width = Math.round(v.videoWidth * scale);
+      canvas.height = Math.round(v.videoHeight * scale);
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        out[key] = canvas.toDataURL('image/jpeg', 0.78);
+      }
+    } catch {
+      // Cross-origin without CORS or tainted canvas: skip gracefully
+    }
+  });
+  return out;
+}
+
 /** Chat with the candidate, a violation the proctor saw themselves, formal violation report printing/sending, and CSV downloads. */
 export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: number; running: boolean; chatSeq?: number }) {
   const dialog = useDialog();
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState('MEDIUM');
   const [message, setMessage] = useState('');
+  const [capturedShots, setCapturedShots] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
   const [reportOpen, setReportOpen] = useState(false);
@@ -36,16 +62,22 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
     }
   };
 
+  const openManualModal = () => {
+    setCapturedShots(captureActiveVideoSnapshots());
+    setOpen(true);
+  };
+
   const save = () => {
     setBusy(true);
     router.post(
       `/admin/attempts/${attemptId}/violations`,
-      { severity, message },
+      { severity, message, snapshots: Object.keys(capturedShots).length > 0 ? capturedShots : undefined },
       {
         preserveScroll: true,
         onSuccess: () => {
           setOpen(false);
           setMessage('');
+          setCapturedShots({});
         },
         onFinish: () => setBusy(false),
       },
@@ -77,7 +109,7 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
           Trao đổi với thí sinh
         </span>
         <div className="flex-1" />
-        <FxButton size="sm" icon={Flag} onClick={() => setOpen(true)}>
+        <FxButton size="sm" icon={Flag} onClick={openManualModal}>
           Ghi vi phạm thủ công
         </FxButton>
         <FxButton size="sm" icon={ShieldCheck} onClick={verify}>
@@ -142,6 +174,33 @@ export function AttemptTools({ attemptId, running, chatSeq }: { attemptId: numbe
           <Field label="Mô tả">
             <FxTextarea value={message} maxLength={500} rows={3} onChange={(e) => setMessage(e.target.value)} placeholder="Ví dụ: Thí sinh liên tục nhìn sang bài bạn bên cạnh." />
           </Field>
+          {Object.keys(capturedShots).length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1 font-medium text-foreground">
+                  <Camera className="size-3.5 text-primary" />
+                  Ảnh chụp tức thời từ các góc video đang hiển thị ({Object.keys(capturedShots).length} khung)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCapturedShots(captureActiveVideoSnapshots())}
+                  className="text-[11px] font-medium text-primary hover:underline"
+                >
+                  Chụp lại khung hiện tại
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(capturedShots).map(([k, url]) => (
+                  <div key={k} className="relative overflow-hidden rounded border border-border bg-black">
+                    <img src={url} alt={k} className="aspect-video w-full object-cover" />
+                    <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {k === 'screen' ? 'Màn hình' : k === 'phone' ? 'Cam phụ' : 'Cam chính'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
