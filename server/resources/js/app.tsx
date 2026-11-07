@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { DialogProvider } from '@/components/foxy/dialogs';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 /**
  * Lecturers use /lecturer, admins /admin — the very same portal (server: PortalAlias). Pages link to
@@ -30,9 +31,11 @@ createInertiaApp({
         aliasPortal((props.initialPage.props as any).portal);
         const flash = (props.initialPage.props as any).flash;
         const tree = (
-            <DialogProvider initialFlash={flash}>
-                <App {...props} />
-            </DialogProvider>
+            <LanguageProvider>
+                <DialogProvider initialFlash={flash}>
+                    <App {...props} />
+                </DialogProvider>
+            </LanguageProvider>
         );
         if (el.hasChildNodes()) {
             hydrateRoot(el, tree);

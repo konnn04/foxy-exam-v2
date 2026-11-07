@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Globe,
 } from 'lucide-react';
-import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -307,9 +307,5 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
 }
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
-  return (
-    <LanguageProvider>
-      <PublicLayoutContent>{children}</PublicLayoutContent>
-    </LanguageProvider>
-  );
+  return <PublicLayoutContent>{children}</PublicLayoutContent>;
 }
