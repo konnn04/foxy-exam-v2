@@ -2,9 +2,20 @@ import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 
 export type PhoneState = "off" | "connecting" | "live" | "lost";
 
+export interface PhoneSignalPayload {
+  type: string;
+  facing?: "environment" | "user";
+  portrait?: boolean;
+  tiltWarning?: string | null;
+  visibility?: string;
+  deviceId?: string | null;
+  ts?: number;
+}
+
 /**
  * Watches the phone camera during the exam: joins the phone's private room as a viewer, hands the video out as a
- * MediaStream (shown in the exam window, framed for the AI checks and as evidence) and reports when the phone drops.
+ * MediaStream (shown in the exam window, framed for the AI checks and as evidence) and reports when the phone drops
+ * or sends a tamper/orientation/screen-off signal over the LiveKit data channel.
  * LiveKit reconnects the viewer by itself; a phone that comes back publishes again and the stream returns.
  */
 export class PhoneFeed {
@@ -14,6 +25,7 @@ export class PhoneFeed {
   constructor(
     private onState: (s: PhoneState) => void,
     private onStream: (stream: MediaStream | null) => void,
+    private onSignal?: (sig: PhoneSignalPayload) => void,
   ) {}
 
   async connect(creds: { url: string; token: string }): Promise<void> {
@@ -35,7 +47,16 @@ export class PhoneFeed {
       .on(RoomEvent.TrackUnsubscribed, (t) => t.kind === Track.Kind.Video && lost())
       .on(RoomEvent.ParticipantDisconnected, lost)
       .on(RoomEvent.Disconnected, lost)
-      .on(RoomEvent.Reconnecting, () => this.onState("connecting"));
+      .on(RoomEvent.Reconnecting, () => this.onState("connecting"))
+      .on(RoomEvent.DataReceived, (payload) => {
+        if (this.stopped || !this.onSignal) return;
+        try {
+          const msg = JSON.parse(new TextDecoder().decode(payload)) as PhoneSignalPayload;
+          this.onSignal(msg);
+        } catch {
+          /* ignore malformed JSON */
+        }
+      });
     this.room = room;
     await room.connect(creds.url, creds.token);
     // a phone that was in the room before we joined

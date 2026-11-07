@@ -6,6 +6,14 @@ import { getMobileViewer, issueMobileCamera, verifyMobileLayout } from "./api";
 export type PhoneLink = "idle" | "waiting" | "connected" | "error";
 export type Layout = "unknown" | "checking" | "ok" | "bad";
 
+export interface PhoneTelemetry {
+  type: string;
+  facing?: "environment" | "user";
+  portrait?: boolean;
+  tiltWarning?: string | null;
+  visibility?: string;
+}
+
 /**
  * The lobby side of the extra camera: asks the server for a link (shown as a QR code), joins the private room the phone
  * publishes into to show its preview and checks that the candidate and the laptop are in the picture. The phone stays in
@@ -21,6 +29,7 @@ export function usePhoneCamera(examId: number) {
   const video = useRef<HTMLVideoElement | null>(null);
   const track = useRef<RemoteTrack | null>(null);
   const url = useRef("");
+  const phoneTelemetry = useRef<PhoneTelemetry | null>(null);
 
   const attach = useCallback((el: HTMLVideoElement | null) => {
     video.current = el;
@@ -62,6 +71,8 @@ export function usePhoneCamera(examId: number) {
         track.current = t;
         if (video.current) t.attach(video.current);
         setLink("connected");
+        // Whenever a new video track is published (e.g. camera switched on phone), reset layout verification!
+        setLayout("unknown");
       })
         .on(RoomEvent.TrackUnsubscribed, () => {
           track.current = null;
@@ -72,6 +83,27 @@ export function usePhoneCamera(examId: number) {
           track.current = null;
           setLink("waiting");
           setLayout("unknown");
+        })
+        .on(RoomEvent.DataReceived, (payload) => {
+          try {
+            const msg = JSON.parse(new TextDecoder().decode(payload)) as PhoneTelemetry;
+            phoneTelemetry.current = msg;
+            if (msg.type === "CAMERA_SWITCHED") {
+              setLayout("bad");
+              setLayoutMessage("Bạn vừa đổi camera trên điện thoại. Vui lòng đặt lại máy và bấm “Kiểm tra góc đặt”.");
+            } else if (msg.type === "PHONE_SCREEN_OFF" || msg.visibility === "hidden") {
+              setLayout("bad");
+              setLayoutMessage("Màn hình điện thoại đang bị tắt hoặc trình duyệt bị ẩn. Hãy mở lại trang camera trên điện thoại.");
+            } else if (msg.portrait) {
+              setLayout("bad");
+              setLayoutMessage("Điện thoại đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) để thấy bạn và màn hình laptop.");
+            } else if (msg.tiltWarning) {
+              setLayout("bad");
+              setLayoutMessage(msg.tiltWarning);
+            }
+          } catch {
+            /* ignore malformed payload */
+          }
         })
         .on(RoomEvent.Disconnected, () => setLink((l) => (l === "connected" ? "waiting" : l)));
       await r.connect(viewer.url, viewer.token);
@@ -89,8 +121,6 @@ export function usePhoneCamera(examId: number) {
           }
         }),
       );
-      // If we reused an existing token that said `connected` in DB, but the phone is no longer in the LiveKit room,
-      // automatically issue a fresh QR code after 2.5 seconds so the student isn't stuck without a QR!
       if (!forceNew && !url.current && !alreadyPublishing) {
         const res = (await issueMobileCamera(examId)).data;
         url.current = res.url;
@@ -102,17 +132,57 @@ export function usePhoneCamera(examId: number) {
     }
   }, [examId, leave]);
 
-  /** Is the candidate (and the laptop) visible in the phone's picture? Checked by the server's object service. */
+  /** Is the candidate (and the laptop) visible in the phone's picture? Checked by the server's object service + local sensor check. */
   const checkLayout = useCallback(async () => {
     const v = video.current;
     if (!v || v.videoWidth === 0) return setLayoutMessage("Chưa có hình từ điện thoại.");
+    // 1. Check orientation & telemetry before sending to server
+    if (v.videoHeight > v.videoWidth || phoneTelemetry.current?.portrait) {
+      setLayout("bad");
+      setLayoutMessage("Điện thoại đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) rồi bấm kiểm tra lại.");
+      return;
+    }
+    if (phoneTelemetry.current?.visibility === "hidden") {
+      setLayout("bad");
+      setLayoutMessage("Trang camera trên điện thoại đang bị ẩn hoặc tắt màn hình. Hãy mở lại trên điện thoại.");
+      return;
+    }
+    if (phoneTelemetry.current?.tiltWarning) {
+      setLayout("bad");
+      setLayoutMessage(phoneTelemetry.current.tiltWarning);
+      return;
+    }
     setLayout("checking");
     const canvas = document.createElement("canvas");
     const scale = Math.min(1, 960 / v.videoWidth);
     canvas.width = Math.round(v.videoWidth * scale);
     canvas.height = Math.round(v.videoHeight * scale);
-    canvas.getContext("2d")?.drawImage(v, 0, 0, canvas.width, canvas.height);
-    const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.7));
+    const ctx = canvas.getContext("2d");
+    ctx?.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+    // 2. Client-side brightness / covered-camera check
+    if (ctx) {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      let sqSum = 0;
+      const step = 16 * 4;
+      let count = 0;
+      for (let i = 0; i < imgData.length; i += step) {
+        const lum = 0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2];
+        sum += lum;
+        sqSum += lum * lum;
+        count++;
+      }
+      const mean = sum / Math.max(1, count);
+      const std = Math.sqrt(Math.max(0, sqSum / Math.max(1, count) - mean * mean));
+      if (mean < 15 || std < 6) {
+        setLayout("bad");
+        setLayoutMessage("Khung hình từ điện thoại quá tối hoặc camera đang bị che. Hãy bật đèn và đặt điện thoại nhìn vào bạn và laptop.");
+        return;
+      }
+    }
+
+    const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.75));
     if (!blob) return setLayout("unknown");
     try {
       const res = await verifyMobileLayout(examId, blob);

@@ -1,6 +1,6 @@
 import { formatTime } from "../lib/datetime";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, ShieldAlert, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
+import { AlertTriangle, Camera, Clock, Cpu, Eye, Lock, Mic, Monitor, MonitorUp, QrCode, ShieldAlert, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
 import { Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { ChatPanel } from "./ChatPanel";
@@ -146,17 +146,34 @@ export function ExamShell({
               title={blocker.kind === "recheck" ? "Yêu cầu kiểm tra lại thiết bị (Precheck)" : "Bài thi đang bị tạm khoá"}
             >
               {blocker.text}
-              <div className="mt-4 flex flex-col items-center gap-2">
+              <div className="mt-4 flex flex-col items-center gap-2.5">
                 {blocker.kind === "recheck" ? (
                   <Button variant="primary" onClick={() => void runtime.triggerRecheck()}>
                     Thực hiện kiểm tra thiết bị (Precheck)
                   </Button>
+                ) : blocker.kind === "phone" ? (
+                  <>
+                    {runtime.phone.qr && (
+                      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface-2 p-3">
+                        <img src={runtime.phone.qr} alt="Mã QR kết nối lại điện thoại" className="h-[140px] w-[140px] rounded-md bg-white p-1" />
+                        <span className="text-[11px] text-muted">Quét mã QR bằng điện thoại để kết nối lại</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {runtime.phone.state === "live" && (
+                        <Button variant="primary" loading={runtime.phone.verifying} onClick={() => void runtime.phone.verifyLayout()}>
+                          Kiểm tra lại góc đặt
+                        </Button>
+                      )}
+                      <Button icon={<QrCode size={13} />} onClick={runtime.phone.issueNewQr}>
+                        {runtime.phone.qr ? "Tạo mã QR mới" : "Hiện mã QR kết nối lại"}
+                      </Button>
+                    </div>
+                  </>
                 ) : (
-                  blocker.kind !== "phone" && (
-                    <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
-                      {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
-                    </Button>
-                  )
+                  <Button variant="primary" onClick={() => void (blocker.kind === "camera" ? runtime.restoreCamera() : runtime.restoreScreen())}>
+                    {blocker.kind === "camera" ? "Bật lại camera" : "Chia sẻ lại màn hình"}
+                  </Button>
                 )}
                 {runtime.restoreError && <span className="text-danger">{runtime.restoreError}</span>}
                 <span className="text-[11px] text-subtle">Sự việc đã được ghi nhận và gửi cho giám thị.</span>

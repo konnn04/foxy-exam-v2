@@ -95,27 +95,80 @@ class MobileCameraController extends Controller
     public function verify(Request $request, Exam $exam): JsonResponse
     {
         $request->validate(['frame' => ['required', 'file', 'mimetypes:image/jpeg,image/png', 'max:4096']]);
-        if (AiService::endpoints() === [] || AiService::getStatus() !== 'ONLINE') {
-            return response()->json(['success' => true, 'ok' => true, 'skipped' => true, 'message' => 'Chưa có dịch vụ AI để kiểm tra góc đặt điện thoại.']);
+        $bytes = (string) file_get_contents($request->file('frame')->getRealPath());
+
+        // 1. Basic image geometry & brightness check (catches covered camera, black frame, or portrait frame)
+        $img = @imagecreatefromstring($bytes);
+        if ($img !== false) {
+            $w = imagesx($img);
+            $h = imagesy($img);
+            if ($h > $w) {
+                imagedestroy($img);
+                return response()->json([
+                    'success' => true,
+                    'ok' => false,
+                    'problem' => 'portrait',
+                    'message' => 'Điện thoại đang đặt dọc. Vui lòng xoay ngang điện thoại (Landscape) để bao quát cả người và màn hình laptop.',
+                ]);
+            }
+            // Sample 8x6 grid for luminance & variance
+            $sum = 0.0;
+            $sqSum = 0.0;
+            $count = 0;
+            for ($y = 0; $y < 6; $y++) {
+                for ($x = 0; $x < 8; $x++) {
+                    $px = (int) (($x + 0.5) * $w / 8);
+                    $py = (int) (($y + 0.5) * $h / 6);
+                    $rgb = imagecolorat($img, $px, $py);
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+                    $lum = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+                    $sum += $lum;
+                    $sqSum += $lum * $lum;
+                    $count++;
+                }
+            }
+            imagedestroy($img);
+            $mean = $sum / max(1, $count);
+            $std = sqrt(max(0.0, ($sqSum / max(1, $count)) - ($mean * $mean)));
+            if ($mean < 16 || $std < 7) {
+                return response()->json([
+                    'success' => true,
+                    'ok' => false,
+                    'problem' => 'camera_covered_or_dark',
+                    'message' => $mean < 16
+                        ? 'Khung hình từ điện thoại quá tối hoặc bị che khuất. Hãy bật đèn và bỏ vật chắn camera.'
+                        : 'Khung hình từ điện thoại bị mờ hoặc chỉ chiếu vào một mặt phẳng đồng màu (bàn/tường). Hãy đặt điện thoại nhìn chéo vào bạn và laptop.',
+                ]);
+            }
         }
-        $result = AiService::detectObjects((string) file_get_contents($request->file('frame')->getRealPath()), 0.35);
+
+        if (AiService::endpoints() === [] || !AiService::serviceOnline('objects')) {
+            return response()->json(['success' => true, 'ok' => true, 'skipped' => true, 'message' => 'Khung hình ngang hợp lệ (chế độ kiểm tra cục bộ).']);
+        }
+        $result = AiService::detectObjects($bytes, 0.30);
         if (!$result) {
-            return response()->json(['success' => true, 'ok' => true, 'skipped' => true, 'message' => 'Không kiểm tra được góc đặt điện thoại lúc này.']);
+            return response()->json(['success' => true, 'ok' => true, 'skipped' => true, 'message' => 'Khung hình ngang hợp lệ (bỏ qua AI đối tượng tạm thời).']);
         }
-        $labels = collect($result['objects'])->pluck('label');
-        $person = $labels->contains('person');
-        $laptop = $labels->intersect(['laptop', 'tv'])->isNotEmpty();
+        $objects = collect($result['objects'] ?? []);
+        $labels = $objects->pluck('label');
+        $personObj = $objects->firstWhere('label', 'person');
+        $laptopObj = $objects->first(fn ($o) => in_array($o['label'] ?? '', ['laptop', 'tv', 'monitor'], true));
+        $person = $personObj !== null;
+        $laptop = $laptopObj !== null;
         $problem = !$person && !$laptop ? 'no_person_no_laptop' : (!$person ? 'no_person' : (!$laptop ? 'no_laptop' : null));
 
         return response()->json([
             'success' => true,
             'ok' => $problem === null,
             'problem' => $problem,
+            'objects' => $labels->values()->all(),
             'message' => match ($problem) {
-                'no_person_no_laptop' => 'Không thấy bạn và laptop trong khung hình. Đặt điện thoại ở góc bàn nhìn chéo vào cả hai.',
-                'no_person' => 'Không thấy bạn trong khung hình của điện thoại.',
-                'no_laptop' => 'Không thấy laptop trong khung hình. Điều chỉnh góc đặt điện thoại.',
-                default => 'Góc đặt điện thoại phù hợp.',
+                'no_person_no_laptop' => 'Không thấy thí sinh và laptop trong khung hình. Đặt điện thoại nằm ngang ở góc bàn nhìn chéo (90°) vào cả hai.',
+                'no_person' => 'Đã thấy laptop nhưng chưa thấy rõ thí sinh trong khung hình của điện thoại. Hãy lùi điện thoại ra xa hơn một chút.',
+                'no_laptop' => 'Đã thấy thí sinh nhưng chưa thấy màn hình laptop trong khung hình. Hãy xoay góc điện thoại để thấy cả hai tay và màn hình laptop.',
+                default => 'Góc đặt điện thoại hợp lệ: đã nhận diện rõ thí sinh và màn hình laptop.',
             },
         ]);
     }

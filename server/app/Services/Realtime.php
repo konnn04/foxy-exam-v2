@@ -130,13 +130,13 @@ class Realtime
 
     public function phoneCredentials(User $user, Exam $exam): ?array
     {
-        return $this->lk(self::phoneRoom($user->id, $exam->id), 'phone', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => false, 'canPublishData' => false], ['role' => 'phone'], 12 * 3600);
+        return $this->lk(self::phoneRoom($user->id, $exam->id), 'phone', 'Điện thoại', ['canPublish' => true, 'canSubscribe' => false, 'canPublishData' => true], ['role' => 'phone'], 12 * 3600);
     }
 
     /** The candidate's computer: watches the phone (lobby preview, exam window, frames for the AI). */
     public function phoneViewerCredentials(User $user, Exam $exam): ?array
     {
-        return $this->lk(self::phoneRoom($user->id, $exam->id), 'viewer-' . $user->id . '-' . bin2hex(random_bytes(3)), $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => false], ['role' => 'phone-viewer'], 12 * 3600);
+        return $this->lk(self::phoneRoom($user->id, $exam->id), 'viewer-' . $user->id . '-' . bin2hex(random_bytes(3)), $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => true], ['role' => 'phone-viewer'], 12 * 3600);
     }
 
     /** Ask the record service to record the phone (it needs the attempt, so this runs once the attempt exists). Never throws. */

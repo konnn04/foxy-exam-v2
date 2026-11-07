@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { getMobileViewer, type MonitoringConfig } from "./api";
+import QRCode from "qrcode";
+import { getMobileViewer, issueMobileCamera, verifyMobileLayout, type MonitoringConfig } from "./api";
 import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
 import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, savePendingExam, setLobbyMedia } from "./lobbyMedia";
-import { LiveKitPublisher, explain, FAILURE_TEXT, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
+import { LiveKitPublisher, explain, FAILURE_TEXT, getPreferredCamera, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { releaseEvidence } from "./evidence";
 import { startClipRecorder, stopClipRecorder } from "./clipRecorder";
@@ -70,11 +71,16 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const [blurred, setBlurred] = useState(false);
   const [phoneState, setPhoneState] = useState<PhoneState>("off");
   const [phoneStream, setPhoneStream] = useState<MediaStream | null>(null);
+  const [phoneIssue, setPhoneIssue] = useState<string | null>(null);
+  const [phoneQr, setPhoneQr] = useState<string | null>(null);
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
   const [spot, setSpot] = useState<{ left: number } | null>(null);
   const phoneFeed = useRef<PhoneFeed | null>(null);
   const phoneRef = useRef<MediaStream | null>(null);
   const phoneEverLive = useRef(false);
   const lastPhoneLoss = useRef(0);
+  const lastPhoneSig = useRef<Record<string, number>>({});
+  const precheckedCameraId = useRef<string | null>(getPreferredCamera());
   const spotTimer = useRef<number | undefined>(undefined);
   const loadTimer = useRef<number | undefined>(undefined);
   const spotTick = useRef<number | undefined>(undefined);
@@ -152,21 +158,37 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     [client, guard],
   );
 
-  /** Watches the linked phone for the whole exam; losing it is a violation (and a blocker when the exam requires it). */
-  const startPhone = useCallback(async () => {
+  /** Watches the linked phone for the whole exam; losing it or tampering with it is a violation (and a blocker when the exam requires it). */
+  const startPhone = useCallback(async (forceNewQr = false) => {
     const examId = getSession()?.exam.id;
     if (!examId || (cfgRef.current?.extra_camera ?? "off") === "off") return;
     try {
-      const res = (await getMobileViewer(examId)).data;
-      if (!res?.viewer) return;
+      await phoneFeed.current?.stop();
+      let viewer: { url: string; token: string; room: string } | null = null;
+      if (!forceNewQr) {
+        const res = (await getMobileViewer(examId)).data;
+        viewer = res?.viewer ?? null;
+      }
+      if (!viewer || forceNewQr) {
+        const issued = (await issueMobileCamera(examId)).data;
+        viewer = issued.viewer;
+        setPhoneQr(await QRCode.toDataURL(issued.url, { margin: 1, width: 200, errorCorrectionLevel: "M" }));
+      }
+      if (!viewer) return;
       const feed = new PhoneFeed(
         (s) => {
           setPhoneState(s);
-          if (s === "live") phoneEverLive.current = true;
+          if (s === "live") {
+            const wasLost = phoneEverLive.current;
+            phoneEverLive.current = true;
+            if (wasLost && active.current) {
+              setPhoneIssue("Camera phụ vừa kết nối lại. Bắt buộc bấm “Kiểm tra lại góc đặt” để xác thực vị trí ngồi và laptop trước khi tiếp tục.");
+            }
+          }
           const now = Date.now();
           if (s === "lost" && phoneEverLive.current && active.current && now - lastPhoneLoss.current > 30_000) {
             lastPhoneLoss.current = now;
-            guard.report("PHONE_DISCONNECTED", "HIGH", "Camera phụ (điện thoại) mất kết nối");
+            guard.report("PHONE_DISCONNECTED", "HIGH", "Camera phụ (điện thoại) mất kết nối giữa giờ thi");
           }
         },
         (stream) => {
@@ -174,14 +196,91 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           setPhoneStream(stream);
           setLobbyMedia({ phone: stream });
         },
+        (sig) => {
+          if (!active.current) return;
+          const now = Date.now();
+          const throttle = (k: string, ms = 15_000) => {
+            if (now - (lastPhoneSig.current[k] ?? 0) < ms) return false;
+            lastPhoneSig.current[k] = now;
+            return true;
+          };
+          if (sig.type === "PHONE_SCREEN_OFF" || sig.visibility === "hidden") {
+            setPhoneIssue("Màn hình điện thoại phụ đã bị tắt hoặc trình duyệt bị ẩn. Hãy mở lại trang camera trên điện thoại và kiểm tra lại góc đặt.");
+            if (throttle("screen_off")) {
+              guard.report("PHONE_SCREEN_OFF", "HIGH", "Điện thoại giám sát phụ bị tắt màn hình hoặc chuyển sang ứng dụng khác");
+            }
+          } else if (sig.type === "CAMERA_SWITCHED" || sig.type === "CAMERA_SWITCH_ATTEMPTED") {
+            setPhoneIssue("Phát hiện thao tác đổi camera trên điện thoại phụ. Vui lòng giữ cố định camera và bấm “Kiểm tra lại góc đặt”.");
+            if (throttle("cam_switch")) {
+              guard.report("CAMERA_TAMPERED", "HIGH", "Thay đổi hoặc cố tình chuyển đổi ống kính camera phụ trong giờ thi", { facing: sig.facing });
+            }
+          } else if (sig.portrait) {
+            setPhoneIssue("Điện thoại phụ đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) để thấy rõ thí sinh và màn hình laptop.");
+            if (throttle("portrait", 25_000)) {
+              guard.report("PHONE_ORIENTATION_INVALID", "MEDIUM", "Đặt điện thoại giám sát phụ sai hướng (đặt dọc thay vì nằm ngang)");
+            }
+          } else if (sig.tiltWarning) {
+            setPhoneIssue(sig.tiltWarning);
+            if (throttle("tilt", 25_000)) {
+              guard.report("PHONE_ORIENTATION_INVALID", "MEDIUM", "Điện thoại giám sát phụ bị đặt nằm phẳng trên mặt bàn (úp/ngửa)");
+            }
+          }
+        },
       );
       phoneFeed.current = feed;
-      await feed.connect(res.viewer);
+      await feed.connect(viewer);
     } catch (err) {
       console.warn("[runtime] phone camera feed failed:", err);
       setPhoneState("lost");
     }
   }, [guard]);
+
+  /** Verify the phone camera layout mid-exam after a disconnect, screen-off, or orientation/camera change. */
+  const verifyPhoneInExam = useCallback(async () => {
+    const examId = getSession()?.exam.id;
+    const stream = phoneRef.current;
+    if (!examId || !stream) {
+      setRestoreError("Chưa nhận được hình từ điện thoại. Hãy mở trang camera trên điện thoại trước.");
+      return;
+    }
+    setPhoneVerifying(true);
+    setRestoreError(null);
+    try {
+      const v = document.createElement("video");
+      v.muted = true;
+      v.playsInline = true;
+      v.srcObject = stream;
+      await v.play().catch(() => {});
+      await new Promise((r) => setTimeout(r, 250));
+      if (v.videoWidth === 0) throw new Error("Chưa đọc được khung hình từ điện thoại.");
+      if (v.videoHeight > v.videoWidth) {
+        setRestoreError("Điện thoại đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) rồi kiểm tra lại.");
+        v.srcObject = null;
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, 960 / v.videoWidth);
+      canvas.width = Math.round(v.videoWidth * scale);
+      canvas.height = Math.round(v.videoHeight * scale);
+      canvas.getContext("2d")?.drawImage(v, 0, 0, canvas.width, canvas.height);
+      v.pause();
+      v.srcObject = null;
+      const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.75));
+      if (!blob) throw new Error("Không chụp được khung hình kiểm tra.");
+      const res = await verifyMobileLayout(examId, blob);
+      if (res.ok) {
+        setPhoneIssue(null);
+        setPhoneQr(null);
+        setRestoreError(null);
+      } else {
+        setRestoreError(res.message);
+      }
+    } catch (e) {
+      setRestoreError(e instanceof Error ? e.message : "Không kiểm tra được góc đặt điện thoại.");
+    } finally {
+      setPhoneVerifying(false);
+    }
+  }, []);
 
   /** At random moments the candidate must look at the phone camera for 10 s; not doing so is a violation. */
   const scheduleSpotCheck = useCallback(() => {
@@ -238,6 +337,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       active.current = true;
       const live = await client.start(attemptId); // false => REST fallback
       const media = getLobbyMedia();
+      const camTrack = media.camera?.getVideoTracks()[0];
+      precheckedCameraId.current = camTrack?.getSettings().deviceId ?? getPreferredCamera();
       client.setState({ camera: !!media.camera, screen: !!media.screen });
       setCameraStream(media.camera);
       watchTracks();
@@ -303,7 +404,14 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     setRestoreError(null);
     try {
       stopStream(getLobbyMedia().camera);
-      const s = await openCamera();
+      const s = await openCamera(precheckedCameraId.current);
+      const newDeviceId = s.getVideoTracks()[0]?.getSettings().deviceId ?? null;
+      if (precheckedCameraId.current && newDeviceId && newDeviceId !== precheckedCameraId.current) {
+        guard.report("CAMERA_TAMPERED", "HIGH", "Thay đổi thiết bị camera chính khác với camera đã kiểm tra ở đầu giờ (precheck)", {
+          expected_device_id: precheckedCameraId.current,
+          actual_device_id: newDeviceId,
+        });
+      }
       setLobbyMedia({ camera: s });
       setCameraStream(s);
       await publisher.current?.publish("camera", s).catch(() => {});
@@ -313,7 +421,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     } catch (e) {
       setRestoreError(FAILURE_TEXT[explain(e)]);
     }
-  }, [client, startVision, watchTracks]);
+  }, [client, guard, startVision, watchTracks]);
 
   const restoreScreen = useCallback(async () => {
     setRestoreError(null);
@@ -396,8 +504,14 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
         ? ({ kind: "camera", text: "Camera đã bị tắt. Bật lại camera để tiếp tục làm bài." } as const)
         : needScreen && screen === "lost"
           ? ({ kind: "screen", text: "Bạn đã dừng chia sẻ màn hình. Chia sẻ lại để tiếp tục làm bài." } as const)
-          : needPhone && phoneState === "lost" && active.current
-            ? ({ kind: "phone", text: "Camera phụ (điện thoại) đã mất kết nối. Mở lại trang camera trên điện thoại, đặt đúng góc rồi bài thi sẽ tự mở lại." } as const)
+          : needPhone && (phoneState === "lost" || phoneIssue !== null) && active.current
+            ? ({
+                kind: "phone",
+                text:
+                  phoneState === "lost"
+                    ? "Camera phụ (điện thoại) đã mất kết nối. Hãy mở lại trang camera trên điện thoại (hoặc quét lại mã QR bên dưới), đặt nằm ngang đúng góc rồi xác nhận lại góc đặt."
+                    : phoneIssue!,
+              } as const)
             : null;
 
   const triggerRecheck = useCallback(async () => {
@@ -437,7 +551,15 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     blurred,
     needs: { camera: Boolean(config?.ai_face_check), mic: Boolean(config?.require_mic), screen: Boolean(config?.require_screen), phone: (config?.extra_camera ?? "off") !== "off" },
     blocker,
-    phone: { state: phoneState, stream: phoneStream },
+    phone: {
+      state: phoneState,
+      stream: phoneStream,
+      issue: phoneIssue,
+      qr: phoneQr,
+      verifying: phoneVerifying,
+      verifyLayout: verifyPhoneInExam,
+      issueNewQr: () => void startPhone(true),
+    },
     spot,
     restoreCamera,
     restoreScreen,
