@@ -770,3 +770,34 @@ export function getRealtimeSession(attemptId?: number): Promise<ApiEnvelope<Real
     body: JSON.stringify(attemptId ? { attempt_id: attemptId } : {}),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Student notifications (violation reports, announcements, biometric decisions)
+// ---------------------------------------------------------------------------
+
+export interface StudentNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  url: string | null;
+  read: boolean;
+  at: string | null;
+}
+
+export interface NotificationsResponse {
+  data: StudentNotification[];
+  unread: number;
+}
+
+export function getNotifications(beforeId?: number): Promise<NotificationsResponse> {
+  const qs = beforeId ? `?before=${beforeId}` : "";
+  return request<NotificationsResponse>(`/student/notifications${qs}`);
+}
+
+export function markNotificationsRead(ids?: number[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/student/notifications/read", {
+    method: "POST",
+    body: JSON.stringify(ids ? { ids } : {}),
+  });
+}

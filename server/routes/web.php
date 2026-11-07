@@ -2073,6 +2073,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/exams/{id}/live-video', [\App\Http\Controllers\Admin\MonitoringController::class, 'liveVideo'])->whereNumber('id');
     Route::post('/attempts/{id}/force-end', [\App\Http\Controllers\Admin\MonitoringController::class, 'forceEndAttempt'])->whereNumber('id');
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
+    Route::get('/attempts/{id}/report', [\App\Http\Controllers\Admin\MonitoringController::class, 'report'])->whereNumber('id');
+    Route::post('/attempts/{id}/send-report', [\App\Http\Controllers\Admin\MonitoringController::class, 'sendReport'])->whereNumber('id');
     Route::get('/attempts/{id}/submissions', [\App\Http\Controllers\Admin\MonitoringController::class, 'submissions'])->whereNumber('id');
     Route::post('/violations/bulk-review', [\App\Http\Controllers\Admin\MonitoringController::class, 'bulkReview']);
     Route::get('/attempts/{id}/verify-chain', [\App\Http\Controllers\Admin\MonitoringController::class, 'verifyChain'])->whereNumber('id');

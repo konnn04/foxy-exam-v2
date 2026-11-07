@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Bell,
   BookOpen,
   Camera,
+  CheckCheck,
   ChevronUp,
   FileText,
   History as HistoryIcon,
@@ -33,7 +35,10 @@ import {
   getDashboard,
   getHealth,
   getMe,
+  getNotifications,
   logoutRemote,
+  markNotificationsRead,
+  type StudentNotification,
 } from "../lib/api";
 import { examState, initials, useDeviceCheck, type ExamItem, type Page, type PageProps, type StudentData } from "./main/shared";
 import Dashboard from "./main/Dashboard";
@@ -250,6 +255,7 @@ export default function Main() {
               <Tip label="Làm mới dữ liệu">
                 <Button size="sm" variant="ghost" icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading} aria-label="Làm mới" />
               </Tip>
+              <NotificationBell onNavigate={setPage} />
               <ThemeToggle />
             </div>
           </header>
@@ -420,6 +426,173 @@ function MenuButton({
       {icon}
       {children}
     </button>
+  );
+}
+
+function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<StudentNotification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [selected, setSelected] = useState<StudentNotification | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await getNotifications();
+      setItems(res.data ?? []);
+      setUnread(res.unread ?? 0);
+    } catch {
+      // Ignore transient offline errors
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const t = window.setInterval(() => void refresh(), 30_000);
+    const unsub = onWindowShown(() => void refresh());
+    return () => {
+      window.clearInterval(t);
+      unsub();
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      await markNotificationsRead();
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnread(0);
+    } catch {
+      // ignore
+    }
+  };
+
+  const openItem = async (n: StudentNotification) => {
+    setSelected(n);
+    setOpen(false);
+    if (!n.read) {
+      try {
+        await markNotificationsRead([n.id]);
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+        setUnread((u) => Math.max(0, u - 1));
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+          if (!open) void refresh();
+        }}
+        title="Thông báo & Biên bản ca thi"
+        className="relative flex h-7 w-7 items-center justify-center rounded-lg border border-line text-muted hover:bg-surface-3 hover:text-fg"
+      >
+        <Bell size={14} />
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-40 mt-1.5 w-[340px] overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+          <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
+            <span className="text-xs font-semibold text-fg">Thông báo ({unread} chưa đọc)</span>
+            {unread > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllRead()}
+                className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+              >
+                <CheckCheck size={12} />
+                Đánh dấu đã đọc
+              </button>
+            )}
+          </div>
+          <div className="max-h-[320px] divide-y divide-line overflow-y-auto">
+            {items.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-muted">Chưa có thông báo nào.</p>
+            ) : (
+              items.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => void openItem(n)}
+                  className={cx(
+                    "flex w-full flex-col gap-1 px-3.5 py-2.5 text-left transition hover:bg-surface-2",
+                    !n.read && "bg-accent-soft/25",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cx("truncate text-xs", !n.read ? "font-semibold text-fg" : "font-medium text-muted")}>
+                      {n.title}
+                    </span>
+                    {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
+                  </div>
+                  {n.body && <p className="line-clamp-2 whitespace-pre-line text-[11px] text-subtle">{n.body}</p>}
+                  {n.at && (
+                    <span className="font-mono text-[10px] text-subtle">
+                      {new Date(n.at).toLocaleString("vi-VN")}
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="inline-block rounded bg-accent-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-fg">
+                  {selected.type === "violation_report" ? "Biên bản giám sát ca thi" : "Thông báo hệ thống"}
+                </span>
+                <h3 className="mt-1.5 text-sm font-semibold text-fg">{selected.title}</h3>
+                {selected.at && (
+                  <p className="mt-0.5 font-mono text-[11px] text-subtle">
+                    {new Date(selected.at).toLocaleString("vi-VN")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-line bg-surface-2 p-3 text-xs leading-relaxed whitespace-pre-line text-fg">
+              {selected.body || "Không có nội dung chi tiết."}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              {selected.type === "violation_report" && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelected(null);
+                    onNavigate("history");
+                  }}
+                >
+                  Mở lịch sử thi
+                </Button>
+              )}
+              <Button size="sm" variant="primary" onClick={() => setSelected(null)}>
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

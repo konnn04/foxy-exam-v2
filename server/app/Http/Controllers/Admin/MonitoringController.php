@@ -359,6 +359,294 @@ class MonitoringController extends Controller
         return response()->json(\App\Support\ViolationChain::verify($attempt->id));
     }
 
+    /** GET /admin/attempts/{id}/report — formal printable HTML report of an exam attempt & its violations (UC-T03). */
+    public function report(int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+        $org = $this->tenant->current();
+        $proctor = Auth::user();
+
+        $violations = Violation::withoutGlobalScope('counted')
+            ->where('exam_attempt_id', $attempt->id)
+            ->orderBy('timestamp')
+            ->get();
+
+        $confirmed = $violations->where('is_reviewed', true)->where('is_false_positive', false)->values();
+        $pending = $violations->where('is_reviewed', false)->where('is_false_positive', false)->values();
+        $falsePos = $violations->where('is_false_positive', true)->values();
+        $chain = \App\Support\ViolationChain::verify($attempt->id);
+
+        $fmtTime = fn ($t) => $t ? $t->timezone('Asia/Ho_Chi_Minh')->format('H:i:s d/m/Y') : '—';
+        $statusLabel = match ($attempt->status) {
+            'SUBMITTED' => 'Đã nộp bài',
+            'FORCE_ENDED' => 'Đình chỉ / Thu bài',
+            'IN_PROGRESS' => 'Đang làm bài',
+            default => $attempt->status,
+        };
+        if ($attempt->voided_at) {
+            $statusLabel .= ' (Đã hủy kết quả)';
+        }
+
+        $rowsHtml = '';
+        $listToPrint = $violations->where('is_false_positive', false)->values();
+        if ($listToPrint->isEmpty()) {
+            $rowsHtml = '<tr><td colspan="6" style="text-align:center;padding:16px;color:#64748b;">Không có vi phạm nào được ghi nhận (hoặc tất cả cảnh báo đều đã được đánh dấu báo nhầm).</td></tr>';
+        } else {
+            foreach ($listToPrint as $idx => $v) {
+                $num = $idx + 1;
+                $timeStr = e($fmtTime($v->timestamp));
+                $label = e(\App\Support\ViolationCatalog::label($v->violation_type));
+                $typeCode = e($v->violation_type);
+                $sevLabel = match ($v->severity) {
+                    'CRITICAL' => 'Nghiêm trọng',
+                    'HIGH' => 'Cao',
+                    'MEDIUM' => 'Trung bình',
+                    default => 'Thấp',
+                };
+                $revStatus = $v->is_reviewed ? 'Đã xác nhận' : 'Chờ duyệt';
+                $details = is_array($v->details) ? ($v->details['message'] ?? json_encode($v->details, JSON_UNESCAPED_UNICODE)) : (string) $v->details;
+                $details = e((string) $details);
+                $rowsHtml .= "<tr>
+                    <td style='text-align:center;'>{$num}</td>
+                    <td style='font-family:monospace;white-space:nowrap;'>{$timeStr}</td>
+                    <td><strong>{$label}</strong><br><span style='font-size:11px;color:#64748b;font-family:monospace;'>{$typeCode}</span></td>
+                    <td style='text-align:center;'>{$sevLabel}</td>
+                    <td style='text-align:center;'>{$revStatus}</td>
+                    <td>{$details}</td>
+                </tr>";
+            }
+        }
+
+        $dev = is_array($attempt->device_info) ? $attempt->device_info : [];
+        $devSummary = collect([
+            !empty($dev['hostname']) ? 'Máy: ' . $dev['hostname'] : null,
+            !empty($dev['os']) ? 'HĐH: ' . $dev['os'] : null,
+            !empty($dev['ip']) ? 'IP: ' . $dev['ip'] : null,
+            !empty($dev['fingerprint']) ? 'Mã thiết bị: ' . substr((string) $dev['fingerprint'], 0, 12) : null,
+        ])->filter()->implode(' · ') ?: 'Không có thông tin';
+
+        $orgName = e($org->name ?? 'Trường Đại học Mở TP.HCM');
+        $examTitle = e($attempt->exam->title);
+        $examCode = e($attempt->exam->code);
+        $studentName = e($attempt->user?->name ?? 'Thí sinh');
+        $studentUsername = e($attempt->user?->username ?? '—');
+        $studentEmail = e($attempt->user?->email ?? '—');
+        $scoreStr = $attempt->score !== null ? number_format((float) $attempt->score, 2) : 'Chưa chấm / Không tính';
+        $startedStr = e($fmtTime($attempt->started_at));
+        $submittedStr = e($fmtTime($attempt->submitted_at));
+        $nowStr = e(now()->timezone('Asia/Ho_Chi_Minh')->format('H:i d/m/Y'));
+        $proctorName = e($proctor->name);
+        $chainBadge = $chain['ok']
+            ? "Toàn vẹn chuỗi băm SHA-256 ({$chain['checked']} bản ghi hợp lệ)"
+            : "CẢNH BÁO: Chuỗi băm đứt gãy tại bản ghi #{$chain['broken_at']}";
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Biên bản phiên thi #{$attempt->id} - {$studentUsername}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Times New Roman", Times, serif; color: #0f172a; line-height: 1.5; margin: 0; padding: 24px; background: #f8fafc; }
+  .sheet { max-width: 860px; margin: 0 auto; background: #fff; padding: 36px 44px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+  .toolbar { max-width: 860px; margin: 0 auto 16px; display: flex; justify-content: space-between; align-items: center; font-family: system-ui, sans-serif; }
+  .btn { background: #1d4ed8; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  .btn-sec { background: #e2e8f0; color: #1e293b; }
+  .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .header-table td { vertical-align: top; text-align: center; width: 50%; }
+  h1 { text-align: center; font-size: 20px; text-transform: uppercase; margin: 16px 0 4px; }
+  .sub { text-align: center; font-size: 13px; color: #475569; margin-bottom: 24px; font-style: italic; }
+  .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+  .info-grid td { padding: 5px 8px; border-bottom: 1px dashed #e2e8f0; }
+  .info-grid td.lbl { width: 170px; font-weight: bold; color: #334155; }
+  table.violations { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; margin-bottom: 24px; }
+  table.violations th, table.violations td { border: 1px solid #334155; padding: 7px 8px; vertical-align: top; }
+  table.violations th { background: #f1f5f9; font-weight: bold; text-align: center; }
+  .sign-table { width: 100%; border-collapse: collapse; margin-top: 32px; text-align: center; font-size: 14px; }
+  .sign-table td { width: 50%; vertical-align: top; padding-bottom: 72px; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .sheet { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+    .toolbar { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <span style="font-size:13px;color:#475569;">Biên bản điện tử trích xuất từ hệ thống Exam Guard (Phiên #{$attempt->id})</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sec" onclick="window.close()">Đóng cửa sổ</button>
+      <button class="btn" onclick="window.print()">In biên bản / Xuất PDF</button>
+    </div>
+  </div>
+  <div class="sheet">
+    <table class="header-table">
+      <tr>
+        <td>
+          <div style="font-weight:bold;text-transform:uppercase;font-size:13px;">{$orgName}</div>
+          <div style="font-size:13px;">HỘI ĐỒNG THI &amp; GIÁM SÁT TRỰC TUYẾN</div>
+          <div style="margin-top:4px;font-size:12px;">Số: {$attempt->id}/BB-EG</div>
+        </td>
+        <td>
+          <div style="font-weight:bold;text-transform:uppercase;font-size:13px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+          <div style="font-weight:bold;font-size:13px;text-decoration:underline;">Độc lập - Tự do - Hạnh phúc</div>
+          <div style="margin-top:4px;font-size:12px;font-style:italic;">Lập lúc: {$nowStr}</div>
+        </td>
+      </tr>
+    </table>
+
+    <h1>BIÊN BẢN GHI NHẬN KẾT QUẢ VÀ VI PHẠM CA THI</h1>
+    <div class="sub">Trích xuất từ Nhật ký Giám sát Khảo thí Điện tử (Exam Guard Proctoring System)</div>
+
+    <table class="info-grid">
+      <tr>
+        <td class="lbl">Kỳ thi:</td>
+        <td><strong>{$examTitle}</strong> (Mã phòng: <code>{$examCode}</code>)</td>
+        <td class="lbl">Mã phiên thi:</td>
+        <td>#{$attempt->id} (Lần thi thứ {$attempt->attempt_number})</td>
+      </tr>
+      <tr>
+        <td class="lbl">Họ và tên thí sinh:</td>
+        <td><strong>{$studentName}</strong></td>
+        <td class="lbl">Mã số / Tài khoản:</td>
+        <td><code>{$studentUsername}</code> ({$studentEmail})</td>
+      </tr>
+      <tr>
+        <td class="lbl">Thời gian bắt đầu:</td>
+        <td>{$startedStr}</td>
+        <td class="lbl">Thời gian kết thúc:</td>
+        <td>{$submittedStr}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Trạng thái phiên thi:</td>
+        <td><strong>{$statusLabel}</strong></td>
+        <td class="lbl">Điểm bài thi / Rủi ro:</td>
+        <td>Điểm: <strong>{$scoreStr}</strong> · Điểm rủi ro: <strong>{$attempt->risk_score}</strong></td>
+      </tr>
+      <tr>
+        <td class="lbl">Thông tin thiết bị:</td>
+        <td colspan="3">{$devSummary}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Tổng hợp giám sát:</td>
+        <td colspan="3">
+          Tổng cảnh báo: <strong>{$violations->count()}</strong>
+          (Đã xác nhận vi phạm: <strong>{$confirmed->count()}</strong> · Chờ duyệt: <strong>{$pending->count()}</strong> · Đánh dấu báo nhầm: <strong>{$falsePos->count()}</strong>)
+        </td>
+      </tr>
+      <tr>
+        <td class="lbl">Xác thực toàn vẹn:</td>
+        <td colspan="3" style="font-family:monospace;font-size:12px;">{$chainBadge}</td>
+      </tr>
+    </table>
+
+    <div style="font-weight:bold;font-size:14px;margin-top:12px;">DANH SÁCH CHI TIẾT CÁC SỰ KIỆN VI PHẠM:</div>
+    <table class="violations">
+      <thead>
+        <tr>
+          <th style="width:40px;">STT</th>
+          <th style="width:135px;">Thời điểm</th>
+          <th style="width:190px;">Loại vi phạm</th>
+          <th style="width:95px;">Mức độ</th>
+          <th style="width:95px;">Trạng thái</th>
+          <th>Mô tả chi tiết</th>
+        </tr>
+      </thead>
+      <tbody>
+        {$rowsHtml}
+      </tbody>
+    </table>
+
+    <table class="sign-table">
+      <tr>
+        <td>
+          <strong>THÍ SINH DỰ THI</strong><br>
+          <span style="font-size:12px;font-style:italic;">(Ký và ghi rõ họ tên)</span>
+        </td>
+        <td>
+          <strong>CÁN BỘ COI THI / GIẢNG VIÊN</strong><br>
+          <span style="font-size:12px;font-style:italic;">(Ký và ghi rõ họ tên)</span>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>{$studentName}</strong></td>
+        <td><strong>{$proctorName}</strong></td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+HTML;
+
+        return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+    }
+
+    /** POST /admin/attempts/{id}/send-report — send the violation & exam report notification to the student (UC-T03). */
+    public function sendReport(Request $request, int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+        $validated = $request->validate([
+            'note' => ['nullable', 'string', 'max:1000'],
+            'only_confirmed' => ['nullable', 'boolean'],
+        ]);
+
+        $onlyConfirmed = (bool) ($validated['only_confirmed'] ?? false);
+        $query = Violation::withoutGlobalScope('counted')
+            ->where('exam_attempt_id', $attempt->id)
+            ->where('is_false_positive', false)
+            ->orderBy('timestamp');
+
+        if ($onlyConfirmed) {
+            $query->where('is_reviewed', true);
+        }
+
+        $violations = $query->get();
+        $confirmedCount = $violations->where('is_reviewed', true)->count();
+
+        $summaryLines = [];
+        $summaryLines[] = "Kỳ thi: {$attempt->exam->title} ({$attempt->exam->code}) — Phiên #{$attempt->id}";
+        $summaryLines[] = 'Trạng thái: ' . ($attempt->voided_at ? 'Đã hủy kết quả' : $attempt->status) . " · Điểm rủi ro: {$attempt->risk_score}";
+        $summaryLines[] = "Tổng số vi phạm ghi nhận: {$violations->count()} (Đã xác nhận: {$confirmedCount}).";
+
+        if ($violations->isNotEmpty()) {
+            $topTypes = $violations->groupBy('violation_type')
+                ->map(fn ($group, $type) => \App\Support\ViolationCatalog::label((string) $type) . ' (×' . $group->count() . ')')
+                ->values()
+                ->take(6)
+                ->implode(', ');
+            $summaryLines[] = "Chi tiết: {$topTypes}.";
+        } else {
+            $summaryLines[] = 'Không có vi phạm nào trong phiên thi này.';
+        }
+
+        if (!empty($validated['note'])) {
+            $summaryLines[] = 'Nhận xét của giảng viên / giám thị: ' . trim($validated['note']);
+        }
+
+        $body = implode("\n", $summaryLines);
+
+        \App\Models\UserNotification::create([
+            'user_id' => $attempt->user_id,
+            'type' => 'violation_report',
+            'title' => "Biên bản giám sát ca thi: {$attempt->exam->title}",
+            'body' => $body,
+            'url' => "/attempts/{$attempt->id}",
+        ]);
+
+        // Also record in the attempt chat log so the student sees it immediately if still in the exam room
+        \App\Models\AttemptMessage::create([
+            'exam_attempt_id' => $attempt->id,
+            'sender_id' => Auth::id(),
+            'sender_role' => 'PROCTOR',
+            'body' => "[BIÊN BẢN GIÁM SÁT] " . $body,
+        ]);
+
+        return back()->with('success', 'Đã gửi biên bản kết quả và vi phạm đến thí sinh.');
+    }
+
     /** POST /admin/violations/bulk-review — one decision for many violations of the same organization. */
     public function bulkReview(Request $request)
     {
