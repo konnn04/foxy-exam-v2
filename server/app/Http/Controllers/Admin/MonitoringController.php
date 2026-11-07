@@ -306,6 +306,31 @@ class MonitoringController extends Controller
         return $info ? response()->json(['enabled' => true] + $info) : response()->json(['enabled' => false], 503);
     }
 
+    /**
+     * GET /admin/attempts/{id}/live-video — Subscribe-only LiveKit tokens for ONE attempt:
+     * returns both the main exam room (camera + screen of attempt-{id}) AND the candidate's secondary mobile camera room (cam2-{userId}-{examId}).
+     */
+    public function attemptLiveVideo(int $attemptId)
+    {
+        $this->guardStaff();
+        $attempt = $this->attemptOrFail($attemptId);
+
+        $rt = app(Realtime::class);
+        $main = $rt->proctorLiveKitToken(Auth::user(), $attempt->exam);
+        if (!$main) {
+            return response()->json(['enabled' => false], 503);
+        }
+        $phone = $rt->proctorPhoneLiveKitToken(Auth::user(), (int) $attempt->user_id, $attempt->exam);
+
+        return response()->json([
+            'enabled' => true,
+            'attempt_id' => $attempt->id,
+            'candidate_identity' => 'attempt-' . $attempt->id,
+            'main' => $main,
+            'phone' => $phone,
+        ]);
+    }
+
     /** /admin/attempts/{id} — one candidate's session, violation timeline & review. */
     public function attempt(int $attemptId)
     {

@@ -139,6 +139,19 @@ class Realtime
         return $this->lk(self::phoneRoom($user->id, $exam->id), 'viewer-' . $user->id . '-' . bin2hex(random_bytes(3)), $user->name ?? 'viewer', ['canPublish' => false, 'canSubscribe' => true, 'canPublishData' => true], ['role' => 'phone-viewer'], 12 * 3600);
     }
 
+    /** Proctor subscribe-only credentials for ONE candidate's secondary mobile camera room. */
+    public function proctorPhoneLiveKitToken(User $proctor, int $candidateUserId, Exam $exam, int $ttlSeconds = 3600): ?array
+    {
+        return $this->lk(
+            self::phoneRoom($candidateUserId, $exam->id),
+            'proctor-cam2-' . $proctor->id . '-' . bin2hex(random_bytes(3)),
+            $proctor->name ?? 'Proctor',
+            ['hidden' => true, 'canPublish' => false, 'canSubscribe' => true, 'canPublishData' => false],
+            ['oid' => (int) $exam->organization_id, 'role' => 'proctor'],
+            $ttlSeconds
+        );
+    }
+
     /** Ask the record service to record the phone (it needs the attempt, so this runs once the attempt exists). Never throws. */
     public function startPhoneRecording(ExamAttempt $attempt): void
     {

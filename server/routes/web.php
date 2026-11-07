@@ -2075,6 +2075,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/exams/{id}/realtime', [\App\Http\Controllers\Admin\MonitoringController::class, 'realtime'])->whereNumber('id');
     Route::get('/exams/{id}/violations', [\App\Http\Controllers\Admin\MonitoringController::class, 'violationsPage'])->whereNumber('id');
     Route::get('/exams/{id}/live-video', [\App\Http\Controllers\Admin\MonitoringController::class, 'liveVideo'])->whereNumber('id');
+    Route::get('/attempts/{id}/live-video', [\App\Http\Controllers\Admin\MonitoringController::class, 'attemptLiveVideo'])->whereNumber('id');
     Route::post('/attempts/{id}/force-end', [\App\Http\Controllers\Admin\MonitoringController::class, 'forceEndAttempt'])->whereNumber('id');
     Route::get('/attempts/{id}', [\App\Http\Controllers\Admin\MonitoringController::class, 'attempt'])->whereNumber('id');
     Route::get('/attempts/{id}/report', [\App\Http\Controllers\Admin\MonitoringController::class, 'report'])->whereNumber('id');

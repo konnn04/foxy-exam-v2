@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
+import { Ban, BarChart3, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Undo2, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
@@ -168,6 +168,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
   const [reportExpiresDays, setReportExpiresDays] = useState<number>(30);
   const [reportNotifyStudent, setReportNotifyStudent] = useState<boolean>(true);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const selGroup = groups.find((g) => g.rows.some((v) => v.id === selId));
   const sel = selGroup?.head;
 
@@ -383,6 +384,9 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
         }
         actions={
           <>
+            <FxButton icon={BarChart3} onClick={() => setMetricsOpen(true)}>
+              Thống kê TP/FP
+            </FxButton>
             <FxButton variant={voided ? undefined : 'danger'} icon={voided ? Undo2 : Ban} onClick={toggleVoid}>
               {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
             </FxButton>
@@ -407,12 +411,14 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             attemptId={attempt.id}
             studentId={attempt.user.id}
             hasFacePhoto={attempt.user.has_face_photo}
+            running={running}
             at={sel?.timestamp ?? null}
             evidenceId={sel?.evidence_id ?? null}
             evidence={((sel?.details as { evidence?: Record<string, string> } | null)?.evidence) ?? null}
             clips={((sel?.details as { clips?: Record<string, string> } | null)?.clips) ?? null}
             clipRange={((sel?.details as { clip_range?: { from_ms: number; to_ms: number } } | null)?.clip_range) ?? null}
             config={attempt.exam.monitoring_config}
+            refreshKey={`${signature}:${violations.length}`}
           />
 
           <DevicePanel info={attempt.device_info} shared={attempt.shared_device_with ?? []} />
@@ -916,6 +922,115 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             </FxButton>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={metricsOpen} onClose={() => setMetricsOpen(false)} width={680} title={`Báo cáo Thống kê Giám sát & Độ chính xác AI — ${attempt.user.name}`}>
+        {(() => {
+          const tp = violations.filter((v) => v.is_reviewed && !v.is_false_positive).length;
+          const fp = violations.filter((v) => v.is_false_positive).length;
+          const unverified = violations.filter((v) => !v.is_reviewed && !v.is_false_positive).length;
+          const precision = tp + fp > 0 ? ((tp / (tp + fp)) * 100).toFixed(1) : '—';
+
+          const byType = Object.entries(
+            violations.reduce<Record<string, { total: number; tp: number; fp: number; pending: number }>>((acc, v) => {
+              const cur = acc[v.type] ?? { total: 0, tp: 0, fp: 0, pending: 0 };
+              cur.total += 1;
+              if (v.is_false_positive) cur.fp += 1;
+              else if (v.is_reviewed) cur.tp += 1;
+              else cur.pending += 1;
+              acc[v.type] = cur;
+              return acc;
+            }, {}),
+          ).sort((a, b) => b[1].total - a[1].total);
+
+          const perfSamples = typing.filter((l) => typeof l.cpu === 'number' || typeof l.ram === 'number');
+          const avgCpu = perfSamples.length ? Math.round(perfSamples.reduce((s, x) => s + (x.cpu ?? 0), 0) / perfSamples.length) : null;
+          const peakCpu = perfSamples.length ? Math.max(...perfSamples.map((x) => x.cpu ?? 0)) : null;
+          const avgRam = perfSamples.length ? Math.round(perfSamples.reduce((s, x) => s + (x.ram ?? 0), 0) / perfSamples.length) : null;
+          const totalKeys = typing.reduce((s, x) => s + x.keys, 0);
+          const totalClicks = typing.reduce((s, x) => s + (x.clicks ?? 0), 0);
+
+          return (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-4 gap-2.5">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
+                  <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{tp}</div>
+                  <div className="text-[11px] font-medium text-muted-foreground">Vi phạm thật (TP)</div>
+                </div>
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-center">
+                  <div className="text-xl font-bold text-rose-700 dark:text-rose-300">{fp}</div>
+                  <div className="text-[11px] font-medium text-muted-foreground">Báo nhầm (FP)</div>
+                </div>
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-center">
+                  <div className="text-xl font-bold text-amber-700 dark:text-amber-300">{unverified}</div>
+                  <div className="text-[11px] font-medium text-muted-foreground">Chờ duyệt</div>
+                </div>
+                <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-center">
+                  <div className="text-xl font-bold text-primary">{precision}{precision !== '—' ? '%' : ''}</div>
+                  <div className="text-[11px] font-medium text-muted-foreground">Precision (TP / TP+FP)</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5 rounded-lg border border-border bg-surface p-3 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Hiệu năng máy thí sinh:</span>
+                  <div className="mt-0.5 font-mono font-semibold">
+                    {avgCpu !== null ? `CPU TB ${avgCpu}% (Đỉnh ${peakCpu}%) · RAM ${avgRam}%` : 'Chưa có mẫu đo'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Tổng thao tác đầu vào:</span>
+                  <div className="mt-0.5 font-mono font-semibold">
+                    {totalKeys} phím · {totalClicks} nhấp chuột
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Điểm rủi ro tích lũy:</span>
+                  <div className="mt-0.5 font-mono font-semibold text-danger-fg">{attempt.risk_score} điểm</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 text-xs font-semibold">Phân rã theo loại vi phạm ({byType.length} nhóm quy tắc)</div>
+                <div className="max-h-60 overflow-y-auto rounded-lg border border-border">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-surface text-[11px] text-muted-foreground">
+                        <th className="px-3 py-2">Loại vi phạm</th>
+                        <th className="px-2 py-2 text-center">Tổng</th>
+                        <th className="px-2 py-2 text-center text-emerald-700">TP (Xác nhận)</th>
+                        <th className="px-2 py-2 text-center text-rose-700">FP (Nhầm)</th>
+                        <th className="px-2 py-2 text-center text-amber-700">Chờ duyệt</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {byType.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center text-muted-foreground">
+                            Không có cảnh báo vi phạm nào trong phiên thi này.
+                          </td>
+                        </tr>
+                      ) : (
+                        byType.map(([type, stat]) => (
+                          <tr key={type} className="hover:bg-surface/60">
+                            <td className="px-3 py-2">
+                              <div className="font-medium">{violationLabel(type)}</div>
+                              <div className="font-mono text-[10px] text-muted-foreground">{type}</div>
+                            </td>
+                            <td className="px-2 py-2 text-center font-mono font-bold">{stat.total}</td>
+                            <td className="px-2 py-2 text-center font-mono text-emerald-700">{stat.tp}</td>
+                            <td className="px-2 py-2 text-center font-mono text-rose-700">{stat.fp}</td>
+                            <td className="px-2 py-2 text-center font-mono text-amber-700">{stat.pending}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </AdminLayout>
   );

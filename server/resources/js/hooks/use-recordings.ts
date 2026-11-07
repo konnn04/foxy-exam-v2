@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface RecordingInfo {
   id: string;
-  kind: 'camera' | 'screen' | 'evidence' | string;
+  kind: 'camera' | 'screen' | 'camera2' | 'evidence' | string;
   status: string;
   mime?: string;
   duration_ms: number;
@@ -17,6 +17,9 @@ export function useAttemptRecordings(examId: number, attemptId: number, refreshK
   const [items, setItems] = useState<RecordingInfo[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'disabled' | 'error'>('loading');
   const [access, setAccess] = useState<{ record_url: string; token: string } | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const reload = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     let live = true;
@@ -72,7 +75,7 @@ export function useAttemptRecordings(examId: number, attemptId: number, refreshK
     return () => {
       live = false;
     };
-  }, [examId, attemptId, refreshKey, publicEndpoint]);
+  }, [examId, attemptId, refreshKey, publicEndpoint, tick]);
 
   /** Ask the record service to cut [fromS, toS] seconds out of a recording; resolves the download URL. */
   const clip = async (rec: RecordingInfo, fromS: number, toS: number): Promise<string> => {
@@ -83,5 +86,5 @@ export function useAttemptRecordings(examId: number, attemptId: number, refreshK
     return json.url as string;
   };
 
-  return { items, state, clip };
+  return { items, state, clip, reload };
 }
