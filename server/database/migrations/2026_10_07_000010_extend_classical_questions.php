@@ -16,6 +16,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'pgsql') {
+            \Illuminate\Support\Facades\DB::statement('ALTER TABLE classical_questions DROP CONSTRAINT IF EXISTS classical_questions_type_check');
+            \Illuminate\Support\Facades\DB::statement('ALTER TABLE classical_questions DROP CONSTRAINT IF EXISTS classical_questions_difficulty_check');
+        }
+
         // enum -> string so new types / levels need no further migrations
         Schema::table('classical_questions', function (Blueprint $table) {
             $table->string('type', 40)->default('SINGLE_CHOICE')->change();

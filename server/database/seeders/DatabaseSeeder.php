@@ -25,8 +25,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create SaaS Plans
-        $freePlan = Plan::create([
-            'name' => 'FREE',
+        $freePlan = Plan::firstOrCreate(['name' => 'FREE'], [
             'display_name' => 'Gói Trải Nghiệm (Free)',
             'price' => 0,
             'billing_cycle' => 'MONTHLY',
@@ -38,8 +37,7 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $proPlan = Plan::create([
-            'name' => 'PRO',
+        $proPlan = Plan::firstOrCreate(['name' => 'PRO'], [
             'display_name' => 'Gói Chuyên Nghiệp (Pro)',
             'price' => 1490000, // 1.490.000đ / tháng
             'billing_cycle' => 'MONTHLY',
@@ -51,8 +49,7 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $enterprisePlan = Plan::create([
-            'name' => 'ENTERPRISE',
+        $enterprisePlan = Plan::firstOrCreate(['name' => 'ENTERPRISE'], [
             'display_name' => 'Gói Doanh Nghiệp / Đại Học (Enterprise)',
             'price' => 4990000,
             'billing_cycle' => 'YEARLY',
@@ -65,9 +62,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Root Organization (Super Platform)
-        $rootOrg = Organization::create([
+        $rootOrg = Organization::firstOrCreate(['code' => 'ROOT'], [
             'name' => 'Foxy Platform Root',
-            'code' => 'ROOT',
             'slug' => 'root',
             'type' => 'ROOT',
             'status' => 'ACTIVE',
@@ -82,9 +78,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 3. Super Admin User
-        $superAdmin = User::create([
+        $superAdmin = User::firstOrCreate(['username' => 'admin'], [
             'organization_id' => $rootOrg->id,
-            'username' => 'admin',
             'name' => 'Nguyễn Hoàng Admin',
             'first_name' => 'Admin',
             'middle_name' => 'Hoàng',
@@ -99,9 +94,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 4. Demo School (Tenant 1)
-        $ouOrg = Organization::create([
+        $ouOrg = Organization::firstOrCreate(['code' => 'OU'], [
             'name' => 'Trường Đại học Mở TP.HCM',
-            'code' => 'OU',
             'slug' => 'ou',
             'type' => 'UNIVERSITY',
             'status' => 'ACTIVE',
