@@ -14,6 +14,8 @@ import {
   Zap,
 } from 'lucide-react';
 
+import { OFFICIAL_PRICING } from '@/constants/projectInfo';
+
 interface PlanProps {
   id: number;
   name: string;
@@ -31,103 +33,29 @@ interface PricingPageProps {
 export default function Pricing({ plans = [] }: PricingPageProps) {
   const [billingCycle, setBillingCycle] = useState<'per_session' | 'semester'>('per_session');
 
-  const defaultSessionPlans = [
-    {
-      title: 'Gói ca thi thử nghiệm',
-      badge: 'DÀNH CHO GIẢNG VIÊN VÀ BỘ MÔN',
-      price: '450.000',
-      unit: 'VNĐ / kỳ thi (Tối đa 50 sinh viên)',
-      perStudent: '~9.000 đ / sinh viên',
-      desc: 'Phù hợp cho các bài kiểm tra giữa kỳ, thi học phần nhỏ hoặc đánh giá năng lực nội bộ.',
-      features: [
-        'Giám sát đồng thời tối đa 50 thí sinh',
-        'Khóa màn hình máy tính chống gian lận',
-        'Camera kép (Webcam laptop và điện thoại)',
-        'Trí tuệ nhân tạo phát hiện 4 hành vi cơ bản',
-        'Lưu trữ hồ sơ vi phạm 30 ngày',
-        'Xuất bản liên kết xem biên bản trực tuyến',
-      ],
-      popular: false,
-      ctaText: 'Đăng ký gói thử nghiệm',
-    },
-    {
-      title: 'Gói khảo thí tiêu chuẩn',
-      badge: 'PHỔ BIẾN NHẤT CHO KHOA',
-      price: '1.800.000',
-      unit: 'VNĐ / đợt thi (Tối đa 300 sinh viên)',
-      perStudent: '~6.000 đ / sinh viên',
-      desc: 'Tối ưu cho kỳ thi kết thúc học phần của khoa hoặc các bài thi chứng chỉ chuẩn đầu ra.',
-      features: [
-        'Giám sát đồng thời tối đa 300 thí sinh',
-        'Đầy đủ 4 tầng bảo vệ chống gian lận',
-        'Trí tuệ nhân tạo nhận diện điện thoại và tai nghe cấm',
-        'Tự động cắt video bằng chứng vi phạm đa góc',
-        'Lưu trữ hồ sơ đối soát 90 ngày',
-        'Hỗ trợ kỹ thuật trực tiếp trong giờ thi',
-        'Xuất biên bản kèm mã kiểm tra tính toàn vẹn',
-      ],
-      popular: true,
-      ctaText: 'Chọn gói tiêu chuẩn',
-    },
-    {
-      title: 'Gói kỳ thi tập trung',
-      badge: 'DÀNH CHO PHÒNG KHẢO THÍ TRƯỜNG',
-      price: '4.500.000',
-      unit: 'VNĐ / kỳ thi lớn (Tối đa 1.000 sinh viên)',
-      perStudent: '~4.500 đ / sinh viên',
-      desc: 'Quy mô lớn phục vụ các kỳ thi tuyển sinh, thi tốt nghiệp hoặc thi học kỳ toàn trường.',
-      features: [
-        'Không giới hạn số lượng phòng thi chia nhỏ',
-        'Hỗ trợ phân quyền nhiều cán bộ giám sát cùng lúc',
-        'Đường truyền hình ảnh ưu tiên băng thông cao',
-        'Tích hợp danh sách sinh viên qua Excel hoặc API',
-        'Bảo mật dữ liệu tuân thủ quy chuẩn giáo dục',
-        'Kỹ sư hỗ trợ trực tiếp từ xa trong ca thi',
-        'Cung cấp hợp đồng kinh tế và hóa đơn GTGT đầy đủ',
-      ],
-      popular: false,
-      ctaText: 'Liên hệ đặt lịch thi',
-    },
-  ];
+  const defaultSessionPlans = OFFICIAL_PRICING.perClass.map((p) => ({
+    title: p.title,
+    badge: p.scale.toUpperCase(),
+    price: p.price,
+    unit: p.unit,
+    perStudent: p.perStudent,
+    desc: p.desc,
+    features: p.features,
+    popular: p.popular,
+    ctaText: p.ctaText,
+  }));
 
-  const semesterPlans = [
-    {
-      title: 'Thuê bao học kỳ theo khoa',
-      badge: 'DÀNH CHO KHOA ĐÀO TẠO',
-      price: '12.000.000',
-      unit: 'VNĐ / Học kỳ (5 tháng)',
-      perStudent: 'Không giới hạn số lượt thi',
-      desc: 'Khoa chủ động tổ chức không giới hạn bài thi giữa kỳ và cuối kỳ cho toàn bộ sinh viên.',
-      features: [
-        'Phục vụ tối đa 2.500 sinh viên toàn khoa',
-        'Cấp tài khoản không giới hạn cho giảng viên',
-        'Quản lý ngân hàng đề thi và ca thi linh hoạt',
-        'Chấm trắc nghiệm và chấm lập trình tự động',
-        'Lưu trữ toàn bộ hồ sơ thi trong 12 tháng',
-        'Tập huấn sử dụng chu đáo cho toàn bộ giảng viên',
-      ],
-      popular: false,
-      ctaText: 'Đăng ký thuê bao khoa',
-    },
-    {
-      title: 'Bản quyền toàn trường',
-      badge: 'DÀNH CHO TOÀN TRƯỜNG ĐẠI HỌC',
-      price: 'Liên hệ',
-      unit: 'Báo giá theo quy mô sinh viên',
-      perStudent: 'Chi phí tối ưu dài hạn',
-      desc: 'Triển khai đồng bộ toàn trường, kết nối trực tiếp với hệ thống quản lý đào tạo và LMS hiện có.',
-      features: [
-        'Quy mô phục vụ từ 5.000 đến 30.000 sinh viên',
-        'Tùy chọn đặt máy chủ trên đám mây hoặc hạ tầng nội bộ của trường',
-        'Tích hợp đăng nhập một lần (Single Sign-On SSO)',
-        'Tùy biến nhận diện thương hiệu của nhà trường',
-        'Cam kết chất lượng vận hành 99.9%',
-        'Hỗ trợ đầy đủ hồ sơ đấu thầu và nghiệm thu công',
-      ],
-      popular: true,
-      ctaText: 'Yêu cầu báo giá trường',
-    },
-  ];
+  const semesterPlans = OFFICIAL_PRICING.semester.map((p) => ({
+    title: p.title,
+    badge: p.scale.toUpperCase(),
+    price: p.price,
+    unit: p.unit,
+    perStudent: p.perStudent,
+    desc: p.desc,
+    features: p.features,
+    popular: p.popular,
+    ctaText: p.ctaText,
+  }));
 
   return (
     <PublicLayout>
@@ -241,6 +169,63 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
                 </Link>
               </div>
             ))}
+          </div>
+
+          {/* Ưu đãi khách hàng sáng lập & Gói On-premise */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded">
+                  Chính sách khách hàng sáng lập
+                </span>
+                <h3 className="text-xl font-bold mt-3 mb-2">Ưu đãi giảm 30% năm đầu</h3>
+                <p className="text-xs sm:text-sm text-blue-100 leading-relaxed mb-4">
+                  Dành riêng cho 03 cơ sở đào tạo tiên phong ký kết hợp đồng thương mại với Exam Guard, đổi lại quyền xây dựng bộ hồ sơ triển khai mẫu (Case Study).
+                </p>
+                <div className="text-xs text-blue-200">
+                  ✓ Thí điểm miễn phí 01 học phần (tối đa 200 lượt thi) trước khi ký hợp đồng
+                </div>
+              </div>
+              <Link
+                href="/#tu-van"
+                className="mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                Đăng ký thí điểm miễn phí
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="p-6 sm:p-7 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-md flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-blue-400 px-2.5 py-1 rounded border border-slate-700">
+                  {OFFICIAL_PRICING.onPremise.title}
+                </span>
+                <div className="mt-3 text-lg font-bold text-white">
+                  {OFFICIAL_PRICING.onPremise.setupFee}
+                </div>
+                <div className="text-xs text-slate-400 mb-3">
+                  + {OFFICIAL_PRICING.onPremise.maintenanceFee}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                  {OFFICIAL_PRICING.onPremise.desc}
+                </p>
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  {OFFICIAL_PRICING.onPremise.features.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Link
+                href="/#tu-van"
+                className="mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm transition-colors border border-slate-700 cursor-pointer"
+              >
+                Tư vấn giải pháp On-premise
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
