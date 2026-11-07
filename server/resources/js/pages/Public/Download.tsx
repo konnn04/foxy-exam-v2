@@ -19,20 +19,20 @@ import {
 export default function DownloadPage() {
   return (
     <PublicLayout>
-      <Head title="Tải Ứng Dụng - Exam Guard" />
+      <Head title="Tải ứng dụng - Exam Guard" />
 
       {/* Hero */}
       <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Bản Phát Hành Ổn Định v2.1.0 · Dành Cho Windows
+            Bản phát hành ổn định v2.1.0 · Dành cho Windows
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Tải Ứng Dụng Giám Sát Thi Exam Guard
+            Tải ứng dụng giám sát thi Exam Guard
           </h1>
           <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            Phần mềm Kiosk bảo mật cao dành cho thí sinh làm bài thi trực tuyến và quản trị viên phòng máy trường đại học.
+            Phần mềm bảo vệ môi trường thi an toàn dành cho thí sinh làm bài thi trực tuyến và quản trị viên phòng máy trường đại học.
           </p>
         </div>
       </section>
@@ -49,12 +49,12 @@ export default function DownloadPage() {
                     <Laptop className="w-6 h-6" />
                   </div>
                   <span className="text-xs font-bold text-blue-600 uppercase bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
-                    Dành cho Thí sinh
+                    DÀNH CHO THÍ SINH
                   </span>
                 </div>
 
                 <h2 className="text-xl font-bold text-slate-900 mb-2">
-                  Ứng Dụng Thí Sinh (Personal Laptop)
+                  Ứng dụng thí sinh cho máy tính cá nhân
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
                   Dành cho sinh viên tự trang bị máy tính xách tay cá nhân tham gia bài kiểm tra tại nhà hoặc tại lớp học.
@@ -63,15 +63,15 @@ export default function DownloadPage() {
                 <div className="space-y-2.5 mb-8 text-xs sm:text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Tương thích Windows 10 & Windows 11 (64-bit)</span>
+                    <span>Tương thích với Windows 10 và Windows 11 (64-bit)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Bộ cài đặt siêu gọn: ~42 MB (Đã nén ONNX AI)</span>
+                    <span>Bộ cài đặt siêu nhẹ chỉ ~42 MB, cài đặt trong 30 giây</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Tự động giải phóng tài nguyên sau khi nộp bài</span>
+                    <span>Tự động giải phóng hoàn toàn tài nguyên sau khi nộp bài</span>
                   </div>
                 </div>
               </div>
@@ -88,7 +88,7 @@ export default function DownloadPage() {
                   <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
                 </a>
                 <div className="text-center text-[11px] text-slate-400 mt-2">
-                  Bản dựng chính thức: 2.1.0 · Mã kiểm tra SHA-256 có sẵn
+                  Bản phát hành chính thức 2.1.0 · Có sẵn mã kiểm tra tính toàn vẹn
                 </div>
               </div>
             </div>
@@ -101,12 +101,12 @@ export default function DownloadPage() {
                     <Building2 className="w-6 h-6" />
                   </div>
                   <span className="text-xs font-bold text-slate-600 uppercase bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                    Dành cho Quản trị viên
+                    DÀNH CHO QUẢN TRỊ VIÊN
                   </span>
                 </div>
 
                 <h2 className="text-xl font-bold text-slate-900 mb-2">
-                  Gói Phòng Máy Trường (Enterprise Lab)
+                  Gói cài đặt đồng loạt cho phòng máy trường
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
                   Dành cho cán bộ quản trị công nghệ thông tin triển khai hàng loạt trên hàng trăm máy tính phòng thực hành.
@@ -115,15 +115,15 @@ export default function DownloadPage() {
                 <div className="space-y-2.5 mb-8 text-xs sm:text-sm text-slate-700">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Định dạng Windows Installer (.msi) chuẩn</span>
+                    <span>Định dạng cài đặt chuẩn Windows Installer (.msi)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Hỗ trợ cài đặt âm thầm (Silent install qua GPO)</span>
+                    <span>Hỗ trợ cài đặt tự động từ xa qua chính sách nhóm (GPO)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Cấu hình sẵn URL máy chủ Khảo thí của Trường</span>
+                    <span>Hỗ trợ cấu hình trước địa chỉ máy chủ khảo thí nội bộ</span>
                   </div>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export default function DownloadPage() {
                   <Download className="w-4 h-4" />
                 </a>
                 <div className="text-center text-[11px] text-slate-400 mt-2">
-                  Dành riêng cho Trung tâm Mạng & Máy tính Trường
+                  Dành cho trung tâm quản trị mạng và phòng máy của trường
                 </div>
               </div>
             </div>
@@ -148,12 +148,12 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* System Requirements */}
+      {/* Yêu cầu hệ thống */}
       <section className="py-12 bg-slate-50 border-y border-slate-200">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              Yêu Cầu Phần Cứng & Hệ Thống
+              Yêu cầu phần cứng và hệ thống
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
               Kiểm tra thiết bị để bảo đảm bài thi diễn ra thuận lợi nhất
@@ -164,24 +164,24 @@ export default function DownloadPage() {
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
               <h3 className="font-bold text-slate-900 text-sm mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
-                Cấu Hình Tối Thiểu
+                Cấu hình tối thiểu
               </h3>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600">
                 <li className="flex items-center gap-2.5">
                   <Monitor className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Hệ điều hành: Windows 10 (64-bit) Version 1909 trở lên</span>
+                  <span>Hệ điều hành: Windows 10 (64-bit) bản 1909 trở lên</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Cpu className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Bộ xử lý: Intel Core i3 (thế hệ 4+) hoặc AMD tương đương</span>
+                  <span>Bộ xử lý: Intel Core i3 (thế hệ 4 trở lên) hoặc AMD tương đương</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <HardDrive className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Bộ nhớ RAM: Tối thiểu 4 GB RAM trống</span>
+                  <span>Bộ nhớ RAM: Tối thiểu 4 GB RAM còn trống</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Wifi className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Đường truyền: Tốc độ mạng ổn định từ 2 Mbps</span>
+                  <span>Đường truyền: Tốc độ mạng ổn định từ 2 Mbps trở lên</span>
                 </li>
               </ul>
             </div>
@@ -189,16 +189,16 @@ export default function DownloadPage() {
             <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-xs ring-1 ring-blue-100">
               <h3 className="font-bold text-blue-900 text-sm mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
-                Cấu Hình Đề Nghị (Trải Nghiệm Tốt Nhất)
+                Cấu hình đề nghị để trải nghiệm tốt nhất
               </h3>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
                 <li className="flex items-center gap-2.5">
                   <Monitor className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Hệ điều hành: Windows 11 (64-bit) bản mới nhất</span>
+                  <span>Hệ điều hành: Windows 11 (64-bit) cập nhật mới nhất</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Cpu className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Bộ xử lý: Intel Core i5 (thế hệ 8+) hoặc Ryzen 5</span>
+                  <span>Bộ xử lý: Intel Core i5 (thế hệ 8 trở lên) hoặc AMD Ryzen 5</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <HardDrive className="w-4 h-4 text-blue-600 shrink-0" />
@@ -206,7 +206,7 @@ export default function DownloadPage() {
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Wifi className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Đường truyền: Cáp quang hoặc Wi-Fi 5 GHz từ 10 Mbps</span>
+                  <span>Đường truyền: Mạng dây cáp hoặc Wi-Fi 5GHz từ 10 Mbps</span>
                 </li>
               </ul>
             </div>
@@ -214,12 +214,12 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      {/* Setup Steps */}
+      {/* Hướng dẫn 3 bước */}
       <section className="py-14 sm:py-16 bg-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-              Hướng Dẫn 3 Bước Chuẩn Bị Trước Giờ Thi
+              Hướng dẫn 3 bước chuẩn bị trước giờ thi
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
               Quy trình nhanh chóng, chỉ mất dưới 2 phút thao tác
@@ -231,9 +231,9 @@ export default function DownloadPage() {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 1
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Tải & Mở Ứng Dụng</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Tải và mở ứng dụng</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Tải tệp cài đặt về máy và khởi chạy. Nếu xuất hiện thông báo Windows SmartScreen, chọn "More info" rồi nhấn "Run anyway".
+                Tải tệp cài đặt về máy tính và khởi chạy. Nếu xuất hiện thông báo Windows SmartScreen, chọn "More info" rồi nhấn "Run anyway".
               </p>
             </div>
 
@@ -241,9 +241,9 @@ export default function DownloadPage() {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Cấp Quyền & Quét QR</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Cấp quyền và quét mã QR</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Cho phép ứng dụng sử dụng Webcam và Micro. Dùng điện thoại quét mã QR hiển thị trên màn hình để thiết lập camera phụ.
+                Cho phép ứng dụng sử dụng webcam và micro. Dùng điện thoại quét mã QR hiển thị trên màn hình để thiết lập camera phụ.
               </p>
             </div>
 
@@ -251,9 +251,9 @@ export default function DownloadPage() {
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center mx-auto mb-3">
                 3
               </div>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Nhập Mã Phòng & Làm Bài</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5">Nhập mã phòng và làm bài</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Nhập Mã ca thi do Giảng viên cung cấp. Hệ thống tự động chuyển sang chế độ Khóa Kiosk toàn màn hình và bắt đầu tính giờ thi.
+                Nhập mã ca thi do cán bộ coi thi cung cấp. Màn hình tự động chuyển sang chế độ làm bài thi an toàn và bắt đầu tính giờ.
               </p>
             </div>
           </div>
