@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Activity, Ban, LayoutGrid, List, Megaphone, MessageSquare, Radio, Search, Square, TriangleAlert } from 'lucide-react';
+import { Activity, Ban, BellRing, Eye, LayoutGrid, List, Megaphone, MessageSquare, PauseCircle, PlayCircle, Radio, Search, Square, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { Dot, EmptyState, FxButton, Modal, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
@@ -102,6 +102,26 @@ function useCountdown(end: string | null) {
   return { now, left: `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}` };
 }
 
+function playAlertBeep(isCritical: boolean) {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = isCritical ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(isCritical ? 880 : 660, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isCritical ? 0.35 : 0.2));
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (isCritical ? 0.35 : 0.2));
+  } catch {
+    /* ignore audio policy restrictions */
+  }
+}
+
 export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }: Props) {
   const violationFeed = useViolationFeed(exam.id, feedHead as FeedRow[]);
   const feed = violationFeed.rows as unknown as FeedItem[];
@@ -109,6 +129,9 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
   const [q, setQ] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [liveAlerts, setLiveAlerts] = useState<FeedItem[]>([]);
+  const highestSeenViolationId = useRef<number>(feedHead[0]?.id ?? 0);
   const { now, left } = useCountdown(exam.end_time);
   const dialog = useDialog();
   const rt = useLiveRoom(exam.id);
@@ -117,9 +140,35 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
   const [source, setSource] = useState<FeedSource>('camera');
   const [chatFor, setChatFor] = useState<LiveAttempt | null>(null);
   const [chatSeen, setChatSeen] = useState<Record<number, number>>({});
+  const [pausedMap, setPausedMap] = useState<Record<number, boolean>>({});
   const openChat = (a: LiveAttempt) => {
     setChatFor(a);
     setChatSeen((m) => ({ ...m, [a.id]: rt.rows[a.id]?.chat_seq ?? 0 }));
+  };
+
+  useEffect(() => {
+    if (!feed.length) return;
+    const newestId = Math.max(...feed.map((f) => f.id));
+    if (newestId <= highestSeenViolationId.current) return;
+    const fresh = feed.filter((f) => f.id > highestSeenViolationId.current).slice(0, 3);
+    highestSeenViolationId.current = newestId;
+    if (fresh.length > 0) {
+      setLiveAlerts((prev) => [...fresh, ...prev].slice(0, 4));
+      if (soundEnabled) {
+        const hasCritical = fresh.some((f) => f.severity === 'CRITICAL' || f.severity === 'HIGH');
+        playAlertBeep(hasCritical);
+      }
+    }
+  }, [feed, soundEnabled]);
+
+  const togglePause = (a: LiveAttempt) => {
+    const nextPaused = !pausedMap[a.id];
+    setPausedMap((m) => ({ ...m, [a.id]: nextPaused }));
+    router.post(
+      `/admin/attempts/${a.id}/command`,
+      { type: nextPaused ? 'PAUSE' : 'RESUME' },
+      { preserveScroll: true },
+    );
   };
 
   const warn = async (a: LiveAttempt) => {
@@ -219,6 +268,13 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
                 <span className="font-mono text-2xl font-semibold tracking-[0.02em]">{left}</span>
               </div>
             )}
+            <FxButton
+              icon={soundEnabled ? Volume2 : VolumeX}
+              onClick={() => setSoundEnabled((v) => !v)}
+              title="Bật/tắt âm báo khi phát hiện vi phạm mới"
+            >
+              {soundEnabled ? 'Âm báo: Bật' : 'Âm báo: Tắt'}
+            </FxButton>
             {live && (
               <FxButton variant="danger" icon={Square} onClick={() => setConfirmEnd(true)}>
                 Kết thúc ca
@@ -227,6 +283,51 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
           </>
         }
       />
+
+      {liveAlerts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {liveAlerts.map((al) => {
+            const sev = severityOf(al.severity);
+            return (
+              <div
+                key={al.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/50 bg-danger/10 px-4 py-2.5 text-xs shadow-sm"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <BellRing className="size-4 shrink-0 text-danger-fg" />
+                  <Pill tone={sev.tone} size="sm">
+                    {sev.label}
+                  </Pill>
+                  <span className="font-semibold text-foreground">{al.student_name}</span>
+                  <span className="text-muted-foreground">—</span>
+                  <span className="truncate font-medium text-danger-fg">
+                    {violationLabel(al.type)}
+                    {violationDetail(al.details) ? ` (${violationDetail(al.details)})` : ''}
+                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{hhmmss(al.timestamp)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <FxButton
+                    size="sm"
+                    variant="primary"
+                    icon={Eye}
+                    onClick={() => router.visit(`/admin/attempts/${al.attempt_id}?violation=${al.id}`)}
+                  >
+                    Xem bằng chứng ngay
+                  </FxButton>
+                  <button
+                    type="button"
+                    onClick={() => setLiveAlerts((prev) => prev.filter((x) => x.id !== al.id))}
+                    className="rounded p-1 text-muted-foreground hover:bg-surface hover:text-foreground"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))' }}>
         {stats.map((s) => (
@@ -340,9 +441,12 @@ export default function LiveShow({ user, teams, exam, attempts, feed: feedHead }
                         </span>
                       </div>
                       {hubLive && s.state !== 'done' && (
-                        <div className="flex gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
                           <FxButton size="sm" icon={Megaphone} onClick={() => warn(s)}>
                             Nhắc
+                          </FxButton>
+                          <FxButton size="sm" icon={pausedMap[s.id] ? PlayCircle : PauseCircle} onClick={() => togglePause(s)}>
+                            {pausedMap[s.id] ? 'Tiếp tục' : 'Tạm dừng'}
                           </FxButton>
                           <FxButton size="sm" icon={MessageSquare} onClick={() => openChat(s)}>
                             Chat
