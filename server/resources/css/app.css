@@ -219,3 +219,15 @@
 .dark .token.operator, .dark .token.entity, .dark .token.url { color: #f0c674; }
 .dark .token.builtin, .dark .token.property, .dark .token.tag { color: #ff8a80; }
 .dark .token.macro, .dark .token.directive { color: #67e8f9; }
+
+/* Medium Zoom overlay & opened image */
+.medium-zoom-overlay {
+    z-index: 9999 !important;
+    backdrop-filter: blur(8px);
+}
+.medium-zoom-image--opened {
+    z-index: 10000 !important;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+

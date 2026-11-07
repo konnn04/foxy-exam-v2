@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import ZoomableImage from '@/components/common/ZoomableImage';
 import {
   Shield,
   Cpu,
@@ -294,11 +295,12 @@ export default function Features() {
 
               <div className="p-5 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[220px]">
                 {!kioskImgError ? (
-                  <img
+                  <ZoomableImage
                     src="/images/mockups/kiosk-candidate.png"
                     alt={t.features.candidateScreenTitle}
-                    className="w-full h-auto rounded-lg shadow-sm"
+                    hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
                     onError={() => setKioskImgError(true)}
+                    className="rounded-lg shadow-sm"
                   />
                 ) : null}
 
@@ -340,11 +342,12 @@ export default function Features() {
 
               <div className="p-5 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[220px]">
                 {!camImgError ? (
-                  <img
+                  <ZoomableImage
                     src="/images/mockups/operator-view.png"
                     alt={t.features.mobileCamTitle}
-                    className="w-full h-auto rounded-lg shadow-sm"
+                    hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
                     onError={() => setCamImgError(true)}
+                    className="rounded-lg shadow-sm"
                   />
                 ) : null}
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import ZoomableImage from '@/components/common/ZoomableImage';
 import {
   ShieldCheck,
   Lock,
@@ -243,11 +244,12 @@ export default function Landing() {
 
             {!dashboardImgError ? (
               <div className="relative">
-                <img
+                <ZoomableImage
                   src="/images/mockups/dashboard-proctor.png"
                   alt="Giao diện giám sát phòng thi trực tiếp"
-                  className="w-full h-auto block"
+                  hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
                   onError={() => setDashboardImgError(true)}
+                  className="w-full h-auto block"
                 />
               </div>
             ) : null}
