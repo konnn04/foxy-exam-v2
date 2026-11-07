@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
 import {
@@ -13,10 +13,53 @@ import {
   Monitor,
   Wifi,
   HardDrive,
-  Info,
+  Copy,
+  Check,
 } from 'lucide-react';
 
-export default function DownloadPage() {
+interface ReleaseProps {
+  version: string;
+  tag: string;
+  published_at: string;
+  exe_name: string;
+  exe_url: string;
+  exe_size_mb: string;
+  exe_sha256: string;
+  msi_name: string;
+  msi_url: string;
+  msi_size_mb: string;
+  msi_sha256: string;
+}
+
+interface DownloadPageProps {
+  release?: ReleaseProps;
+}
+
+export default function DownloadPage({ release }: DownloadPageProps) {
+  const [copiedSha, setCopiedSha] = useState<string | null>(null);
+
+  const defaultRelease: ReleaseProps = {
+    version: 'v0.1.0',
+    tag: 'client-v0.1.0',
+    published_at: '2026-11-07T05:01:37Z',
+    exe_name: 'FoxyExam.Client_0.1.0_x64-setup.exe',
+    exe_url: 'https://github.com/konnn04/foxy-exam-v2/releases/download/client-v0.1.0/FoxyExam.Client_0.1.0_x64-setup.exe',
+    exe_size_mb: '12.9 MB',
+    exe_sha256: 'sha256:d6fd3375f86261d08f199c51b76244502d3c33fe775a25a6a3f7a4dafaf0c3a0',
+    msi_name: 'FoxyExam.Client_0.1.0_x64_en-US.msi',
+    msi_url: 'https://github.com/konnn04/foxy-exam-v2/releases/download/client-v0.1.0/FoxyExam.Client_0.1.0_x64_en-US.msi',
+    msi_size_mb: '15.8 MB',
+    msi_sha256: 'sha256:f5e729d0d123ad79dfa61a2103d802958e5613c428c9ec37dc4dd8bc3c009e99',
+  };
+
+  const rel = release || defaultRelease;
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedSha(id);
+    setTimeout(() => setCopiedSha(null), 2000);
+  };
+
   return (
     <PublicLayout>
       <Head title="Tải ứng dụng - Exam Guard" />
@@ -26,7 +69,7 @@ export default function DownloadPage() {
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Bản phát hành ổn định v2.1.0 · Dành cho Windows
+            Bản phát hành chính thức {rel.version} (Mới nhất) · Dành cho Windows
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Tải ứng dụng giám sát thi Exam Guard
@@ -41,7 +84,7 @@ export default function DownloadPage() {
       <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Candidate Edition */}
+            {/* Candidate Edition (.exe) */}
             <div className="rounded-2xl border-2 border-blue-600 bg-gradient-to-b from-blue-50/20 to-white p-6 sm:p-8 flex flex-col justify-between shadow-lg shadow-blue-500/5">
               <div>
                 <div className="flex items-center justify-between gap-4 mb-4">
@@ -67,7 +110,7 @@ export default function DownloadPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Bộ cài đặt siêu nhẹ chỉ ~42 MB, cài đặt trong 30 giây</span>
+                    <span>Bộ cài đặt siêu nhẹ: <strong>{rel.exe_size_mb}</strong>, cài đặt tức thì</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -78,8 +121,8 @@ export default function DownloadPage() {
 
               <div>
                 <a
-                  href="/download/ExamGuard-Setup-Latest.exe"
-                  className="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-md shadow-blue-500/20 group"
+                  href="/download/exe"
+                  className="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all shadow-md shadow-blue-500/20 group cursor-pointer"
                 >
                   <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801" />
@@ -87,13 +130,29 @@ export default function DownloadPage() {
                   <span>Tải ứng dụng Windows (.exe)</span>
                   <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
                 </a>
-                <div className="text-center text-[11px] text-slate-400 mt-2">
-                  Bản phát hành chính thức 2.1.0 · Có sẵn mã kiểm tra tính toàn vẹn
+
+                {/* File info & SHA256 */}
+                <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 font-mono space-y-1">
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="truncate max-w-[200px]">{rel.exe_name}</span>
+                    <span className="font-bold text-slate-800">{rel.exe_size_mb}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1 text-[10px]">
+                    <span className="truncate text-slate-400">{rel.exe_sha256}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(rel.exe_sha256, 'exe')}
+                      className="text-blue-600 hover:text-blue-800 shrink-0 flex items-center gap-0.5"
+                      title="Sao chép mã SHA-256"
+                    >
+                      {copiedSha === 'exe' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* School Lab Edition */}
+            {/* School Lab Edition (.msi) */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 flex flex-col justify-between hover:border-slate-300 transition-colors shadow-xs">
               <div>
                 <div className="flex items-center justify-between gap-4 mb-4">
@@ -119,7 +178,7 @@ export default function DownloadPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Hỗ trợ cài đặt tự động từ xa qua chính sách nhóm (GPO)</span>
+                    <span>Dung lượng gọn nhẹ: <strong>{rel.msi_size_mb}</strong>, cài âm thầm GPO</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -130,8 +189,8 @@ export default function DownloadPage() {
 
               <div>
                 <a
-                  href="/download/ExamGuard-Enterprise-Latest.msi"
-                  className="w-full py-3.5 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all"
+                  href="/download/msi"
+                  className="w-full py-3.5 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center gap-3 transition-all cursor-pointer"
                 >
                   <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801" />
@@ -139,8 +198,24 @@ export default function DownloadPage() {
                   <span>Tải bản phòng máy (.msi)</span>
                   <Download className="w-4 h-4" />
                 </a>
-                <div className="text-center text-[11px] text-slate-400 mt-2">
-                  Dành cho trung tâm quản trị mạng và phòng máy của trường
+
+                {/* File info & SHA256 */}
+                <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 font-mono space-y-1">
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="truncate max-w-[200px]">{rel.msi_name}</span>
+                    <span className="font-bold text-slate-800">{rel.msi_size_mb}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1 text-[10px]">
+                    <span className="truncate text-slate-400">{rel.msi_sha256}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(rel.msi_sha256, 'msi')}
+                      className="text-blue-600 hover:text-blue-800 shrink-0 flex items-center gap-0.5"
+                      title="Sao chép mã SHA-256"
+                    >
+                      {copiedSha === 'msi' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

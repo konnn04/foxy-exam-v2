@@ -13,6 +13,7 @@ use App\Models\Subscription;
 use App\Models\TestCase;
 use App\Models\User;
 use App\Models\Violation;
+use App\Services\ClientReleaseService;
 use App\Services\QuotaService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
@@ -63,7 +64,26 @@ Route::get('/pricing', function () {
     ]);
 })->name('pricing');
 Route::get('/about', fn () => Inertia::render('Public/About'))->name('about');
-Route::get('/download', fn () => Inertia::render('Public/Download'))->name('download');
+
+// Download portal & direct release downloads
+Route::get('/download', function () {
+    return Inertia::render('Public/Download', [
+        'release' => ClientReleaseService::getLatest(),
+    ]);
+})->name('download');
+
+Route::get('/download/exe', function () {
+    $rel = ClientReleaseService::getLatest();
+    return redirect()->away($rel['exe_url']);
+})->name('download.exe');
+
+Route::get('/download/msi', function () {
+    $rel = ClientReleaseService::getLatest();
+    return redirect()->away($rel['msi_url']);
+})->name('download.msi');
+
+Route::get('/download/windows', fn () => redirect()->route('download.exe'));
+Route::get('/api/client/latest', fn () => response()->json(ClientReleaseService::getLatest()));
 
 // 2. OpenAPI Interactive Documentation for Client App Developers (Scramble)
 Route::get('/docs', function () {
