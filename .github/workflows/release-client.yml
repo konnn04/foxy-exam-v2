@@ -1,24 +1,43 @@
-name: Release FoxyExam Client
+name: Auto Release Exam Guard Client (Tauri)
 
-# Kích hoạt khi push tag dạng "client-v1.0.0", hoặc chạy tay từ tab Actions.
+# Tự động build & phát hành GitHub Release (.exe NSIS + .msi) khi:
+# 1. Push lên nhánh `main` và có thay đổi trong `client/` (hoặc file workflow này)
+# 2. Push tag dạng `client-v*.*.*` hoặc `v*.*.*`
+# 3. Kích hoạt thủ công từ tab Actions (workflow_dispatch)
 on:
   push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - ".github/workflows/release-client.yml"
     tags:
       - "client-v*.*.*"
+      - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tên tag bản phát hành tùy chọn (ví dụ: client-v0.1.1). Để trống sẽ tự lấy theo version trong tauri.conf.json."
+        required: false
+        type: string
+
+concurrency:
+  group: release-tauri-client-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: Build & Release Tauri App (${{ matrix.platform }})
     permissions:
-      contents: write # cần quyền ghi để tạo GitHub Release + upload file cài đặt
+      contents: write # Quyền tạo GitHub Release, tag và upload gói cài đặt (.exe, .msi, latest.json)
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-latest
-          # Sinh viên hiện chỉ thi trên Windows nên mặc định chỉ build Windows.
-          # Cần thêm macOS / Linux thì bỏ comment 2 dòng dưới:
+          # Mặc định build Windows (.exe NSIS & .msi).
+          # Bỏ comment 2 dòng dưới nếu muốn build thêm cho macOS và Linux:
           # - platform: macos-latest
           # - platform: ubuntu-22.04
 
@@ -27,48 +46,94 @@ jobs:
     steps:
       - name: Checkout mã nguồn
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Cài Rust toolchain
+      - name: Cài đặt Rust Toolchain (stable)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cài pnpm
+      - name: Cache Rust Cargo (tăng tốc độ build Tauri)
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./client/src-tauri -> target"
+
+      - name: Cài đặt pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Cài Node.js
+      - name: Cài đặt Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
           cache-dependency-path: client/pnpm-lock.yaml
 
-      - name: Cài dependency hệ thống cho Tauri trên Linux
+      - name: Cài đặt thư viện hệ thống cho Linux (nếu bật matrix Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Cài dependency JS (client/)
+      - name: Cài đặt dependencies Frontend (client/)
         working-directory: client
         run: pnpm install --frozen-lockfile
 
-      - name: Build & phát hành FoxyExam Client
+      - name: Xác định Version, Tag và Cấu hình Ký số (Updater Signing)
+        id: meta
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          SIGN_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          VERSION=$(node -p "require('./client/src-tauri/tauri.conf.json').version")
+          SHORT_SHA="${SHA:0:7}"
+
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            TAG="$REF_NAME"
+          else
+            # Khi push trực tiếp lên nhánh main: nếu tag `client-v<version>` đã tồn tại thì gắn thêm mã commit ngắn để không bị trùng tag
+            CANDIDATE="client-v${VERSION}"
+            if git rev-parse "$CANDIDATE" >/dev/null 2>&1; then
+              TAG="client-v${VERSION}-${SHORT_SHA}"
+            else
+              TAG="$CANDIDATE"
+            fi
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+          # Chỉ bật tạo latest.json cho Auto-Updater khi repo đã cấu hình secret TAURI_SIGNING_PRIVATE_KEY
+          if [ -n "$SIGN_KEY" ]; then
+            echo "include_updater=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "include_updater=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & Xuất bản GitHub Release (Exam Guard Client)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Bí mật ký gói cập nhật — lấy từ `src-tauri/foxyexam-updater.key`
-          # (đã gitignore) và file `.key.pub` cho public key trong tauri.conf.json.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://exam.ou.edu.vn/api/v1' }}
         with:
           projectPath: client
-          tagName: ${{ github.ref_name }}
-          releaseName: "FoxyExam Client ${{ github.ref_name }}"
+          tagName: ${{ steps.meta.outputs.tag }}
+          releaseName: "Exam Guard Client v${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.short_sha }})"
           releaseBody: |
-            Xem chi tiết thay đổi trong CHANGELOG.
-            Ứng dụng đang chạy sẽ tự phát hiện và cài bản này qua menu khay hệ
-            thống "Kiểm tra cập nhật" (hoặc tự kiểm tra định kỳ nếu đã cấu hình).
-          releaseDraft: true # để review trước khi bấm publish — xem ghi chú bên dưới
+            ### Bộ cài đặt Exam Guard Client (Windows 64-bit)
+            Bản phát hành tự động từ nhánh `main` (Commit `${{ github.sha }}`).
+
+            - **Gói cài đặt độc lập dành cho thí sinh (`.exe` NSIS)**: `FoxyExam Client_${{ steps.meta.outputs.version }}_x64-setup.exe`
+            - **Gói triển khai phòng máy tập trung (`.msi` Windows Installer)**: `FoxyExam Client_${{ steps.meta.outputs.version }}_x64_en-US.msi`
+          releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: ${{ steps.meta.outputs.include_updater == 'true' }}

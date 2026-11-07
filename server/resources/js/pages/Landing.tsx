@@ -1087,7 +1087,9 @@ export default function Landing({ plans = [] }: Props) {
                   </p>
                 </div>
                 <a
-                  href="#lien-he"
+                  href="https://github.com/konnn04/foxy-exam-v2/releases/latest"
+                  target="_blank"
+                  rel="noreferrer"
                   className="px-5 py-2.5 bg-blue-600 text-white text-[14px] font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shrink-0 whitespace-nowrap"
                 >
                   <Download className="w-4 h-4 shrink-0" /> Tải bản .exe
@@ -1108,10 +1110,12 @@ export default function Landing({ plans = [] }: Props) {
                   </p>
                 </div>
                 <a
-                  href="#lien-he"
-                  className="px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center shrink-0 whitespace-nowrap"
+                  href="https://github.com/konnn04/foxy-exam-v2/releases/latest"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-[14px] font-semibold rounded-lg hover:bg-slate-200 transition-colors text-center shrink-0 whitespace-nowrap flex items-center justify-center gap-2"
                 >
-                  Yêu cầu gói phân phối .msi
+                  <Download className="w-4 h-4 shrink-0" /> Tải gói .msi
                 </a>
               </div>
             </div>
