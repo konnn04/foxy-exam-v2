@@ -1,0 +1,12 @@
+{
+  "update.windowTitle": "Foxy Exam — Cập nhật",
+  "update.checking": "Đang kiểm tra cập nhật…",
+  "update.upToDate": "Bạn đang dùng bản mới nhất.",
+  "update.available": "Có bản mới {version} — đang tải…",
+  "update.downloading": "Đang tải… {percent}%",
+  "update.installing": "Đang cài đặt, ứng dụng sẽ khởi động lại…",
+  "update.error": "Không kiểm tra được cập nhật",
+  "update.close": "Đóng",
+  "update.retry": "Kiểm tra lại",
+  "update.version": "Phiên bản {version}"
+}

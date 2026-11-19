@@ -13,6 +13,7 @@ import { useExamRuntime } from "../lib/examRuntime";
 import ExamLobby from "../components/ExamLobby";
 import { clearAnswerQueue, flushAnswers, onQueueChange, pendingAnswers, queueAnswer } from "../lib/answerQueue";
 import { clearPendingExam, getLobbyMedia, getPendingExam, savePendingExam, type PendingExam } from "../lib/lobbyMedia";
+import { useI18n } from "../lib/i18n";
 import {
   ApiError,
   finishExam,
@@ -29,14 +30,14 @@ interface AnswerState {
   answerContent?: string;
 }
 
-const TYPE_META: Record<QuestionType, { label: string; tone: "info" | "accent" | "warning" | "success" | "neutral" }> = {
-  SINGLE_CHOICE: { label: "Trắc nghiệm", tone: "info" },
-  MULTIPLE_CHOICE: { label: "Nhiều đáp án", tone: "accent" },
-  TRUE_FALSE: { label: "Đúng / Sai", tone: "info" },
-  MULTIPLE_FILL_IN_BLANK: { label: "Điền chỗ trống", tone: "accent" },
-  SHORT_ANSWER: { label: "Trả lời ngắn", tone: "warning" },
-  ESSAY: { label: "Tự luận", tone: "success" },
-  GROUP_QUESTION: { label: "Đoạn đọc", tone: "neutral" },
+const TYPE_META: Record<QuestionType, { labelKey: string; tone: "info" | "accent" | "warning" | "success" | "neutral" }> = {
+  SINGLE_CHOICE: { labelKey: "exam.typeSingle", tone: "info" },
+  MULTIPLE_CHOICE: { labelKey: "exam.typeMultiple", tone: "accent" },
+  TRUE_FALSE: { labelKey: "exam.typeTrueFalse", tone: "info" },
+  MULTIPLE_FILL_IN_BLANK: { labelKey: "exam.typeFillBlank", tone: "accent" },
+  SHORT_ANSWER: { labelKey: "exam.typeShortAnswer", tone: "warning" },
+  ESSAY: { labelKey: "exam.typeEssay", tone: "success" },
+  GROUP_QUESTION: { labelKey: "exam.passage", tone: "neutral" },
 };
 
 const isTyping = (el: EventTarget | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
@@ -48,6 +49,7 @@ const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
  * nhập nên không thể tải lúc mount). Đáp án tự lưu lên server sau 400ms.
  */
 export default function ExamClassic() {
+  const { t } = useI18n();
   const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam("classic"));
   const [session, setSession] = useState<Session | null>(() => getSession());
   const [questions, setQuestions] = useState<ClassicalQuestionItem[]>([]);
@@ -286,7 +288,10 @@ export default function ExamClassic() {
         setSubmitError(`Còn ${pendingAnswers()} câu trả lời chưa lưu được lên máy chủ (mất mạng?). Kiểm tra kết nối rồi nộp lại, bài làm vẫn được giữ trên máy.`);
         return;
       }
-      await submitExamAttempt(session.exam.id, session.attemptId);
+      await submitExamAttempt(session.exam.id, session.attemptId).catch((e) => {
+        // 400: the server already closed this attempt (time up / absent / ended by a proctor): nothing left to submit
+        if (!(e instanceof ApiError && e.status === 400)) throw e;
+      });
       clearAnswerQueue();
       await finishExam().catch(() => {});
       clearSession();
@@ -321,18 +326,18 @@ export default function ExamClassic() {
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-app text-sm text-muted">
         {loading && session ? (
           <>
-            <Loader2 size={18} className="animate-spin" /> Đang tải đề thi…
+            <Loader2 size={18} className="animate-spin" /> {t("common.loading")}
           </>
         ) : (
           <>
             <p className={loadError ? "text-danger" : ""}>
-              {loadError ?? (session ? "Đề thi chưa có câu hỏi nào." : "Chưa chọn kỳ thi.")}
+              {loadError ?? (session ? t("exam.noQuestions") : t("exam.noExamSelected"))}
             </p>
             <div className="flex gap-2">
-              <Button onClick={() => void leave()}>Về trang chủ</Button>
+              <Button onClick={() => void leave()}>{t("common.back")}</Button>
               {loadError && (
                 <Button variant="primary" onClick={() => load(true)}>
-                  Thử lại
+                  {t("common.retry")}
                 </Button>
               )}
             </div>
@@ -350,7 +355,7 @@ export default function ExamClassic() {
               {current.image && <img src={assetUrl(current.image) ?? ""} alt="" className="mb-4 max-h-72 rounded-xl border border-line object-contain" />}
 
               <div className="flex items-center gap-2">
-                <Badge tone={meta.tone}>{meta.label}</Badge>
+                <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
                 {!!current.points && <span className="text-[11px] text-muted">{current.points} điểm</span>}
                 {current.type === "MULTIPLE_CHOICE" && <span className="text-[11px] text-muted">· chọn nhiều đáp án</span>}
               </div>
@@ -401,8 +406,8 @@ export default function ExamClassic() {
                 {current.type === "TRUE_FALSE" && (
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { v: "true", label: "Đúng", icon: <Check size={16} /> },
-                      { v: "false", label: "Sai", icon: <X size={16} /> },
+                      { v: "true", label: t("exam.true"), icon: <Check size={16} /> },
+                      { v: "false", label: t("exam.false"), icon: <X size={16} /> },
                     ].map((o) => (
                       <button
                         key={o.v}
@@ -435,7 +440,7 @@ export default function ExamClassic() {
                     value={a.answerContent ?? ""}
                     onChange={(e) => update(current.id, { ...a, answerContent: e.target.value })}
                     onPaste={guard.onPaste}
-                    placeholder="Nhập đáp án ngắn gọn…"
+                    placeholder={t("exam.shortAnswerPlaceholder")}
                     className="h-11 w-full rounded-xl border border-line-strong bg-surface px-4 text-sm text-fg outline-none focus:border-fg/60 focus:ring-2 focus:ring-fg/10"
                   />
                 )}
@@ -468,7 +473,7 @@ export default function ExamClassic() {
                       value={a.answerContent ?? ""}
                       onChange={(e) => update(current.id, { ...a, answerContent: e.target.value })}
                       onPaste={guard.onPaste}
-                      placeholder="Trình bày bài làm của bạn…"
+                      placeholder={t("exam.essayPlaceholder")}
                       className="w-full resize-y bg-transparent p-4 text-sm leading-relaxed text-fg outline-none"
                     />
                   </div>
@@ -485,7 +490,7 @@ export default function ExamClassic() {
     <>
       <ExamShell
         title={session.exam.title}
-        subtitle={`${session.exam.code} · Lần thi #${session.attemptNumber}`}
+        subtitle={t("exam.attemptSubtitle", { code: session.exam.code, attempt: session.attemptNumber })}
         remainingSeconds={timeRemaining}
         onSubmit={() => setShowSubmit(true)}
         runtime={runtime}
@@ -499,7 +504,7 @@ export default function ExamClassic() {
               <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
             </div>
             <span className="text-muted">
-              {answeredCount}/{answerable.length} đã trả lời
+              {t("exam.answeredCount", { answered: answeredCount, total: answerable.length })}
             </span>
             <div className="ml-2 flex items-center gap-1 overflow-x-auto">
               <PagerButton onClick={() => go(index - 1)} disabled={index === 0}>
@@ -516,7 +521,7 @@ export default function ExamClassic() {
             </div>
             <div className="ml-auto flex gap-2">
               <Button size="sm" icon={<LayoutGrid size={13} />} onClick={() => setShowGrid((v) => !v)}>
-                Danh sách câu
+                {t("exam.questionGrid")}
               </Button>
               <Button
                 size="sm"
@@ -524,7 +529,7 @@ export default function ExamClassic() {
                 onClick={toggleFlag}
                 className={flags.has(page.key) ? "border-warning/50 bg-warning-soft text-warning" : ""}
               >
-                {flags.has(page.key) ? "Đã đánh dấu" : "Đánh dấu"}
+                {flags.has(page.key) ? t("exam.marked") : t("exam.mark")}
               </Button>
             </div>
           </div>
@@ -549,7 +554,7 @@ export default function ExamClassic() {
                     )}
                   >
                     {pageLabel(pg, numbers, true)}
-                    <span className="font-sans text-[8px] opacity-70">{pg.group ? "Đoạn đọc" : TYPE_META[pg.items[0].type].label.split(" ")[0]}</span>
+                    <span className="font-sans text-[8px] opacity-70">{pg.group ? t("exam.passage") : t(TYPE_META[pg.items[0].type].labelKey).split(" ")[0]}</span>
                     {flags.has(pg.key) && <Flag size={9} className="absolute right-1 top-1 text-warning" />}
                   </button>
                 ))}
@@ -572,25 +577,25 @@ export default function ExamClassic() {
 
         <div className="flex h-12 shrink-0 items-center gap-3 border-t border-line bg-surface px-5">
           <Button icon={<ChevronLeft size={14} />} onClick={() => go(index - 1)} disabled={index === 0}>
-            Câu trước
+            {t("exam.prev")}
           </Button>
           <span className="mx-auto flex items-center gap-3 text-[11px] text-subtle">
             <span className={cx("flex items-center gap-1", saveState === "error" && "text-danger")}>
               <Save size={12} />
-              {saveState === "saving" ? "Đang lưu…" : saveState === "error" ? "Lỗi lưu — kiểm tra mạng" : savedAt ? `Đã lưu ${savedAt}` : "Tự lưu khi trả lời"}
+              {saveState === "saving" ? t("exam.saving") : saveState === "error" ? t("exam.saveError") : savedAt ? t("exam.savedAt", { time: savedAt }) : t("exam.autoSaveHint")}
             </span>
-            · Alt+← → chuyển câu · F đánh dấu
+            · Alt+← → · F
           </span>
           <Button variant="primary" onClick={() => go(index + 1)} disabled={index === pages.length - 1}>
-            Câu sau <ChevronRight size={14} />
+            {t("exam.next")} <ChevronRight size={14} />
           </Button>
         </div>
       </ExamShell>
 
       {showSubmit && (
         <ConfirmModal
-          title="Xác nhận nộp bài"
-          confirmLabel="Nộp bài"
+          title={t("exam.confirmSubmitTitle")}
+          confirmLabel={t("exam.confirmSubmitBtn")}
           busy={submitting}
           onCancel={() => (setShowSubmit(false), setSubmitError(null))}
           onConfirm={() => void handleSubmit()}

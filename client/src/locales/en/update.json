@@ -1,0 +1,12 @@
+{
+  "update.windowTitle": "Exam Guard — Updates",
+  "update.checking": "Checking for updates…",
+  "update.upToDate": "You are using the latest version.",
+  "update.available": "New version {version} available — downloading…",
+  "update.downloading": "Downloading… {percent}%",
+  "update.installing": "Installing update, app will restart shortly…",
+  "update.error": "Could not check for updates",
+  "update.close": "Close",
+  "update.retry": "Check again",
+  "update.version": "Version {version}"
+}

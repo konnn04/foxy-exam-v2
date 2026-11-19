@@ -3,7 +3,7 @@ import { Check, CircleCheck, CircleX, Hand, Plus, Trash2 } from 'lucide-react';
 import { Field, FxInput, FxTextarea, IconButton, Panel, Pill, Segmented, Switch } from './ui';
 import { MediaInput } from './question-media';
 import { DIFFICULTY } from './domain';
-import { DIFFICULTY_ORDER, KINDS, SKILLS, TF, blankNumbers, type Draft, type Kind } from './question-draft';
+import { DIFFICULTY_ORDER, KINDS, TF, blankNumbers, type Draft, type Kind } from './question-draft';
 import { cn } from '@/lib/utils';
 
 type Edit = (patch: Partial<Draft>) => void;
@@ -51,6 +51,8 @@ export function QuestionBody({
                 : 'Nhập nội dung câu hỏi…'
           }
           rows={k === 'GROUP_QUESTION' ? 3 : 4}
+          aria-label={k === 'GROUP_QUESTION' ? 'Hướng dẫn chung của nhóm' : 'Nội dung câu hỏi'}
+          aria-invalid={!!errors.content || undefined}
           className="block w-full resize-y bg-transparent p-4 text-[15px] leading-[1.7] outline-none placeholder:text-muted-foreground"
         />
         {k === 'FILL' && (
@@ -70,7 +72,7 @@ export function QuestionBody({
 
       {k !== 'GROUP_QUESTION' && (
         <Panel className="flex flex-col gap-2 p-4">
-          <span className="text-xs font-medium text-muted-foreground">Hình minh họa (tùy chọn)</span>
+          <span className="text-[13px] font-medium">Hình minh hoạ <span className="text-xs font-normal text-muted-foreground">tuỳ chọn</span></span>
           <MediaInput kind="image" value={draft.image} onChange={(image) => edit({ image })} />
         </Panel>
       )}
@@ -154,7 +156,7 @@ export function QuestionBody({
           <div className="flex items-center justify-between">
             <span className="font-semibold">Đáp án</span>
             <span className="text-xs text-muted-foreground">
-              {draft.answers.filter((a) => a.is_correct).length > 1 ? 'Nhiều đáp án đúng → thí sinh thấy ô checkbox' : 'Bấm ✓ để đánh dấu đáp án đúng'}
+              {draft.answers.filter((a) => a.is_correct).length > 1 ? 'Nhiều đáp án đúng: thí sinh được chọn nhiều ô' : 'Bấm dấu tích để đánh dấu đáp án đúng'}
             </span>
           </div>
           {draft.answers.map((a, i) => (
@@ -170,11 +172,15 @@ export function QuestionBody({
               <input
                 value={a.content}
                 onChange={(e) => edit({ answers: draft.answers.map((x, j) => (j === i ? { ...x, content: e.target.value } : x)) })}
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                aria-label={`Đáp án ${String.fromCharCode(65 + i)}`}
+                placeholder={`Đáp án ${String.fromCharCode(65 + i)}`}
+                className="min-w-0 flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
               />
               <button
                 type="button"
-                aria-label="Đáp án đúng"
+                aria-label={`Đánh dấu ${String.fromCharCode(65 + i)} là đáp án đúng`}
+                aria-pressed={a.is_correct}
+                title="Đáp án đúng"
                 onClick={() => edit({ answers: draft.answers.map((x, j) => (j === i ? { ...x, is_correct: !x.is_correct } : x)) })}
                 className={cn(
                   'flex size-7 cursor-pointer items-center justify-center rounded-md border',
@@ -195,7 +201,7 @@ export function QuestionBody({
           {draft.answers.length < 8 && (
             <button
               type="button"
-              onClick={() => edit({ answers: [...draft.answers, { content: `Đáp án ${String.fromCharCode(65 + draft.answers.length)}`, is_correct: false }] })}
+              onClick={() => edit({ answers: [...draft.answers, { content: '', is_correct: false }] })}
               className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-foreground/25 text-[13px] text-muted-foreground hover:border-primary hover:text-brand-fg"
             >
               <Plus className="size-4 opacity-60" /> Thêm đáp án
@@ -260,7 +266,7 @@ export function QuestionBody({
         <Panel className="flex flex-col gap-2.5 p-4">
           <span className="font-semibold">Đáp án mẫu</span>
           <FxInput value={draft.reference} maxLength={300} suffix={`${draft.reference.length}/300`} onChange={(e) => edit({ reference: e.target.value })} placeholder="They water the plants and share tools" />
-          <span className="text-xs text-muted-foreground">Có đáp án mẫu → chấm tự động (nhiều cách viết: ngăn cách bằng |). Để trống → giảng viên chấm tay.</span>
+          <span className="text-xs text-muted-foreground">Có đáp án mẫu thì hệ thống tự chấm (nhiều cách viết đúng: ngăn cách bằng |). Để trống thì giảng viên chấm tay.</span>
         </Panel>
       )}
 
@@ -314,7 +320,7 @@ export function QuestionBody({
           {errors.essay && <span className="text-xs text-danger-fg">{errors.essay}</span>}
           <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-xs text-warning-fg">
             <Hand className="size-4 opacity-70" />
-            Câu này chấm tay — xuất hiện trong hàng chờ chấm của giảng viên.
+            Câu tự luận được chấm tay: bài làm vào hàng chờ chấm của giảng viên.
           </div>
         </Panel>
       )}
@@ -322,52 +328,32 @@ export function QuestionBody({
   );
 }
 
-/** Right column: difficulty, points, skill, explanation. */
-export function QuestionProps({ draft, edit, errors }: { draft: Draft; edit: Edit; errors: Record<string, string> }) {
+/** Below the answers: how the question is scored and filed. */
+export function QuestionProps({ draft, edit, errors, topics = [] }: { draft: Draft; edit: Edit; errors: Record<string, string>; topics?: string[] }) {
+  const listId = React.useId();
   return (
-    <Panel className="flex min-w-0 max-w-[320px] flex-[1_1_240px] flex-col gap-3.5 p-4">
-      <span className="font-semibold">Thuộc tính</span>
-      <Field label="Độ khó" error={errors.difficulty}>
-        <div className="grid grid-cols-2 gap-1">
-          {DIFFICULTY_ORDER.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => edit({ difficulty: d })}
-              className={cn(
-                'h-[30px] cursor-pointer rounded-md border text-[13px] font-medium',
-                draft.difficulty === d ? 'border-transparent bg-foreground text-background' : 'border-border text-muted-foreground',
-              )}
-            >
-              {DIFFICULTY[d].label}
-            </button>
-          ))}
-        </div>
-      </Field>
-      {draft.kind !== 'GROUP_QUESTION' && (
-        <Field label="Trọng số (điểm)" error={errors.points}>
-          <FxInput type="number" min={0} step={0.25} value={draft.points} onChange={(e) => edit({ points: Number(e.target.value) })} />
+    <Panel className="flex flex-col gap-4 p-4">
+      <span className="font-semibold">Chấm điểm & phân loại</span>
+      <div className={cn('grid gap-4', draft.kind !== 'GROUP_QUESTION' && 'sm:grid-cols-[minmax(0,1fr)_150px]')}>
+        <Field label="Độ khó" error={errors.difficulty}>
+          <Segmented stretch value={draft.difficulty} onChange={(difficulty) => edit({ difficulty })} options={DIFFICULTY_ORDER.map((d) => ({ value: d, label: DIFFICULTY[d].label }))} />
         </Field>
-      )}
-      <Field label="Kỹ năng">
-        <div className="flex flex-wrap gap-1">
-          {SKILLS.map((s) => {
-            const on = draft.skill === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => edit({ skill: on ? '' : s })}
-                className={cn('cursor-pointer rounded-md border px-2 py-0.5 text-xs font-medium', on ? 'border-transparent bg-primary/16 text-brand-fg' : 'border-border text-muted-foreground hover:text-foreground')}
-              >
-                {s}
-              </button>
-            );
-          })}
-        </div>
+        {draft.kind !== 'GROUP_QUESTION' && (
+          <Field label="Điểm" error={errors.points}>
+            <FxInput type="number" min={0} step={0.25} value={draft.points} suffix="điểm" onChange={(e) => edit({ points: Number(e.target.value) })} />
+          </Field>
+        )}
+      </div>
+      <Field label="Chủ đề" optional hint="Hiện cạnh câu hỏi trong danh sách để dễ tìm. Ví dụ: Chương 3, Cây nhị phân." error={errors.skill}>
+        <FxInput list={listId} maxLength={40} value={draft.skill} placeholder="Gõ hoặc chọn chủ đề đã dùng" onChange={(e) => edit({ skill: e.target.value })} />
+        <datalist id={listId}>
+          {topics.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
       </Field>
-      <Field label="Giải thích / gợi ý chấm" hint="Hiện cho thí sinh khi bật “Cho xem lại bài”.">
-        <FxTextarea value={draft.explanation} onChange={(e) => edit({ explanation: e.target.value })} />
+      <Field label="Giải thích đáp án" optional hint="Thí sinh thấy phần này sau khi thi nếu kỳ thi cho xem lại bài.">
+        <FxTextarea rows={3} value={draft.explanation} onChange={(e) => edit({ explanation: e.target.value })} placeholder="Vì sao đáp án đúng, lỗi thường gặp…" />
       </Field>
     </Panel>
   );

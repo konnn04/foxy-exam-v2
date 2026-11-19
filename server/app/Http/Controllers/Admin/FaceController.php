@@ -49,7 +49,9 @@ class FaceController extends Controller
 
     public function destroy(int $id)
     {
-        FaceReference::delete($this->student($id));
+        $student = $this->student($id);
+        FaceReference::delete($student);
+        \App\Support\Audit::record('face.delete', "Xóa khuôn mặt {$student->username}", 'user', $student->id);
 
         return back()->with('success', 'Đã xoá dữ liệu khuôn mặt.');
     }
@@ -59,6 +61,7 @@ class FaceController extends Controller
         $request->validate(['locked' => ['required', 'boolean']]);
         $user = $this->student($id);
         $user->forceFill(['face_locked_at' => $request->boolean('locked') ? now() : null])->save();
+        \App\Support\Audit::record('face.' . ($request->boolean('locked') ? 'lock' : 'unlock'), "{$user->username}", 'user', $user->id);
 
         return back()->with('success', $request->boolean('locked') ? 'Đã khoá đăng ký khuôn mặt.' : 'Đã mở khoá, sinh viên có thể đăng ký lại.');
     }

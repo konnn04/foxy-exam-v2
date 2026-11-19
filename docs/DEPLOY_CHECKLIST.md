@@ -1,5 +1,27 @@
 # Việc cần làm sau các thay đổi gần đây
 
+## CI/CD tự động (server)
+
+Workflow `.github/workflows/server-ci.yml` chạy mỗi lần push vào `main` (và mỗi PR) có đụng `server/**`:
+
+1. **Migrations on PostgreSQL**: migrate DB trống, migrate lần hai (phải không làm gì), seed demo, và báo lỗi nếu còn migration chưa chạy.
+   Container `app` tự chạy `php artisan migrate --force` mỗi lần khởi động (`RUN_MIGRATIONS=true`), nên đây là bước chặn một migration hỏng trước khi nó
+   làm container khởi động lại liên tục trên production.
+2. **Types and build**: `tsc --noEmit` và `vite build`.
+3. **PHP tests**: các bộ test mới bắt buộc qua; toàn bộ bộ test chạy ở chế độ tham khảo (các test cũ cần seed `HCMUS` mà seeder hiện tại không tạo).
+4. **Deploy to Coolify** (chỉ khi cả ba bước trên xanh và là push vào `main`): gọi webhook deploy, rồi chờ `/up` trả 200. Nếu migrate lỗi, container
+   không lên và bước này báo đỏ.
+
+Cấu hình một lần:
+
+- Coolify → *Keys & Tokens → API tokens* tạo token; lấy URL deploy của ứng dụng (*Webhooks → Deploy Webhook*, dạng
+  `https://<coolify>/api/v1/deploy?uuid=<UUID>&force=false`).
+- GitHub → *Settings → Secrets and variables → Actions*:
+  `COOLIFY_DEPLOY_URL` (URL trên), `COOLIFY_TOKEN` (token), `HEALTHCHECK_URL` (tuỳ chọn, ví dụ `https://foxyexam.konnn04.dev/up`).
+- Coolify → ứng dụng → **tắt "Auto Deploy"** (webhook GitHub của Coolify), nếu không mỗi lần push sẽ deploy hai lần và deploy trước khi CI chạy xong.
+  Thiếu secret thì job deploy bị bỏ qua và Coolify tự deploy như trước.
+- GitHub → *Branch protection* cho `main`: bắt buộc các job `Migrations on PostgreSQL`, `Types and build`, `PHP tests` đạt trước khi merge.
+
 ## Máy chủ (Coolify)
 
 1. **Redeploy** `core` (Laravel) để chạy migration mới: `…000014`–`000023` (hủy phiên, loại sinh viên khỏi kỳ thi, `mobile_camera_tokens`, khuôn mặt,

@@ -171,8 +171,8 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
               </div>
             ),
           },
-          { key: 'no', label: 'Lần', width: '56px', render: (a) => <span className="font-mono text-xs">#{a.attempt_number ?? 1}</span> },
-          { key: 'start', label: 'Bắt đầu', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(a.started_at)}</span> },
+          { key: 'no', label: 'Lần', width: '56px', hideOnMobile: true, render: (a) => <span className="font-mono text-xs">#{a.attempt_number ?? 1}</span> },
+          { key: 'start', label: 'Bắt đầu', width: '150px', hideOnMobile: true, render: (a) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(a.started_at)}</span> },
           { key: 'sub', label: 'Nộp bài', width: '150px', render: (a) => <span className="font-mono text-xs text-muted-foreground">{formatDateTime(a.submitted_at)}</span> },
           {
             key: 'st',
@@ -186,6 +186,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
               }
               if (a.voided) return <Pill tone="danger">Đã hủy</Pill>;
               if (a.status === 'SUBMITTED' && a.ended_reason === 'ABSENT') return <Pill tone="warning">Vắng thi</Pill>;
+              if (a.status === 'SUBMITTED' && a.ended_reason === 'TIME_UP') return <Pill tone="info">Hết giờ, tự thu</Pill>;
               const s = ATTEMPT_STATUS[a.status] ?? { label: a.status, tone: 'neutral' as const };
               return <Pill tone={s.tone}>{s.label}</Pill>;
             },
@@ -223,7 +224,7 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
               onClick={() => router.visit(`/admin/attempts/${v.attempt_id}?violation=${v.id}`)}
               className="flex w-full cursor-pointer items-center gap-3 border-b border-border px-4 py-2.5 text-left last:border-b-0 hover:bg-surface"
             >
-              <span className="w-[68px] shrink-0 font-mono text-[11px] text-muted-foreground">{formatTime(v.timestamp, true)}</span>
+              <span className="hidden w-[68px] shrink-0 font-mono text-[11px] text-muted-foreground sm:block">{formatTime(v.timestamp, true)}</span>
               <Pill tone={sev.tone} size="sm">
                 {sev.label}
               </Pill>

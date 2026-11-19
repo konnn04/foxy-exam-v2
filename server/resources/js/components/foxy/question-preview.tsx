@@ -1,12 +1,12 @@
 import { MarkdownPreview } from './markdown';
 import React from 'react';
-import { Hand, Mic, Paperclip } from 'lucide-react';
+import { Check, Hand, Lightbulb, Mic, Paperclip } from 'lucide-react';
 import { FxInput, FxTextarea } from './ui';
 import { blankNumbers, type Draft } from './question-draft';
 import { cn } from '@/lib/utils';
 
-/** How a candidate sees the question in FoxyClient (no answer key). */
-export function QuestionPreview({ draft }: { draft: Draft }) {
+/** How a candidate sees the question in FoxyClient. `showKey` adds the answer key for the author to check the paper. */
+export function QuestionPreview({ draft, showKey = false }: { draft: Draft; showKey?: boolean }) {
   const k = draft.kind;
   const multi = draft.answers.filter((a) => a.is_correct).length > 1;
 
@@ -15,7 +15,7 @@ export function QuestionPreview({ draft }: { draft: Draft }) {
       ? draft.content.split(/(\[\d+\])/).filter(Boolean).map((t, i) =>
           /^\[\d+\]$/.test(t) ? (
             <span key={i} className="mx-1 inline-flex h-[26px] min-w-16 items-center rounded-md border border-dashed border-primary/70 bg-primary/8 px-2.5 font-mono text-xs font-semibold text-brand-fg">
-              Ô {t.slice(1, -1)}
+              {showKey && draft.blanks[Number(t.slice(1, -1)) - 1] ? draft.blanks[Number(t.slice(1, -1)) - 1] : `Ô ${t.slice(1, -1)}`}
             </span>
           ) : (
             <span key={i} className="whitespace-pre-wrap">
@@ -47,23 +47,44 @@ export function QuestionPreview({ draft }: { draft: Draft }) {
       {draft.image && k !== 'GROUP_QUESTION' && <img src={draft.image} alt="" className="max-h-64 w-fit rounded-lg border border-border" />}
 
       {k === 'CHOICE' &&
-        draft.answers.map((a, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-[10px] border border-border px-3.5 py-3">
-            <span className={cn('flex size-6 items-center justify-center border-2 border-foreground/30 text-xs font-semibold', multi ? 'rounded-md' : 'rounded-full')}>{String.fromCharCode(65 + i)}</span>
-            <MarkdownPreview source={a.content} className="[&_p]:my-0" />
-          </div>
-        ))}
+        draft.answers.map((a, i) => {
+          const key = showKey && a.is_correct;
+          return (
+            <div key={i} className={cn('flex items-center gap-3 rounded-[10px] border px-3.5 py-3', key ? 'border-success/60 bg-success/8' : 'border-border')}>
+              <span
+                className={cn(
+                  'flex size-6 shrink-0 items-center justify-center border-2 text-xs font-semibold',
+                  multi ? 'rounded-md' : 'rounded-full',
+                  key ? 'border-success bg-success text-white' : 'border-foreground/30',
+                )}
+              >
+                {key ? <Check className="size-3.5" strokeWidth={3} /> : String.fromCharCode(65 + i)}
+              </span>
+              <MarkdownPreview source={a.content} className="min-w-0 [&_p]:my-0" />
+            </div>
+          );
+        })}
       {k === 'TRUE_FALSE' && (
         <div className="grid grid-cols-2 gap-2.5">
-          {['Đúng', 'Sai'].map((t) => (
-            <div key={t} className="flex h-12 items-center justify-center rounded-[10px] border border-border font-semibold">
-              {t}
-            </div>
-          ))}
+          {['Đúng', 'Sai'].map((t, i) => {
+            const key = showKey && (i === 0) === draft.is_true;
+            return (
+              <div key={t} className={cn('flex h-12 items-center justify-center gap-1.5 rounded-[10px] border font-semibold', key ? 'border-success/60 bg-success/8 text-success-fg' : 'border-border')}>
+                {key && <Check className="size-4" strokeWidth={3} />}
+                {t}
+              </div>
+            );
+          })}
         </div>
       )}
       {k === 'FILL' && blankNumbers(draft.content).length === 0 && <div className="text-xs text-muted-foreground">Chưa có ô trống nào.</div>}
       {k === 'SHORT_ANSWER' && <FxInput disabled placeholder="Câu trả lời của thí sinh (tối đa 300 ký tự)…" />}
+      {k === 'SHORT_ANSWER' && showKey && (
+        <div className="text-[13px]">
+          <span className="text-muted-foreground">Đáp án mẫu: </span>
+          {draft.reference || <span className="text-muted-foreground">chưa có, giảng viên chấm tay</span>}
+        </div>
+      )}
       {k === 'ESSAY' && draft.essay.mode === 'write' && (
         <>
           <FxTextarea disabled rows={5} placeholder="Bài viết của thí sinh…" />
@@ -89,6 +110,12 @@ export function QuestionPreview({ draft }: { draft: Draft }) {
       {k === 'ESSAY' && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Hand className="size-3.5" /> Chấm tay
+        </div>
+      )}
+      {showKey && draft.explanation && k !== 'GROUP_QUESTION' && (
+        <div className="flex gap-2 rounded-[10px] bg-surface px-3.5 py-2.5 text-[13px] leading-relaxed">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-warning-fg" />
+          <span className="min-w-0 whitespace-pre-wrap">{draft.explanation}</span>
         </div>
       )}
     </div>

@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import PageHero from '@/components/public/PageHero';
 import { useLanguage } from '@/contexts/LanguageContext';
-import ZoomableImage from '@/components/common/ZoomableImage';
+import { CtaBand, Mockup, type MockKind } from '@/components/public/blocks';
+
+// default screenshot per feature card; each can be replaced by media.feature.N in the site settings
+const FEATURE_SHOTS: MockKind[] = ['kiosk', 'dashboard', 'phone', 'report', 'kiosk', 'operator'];
 import {
   Shield,
   Cpu,
@@ -23,8 +27,6 @@ import {
 
 export default function Features() {
   const { lang, t } = useLanguage();
-  const [kioskImgError, setKioskImgError] = useState(false);
-  const [camImgError, setCamImgError] = useState(false);
 
   const deepFeaturesVi = [
     {
@@ -183,21 +185,7 @@ export default function Features() {
       <Head title={t.features.metaTitle} />
 
       {/* Hero */}
-      <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(37,99,235,0.08),rgba(255,255,255,0))]" />
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
-            <Layers className="w-3.5 h-3.5" />
-            {t.features.badge}
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            {t.features.heroTitle}
-          </h1>
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            {t.features.heroDesc}
-          </p>
-        </div>
-      </section>
+      <PageHero icon={Layers} eyebrow={t.features.badge} title={t.features.heroTitle} desc={t.features.heroDesc} />
 
       {/* Grid 6 tính năng chính */}
       <section className="py-14 sm:py-20 bg-white">
@@ -211,6 +199,7 @@ export default function Features() {
                   className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group hover:border-blue-300"
                 >
                   <div>
+                    <Mockup kind={FEATURE_SHOTS[idx] ?? 'operator'} srcKey={`media.feature.${idx + 1}`} caption={false} className="mb-6" />
                     <div className="flex items-center justify-between gap-4 mb-4">
                       <span className="text-[11px] font-bold tracking-wider text-blue-600 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
                         {feat.badge}
@@ -259,147 +248,12 @@ export default function Features() {
         </div>
       </section>
 
-      {/* =========================================================================
-          MOCKUP MINH HỌA TRỰC QUAN GIAO DIỆN ỨNG DỤNG
-      ========================================================================= */}
-      <section className="py-14 sm:py-16 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-2.5 py-1 rounded-md">
-              {t.features.mockupSectionBadge}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 mb-3">
-              {t.features.mockupSectionTitle}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600">
-              {t.features.mockupSectionDesc}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Mockup 1: Ứng dụng thí sinh */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
-              <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="text-xs font-semibold text-slate-700 ml-1.5">
-                    {t.features.candidateScreenTitle}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  {t.features.candidateScreenBadge}
-                </span>
-              </div>
-
-              <div className="p-5 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[220px]">
-                {!kioskImgError ? (
-                  <ZoomableImage
-                    src="/images/mockups/kiosk-candidate.png"
-                    alt={t.features.candidateScreenTitle}
-                    hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
-                    onError={() => setKioskImgError(true)}
-                    className="rounded-lg shadow-sm"
-                  />
-                ) : null}
-
-                {kioskImgError && (
-                  <div className="text-center p-6 space-y-2">
-                    <Laptop className="w-10 h-10 text-slate-400 mx-auto" />
-                    <div className="text-xs font-semibold text-slate-700">
-                      {lang === 'vi' ? 'Giao diện làm bài toàn màn hình' : 'Fullscreen Candidate Exam Interface'}
-                    </div>
-                    <p className="text-[11px] text-slate-500 max-w-xs">
-                      {lang === 'vi'
-                        ? 'Tự động ẩn mọi thanh công cụ Windows, chỉ hiển thị đề thi và khung hình camera đối soát góc phải màn hình.'
-                        : 'Automatically suppresses Windows taskbar, presenting only the secure exam view and corner biometric camera.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-600">
-                {t.features.candidateScreenDesc}
-              </div>
-            </div>
-
-            {/* Mockup 2: Giao diện giám thị */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
-              <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <span className="text-xs font-semibold text-slate-700 ml-1.5">
-                    {t.features.mobileCamTitle}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  {t.features.mobileCamBadge}
-                </span>
-              </div>
-
-              <div className="p-5 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[220px]">
-                {!camImgError ? (
-                  <ZoomableImage
-                    src="/images/mockups/operator-view.png"
-                    alt={t.features.mobileCamTitle}
-                    hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
-                    onError={() => setCamImgError(true)}
-                    className="rounded-lg shadow-sm"
-                  />
-                ) : null}
-
-                {camImgError && (
-                  <div className="text-center p-6 space-y-2">
-                    <Smartphone className="w-10 h-10 text-slate-400 mx-auto" />
-                    <div className="text-xs font-semibold text-slate-700">
-                      {lang === 'vi' ? 'Giao diện giám sát trực tiếp' : 'Realtime Proctoring Interface'}
-                    </div>
-                    <p className="text-[11px] text-slate-500 max-w-xs">
-                      {lang === 'vi'
-                        ? 'Giám thị có thể theo dõi đồng thời nhiều thí sinh, nhận cảnh báo tự động khi phát hiện hành vi đáng ngờ và can thiệp từ xa.'
-                        : 'Proctors supervise multiple candidates concurrently, receiving automated alerts with instant remote intervention.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-600">
-                {t.features.mobileCamDesc}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Box */}
-      <section className="py-14 bg-white text-center">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
-            {t.features.ctaTitle}
-          </h2>
-          <p className="text-sm text-slate-600 mb-6">
-            {t.features.ctaDesc}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-md shadow-blue-500/20"
-            >
-              {t.features.pricingBtn}
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/download"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-sm transition-colors border border-slate-300"
-            >
-              {t.features.downloadBtn}
-            </Link>
-          </div>
-        </div>
-      </section>
+      <CtaBand
+        title={t.features.ctaTitle}
+        desc={t.features.ctaDesc}
+        primary={{ label: t.features.pricingBtn, href: '/pricing' }}
+        secondary={{ label: t.features.downloadBtn, href: '/download' }}
+      />
     </PublicLayout>
   );
 }

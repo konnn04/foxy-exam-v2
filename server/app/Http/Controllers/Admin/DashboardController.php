@@ -246,6 +246,7 @@ class DashboardController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'code' => $c->code,
+                'department' => $c->department,
                 'description' => $c->description,
                 'teacher_name' => $c->teacher?->name ?? 'Chưa gán',
                 'exams_count' => $c->exams_count,

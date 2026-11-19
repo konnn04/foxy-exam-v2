@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import PageHero from '@/components/public/PageHero';
+import { CtaBand } from '@/components/public/blocks';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Check,
@@ -66,46 +68,33 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
       <Head title={t.pricing.metaTitle} />
 
       {/* Hero */}
-      <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
-            <Scale className="w-3.5 h-3.5" />
-            {t.pricing.badge}
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            {t.pricing.heroTitle}
-          </h1>
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed mb-8">
-            {t.pricing.heroDesc}
-          </p>
-
-          {/* Bộ chọn chu kỳ */}
-          <div className="inline-flex items-center p-1 rounded-xl bg-slate-200/80 border border-slate-300">
-            <button
-              type="button"
-              onClick={() => setBillingCycle('per_session')}
-              className={`px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                billingCycle === 'per_session'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {t.pricing.tabPerClass}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingCycle('semester')}
-              className={`px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                billingCycle === 'semester'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {t.pricing.tabSemester}
-            </button>
-          </div>
-        </div>
-      </section>
+      <PageHero icon={Scale} eyebrow={t.pricing.badge} title={t.pricing.heroTitle} desc={t.pricing.heroDesc}>
+    {/* Bộ chọn chu kỳ */}
+    <div className="inline-flex items-center p-1 rounded-xl bg-white/10 border border-white/15">
+      <button
+        type="button"
+        onClick={() => setBillingCycle('per_session')}
+        className={`px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+          billingCycle === 'per_session'
+            ? 'bg-white text-blue-700 shadow-sm'
+            : 'text-blue-100 hover:text-white'
+        }`}
+      >
+        {t.pricing.tabPerClass}
+      </button>
+      <button
+        type="button"
+        onClick={() => setBillingCycle('semester')}
+        className={`px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+          billingCycle === 'semester'
+            ? 'bg-white text-blue-700 shadow-sm'
+            : 'text-blue-100 hover:text-white'
+        }`}
+      >
+        {t.pricing.tabSemester}
+      </button>
+    </div>
+      </PageHero>
 
       {/* Danh sách thẻ giá */}
       <section className="py-14 sm:py-20 bg-white">
@@ -343,6 +332,12 @@ export default function Pricing({ plans = [] }: PricingPageProps) {
           </div>
         </div>
       </section>
+      <CtaBand
+        title={lang === 'vi' ? 'Cần báo giá theo quy mô của đơn vị?' : 'Need a quote for your institution’s scale?'}
+        desc={lang === 'vi' ? 'Đăng ký thí điểm miễn phí cho một học phần, đội ngũ kỹ thuật sẽ đồng hành trong suốt ca thi.' : 'Register a free pilot for one course; our engineers stand by throughout the exam session.'}
+        primary={{ label: lang === 'vi' ? 'Đăng ký thí điểm' : 'Register a pilot', href: '/#tu-van' }}
+        secondary={{ label: lang === 'vi' ? 'Xem tính năng' : 'See features', href: '/features' }}
+      />
     </PublicLayout>
   );
 }

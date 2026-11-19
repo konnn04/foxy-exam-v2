@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import PageHero from '@/components/public/PageHero';
+import { ScreenGallery } from '@/components/public/blocks';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Download,
@@ -71,20 +73,7 @@ export default function DownloadPage({ release }: DownloadPageProps) {
       <Head title={t.download.metaTitle} />
 
       {/* Hero */}
-      <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            {heroBadge}
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            {t.download.heroTitle}
-          </h1>
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            {t.download.heroDesc}
-          </p>
-        </div>
-      </section>
+      <PageHero icon={ShieldCheck} eyebrow={heroBadge} title={t.download.heroTitle} desc={t.download.heroDesc} />
 
       {/* Download Options */}
       <section className="py-12 sm:py-16 bg-white">
@@ -294,6 +283,8 @@ export default function DownloadPage({ release }: DownloadPageProps) {
           </div>
         </div>
       </section>
+
+      <ScreenGallery kinds={['kiosk', 'phone']} />
 
       {/* Hướng dẫn 3 bước */}
       <section className="py-14 sm:py-16 bg-white">

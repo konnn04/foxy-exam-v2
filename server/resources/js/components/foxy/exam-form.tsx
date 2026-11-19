@@ -3,7 +3,7 @@
  * Create and edit render the very same page; only `exam` (null on create) differs.
  */
 import React, { useMemo, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { CalendarCheck, Code, GraduationCap, KeyRound, ListChecks, Plus, Save, ShieldCheck, Trash2, TriangleAlert, Users, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
@@ -125,7 +125,7 @@ const PROHIBITED_OBJECTS: [string, string][] = [
   ['handbag', 'Túi xách'],
   ['scissors', 'Kéo'],
 ];
-const PROHIBITED_DEFAULT = ['cell phone', 'laptop', 'book', 'remote', 'tv'];
+export const PROHIBITED_DEFAULT = ['cell phone', 'laptop', 'book', 'remote', 'tv'];
 
 export const DEFAULT_BANNED_APPS_LIST = [
   'obs*',
@@ -168,7 +168,9 @@ function detectLevel(kind: ExamKind, f: Record<MonKey, boolean>): MonLevel {
 }
 
 export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCourseId, exam, user }: ExamFormPageProps) {
-  const cfg = exam?.monitoring_config ?? {};
+  const orgPolicy = (usePage().props as { orgPolicy?: Record<string, any> | null }).orgPolicy ?? null;
+  // an existing exam keeps its own copy; a new one starts from the school's default policy (Cài đặt tổ chức)
+  const cfg = exam?.monitoring_config ?? (orgPolicy as Record<string, any> | null) ?? {};
   const pick = <T,>(k: string, d: T): T => (cfg[k] ?? d) as T;
   const [form, setForm] = useState(() => ({
     course_id: exam?.course_id ?? defaultCourseId ?? courses[0]?.id ?? 0,
@@ -200,13 +202,14 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     prohibited_labels: pick<string[]>('prohibited_labels', PROHIBITED_DEFAULT),
     banned_apps: pick<string[]>('banned_apps', DEFAULT_BANNED_APPS_LIST),
     lock_device: pick('lock_device', true),
+    offline_minutes: pick('offline_minutes', 5),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
     proctor_ids: (exam?.proctor_ids ?? (user?.id ? [user.id] : [])) as number[],
   }));
   const [step, setStep] = useState(0);
-  const [mon, setMon] = useState<MonLevel>(() => (exam ? detectLevel(kind, form) : 'standard'));
+  const [mon, setMon] = useState<MonLevel>(() => (exam || orgPolicy ? detectLevel(kind, form) : 'standard'));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -419,10 +422,22 @@ export function ExamInfoStep({ page, state }: { page: ExamFormPageProps; state: 
         <Field label="Mở phòng" error={errors.start_time} hint="Để trống = mở ngay khi lên lịch">
           <DateTimeInput value={form.start_time} onChange={(v) => set('start_time', v)} />
         </Field>
-        <Field label="Đóng phòng" error={errors.end_time} hint="Để trống = không giới hạn">
+        <Field label="Đóng phòng" optional error={errors.end_time} hint="Sau giờ này không ai vào thi mới được; người đang làm vẫn đủ thời lượng">
           <DateTimeInput value={form.end_time} onChange={(v) => set('end_time', v)} />
         </Field>
       </div>
+      <Field
+        label="Tự thu bài khi mất kết nối quá"
+        error={errors.offline_minutes}
+        hint={
+          form.offline_minutes > 0
+            ? `Thí sinh mất kết nối hơn ${form.offline_minutes} phút thì bài được nộp với các câu đã lưu và ghi "Vắng thi". Hết giờ làm bài luôn được thu tự động.`
+            : 'Không tự thu bài khi mất kết nối; giám thị tự xử lý. Hết giờ làm bài vẫn được thu tự động.'
+        }
+        className="max-w-[560px]"
+      >
+        <FxInput type="number" min={0} max={60} suffix="phút" value={form.offline_minutes} onChange={(e) => set('offline_minutes', Math.max(0, Math.min(60, Number(e.target.value) || 0)))} />
+      </Field>
       {page.exam && (
         <Field label="Trạng thái" error={errors.status}>
           <Segmented

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import TitleBar from "../components/TitleBar";
 import { BrandMark, Button, Tip, cx } from "../components/ui";
+import { LangSwitch } from "../components/LangSwitch";
 import { dialog, toast } from "../lib/dialog";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
@@ -41,21 +42,13 @@ import {
   type StudentNotification,
 } from "../lib/api";
 import { examState, initials, useDeviceCheck, type ExamItem, type Page, type PageProps, type StudentData } from "./main/shared";
+import { useI18n } from "../lib/i18n";
 import Dashboard from "./main/Dashboard";
 import Courses from "./main/Courses";
 import Exams from "./main/Exams";
 import History from "./main/History";
 import Profile from "./main/Profile";
 import Settings from "./main/Settings";
-
-const PAGE_TITLE: Record<Page, string> = {
-  dashboard: "Bảng điều khiển",
-  courses: "Khoá học",
-  exams: "Kì thi",
-  history: "Lịch sử thi",
-  profile: "Thông tin",
-  settings: "Cài đặt",
-};
 
 const EMPTY: StudentData = { dashboard: null, courses: [], exams: [], me: null };
 
@@ -67,8 +60,26 @@ const EMPTY: StudentData = { dashboard: null, courses: [], exams: [], me: null }
  * `switchWindow` (không dùng focus: kéo cửa sổ cũng bắn focus).
  */
 export default function Main() {
+  const { t } = useI18n();
   const [auth, setAuth] = useState<AuthData | null>(() => getAuth());
   const [page, setPage] = useState<Page>("dashboard");
+
+  const getPageTitle = (p: Page) => {
+    switch (p) {
+      case "dashboard":
+        return t("main.nav.dashboard");
+      case "courses":
+        return t("main.nav.courses");
+      case "exams":
+        return t("main.nav.exams");
+      case "history":
+        return t("main.nav.history");
+      case "profile":
+        return t("main.nav.profile");
+      case "settings":
+        return t("main.nav.settings");
+    }
+  };
   const [collapsed, setCollapsed] = useState(false);
   const [data, setData] = useState<StudentData>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -204,7 +215,7 @@ export default function Main() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-app">
       <TitleBar
-        title={`Foxy Exam — ${PAGE_TITLE[page]}`}
+        title={`Foxy Exam — ${getPageTitle(page)}`}
         right={
           online !== null && (
             <span className={cx("flex items-center gap-1.5 font-mono text-[10px]", online ? "text-success" : "text-danger")}>
@@ -224,36 +235,37 @@ export default function Main() {
 
           <nav className="flex-1 space-y-0.5 overflow-y-auto p-2.5">
             {!collapsed && <p className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">Menu</p>}
-            <NavItem icon={<LayoutGrid size={16} />} label="Bảng điều khiển" page="dashboard" current={page} onClick={setPage} collapsed={collapsed} />
-            <NavItem icon={<BookOpen size={16} />} label="Khoá học" page="courses" current={page} onClick={setPage} collapsed={collapsed} count={data.courses.length || undefined} />
-            <NavItem icon={<FileText size={16} />} label="Kì thi" page="exams" current={page} onClick={setPage} collapsed={collapsed} count={activeExams || undefined} highlight />
-            <NavItem icon={<HistoryIcon size={16} />} label="Lịch sử thi" page="history" current={page} onClick={setPage} collapsed={collapsed} />
-            <NavItem icon={<User size={16} />} label="Thông tin" page="profile" current={page} onClick={setPage} collapsed={collapsed} />
-            <NavItem icon={<SettingsIcon size={16} />} label="Cài đặt" page="settings" current={page} onClick={setPage} collapsed={collapsed} />
+            <NavItem icon={<LayoutGrid size={16} />} label={t("main.nav.dashboard")} page="dashboard" current={page} onClick={setPage} collapsed={collapsed} />
+            <NavItem icon={<BookOpen size={16} />} label={t("main.nav.courses")} page="courses" current={page} onClick={setPage} collapsed={collapsed} count={data.courses.length || undefined} />
+            <NavItem icon={<FileText size={16} />} label={t("main.nav.exams")} page="exams" current={page} onClick={setPage} collapsed={collapsed} count={activeExams || undefined} highlight />
+            <NavItem icon={<HistoryIcon size={16} />} label={t("main.nav.history")} page="history" current={page} onClick={setPage} collapsed={collapsed} />
+            <NavItem icon={<User size={16} />} label={t("main.nav.profile")} page="profile" current={page} onClick={setPage} collapsed={collapsed} />
+            <NavItem icon={<SettingsIcon size={16} />} label={t("main.nav.settings")} page="settings" current={page} onClick={setPage} collapsed={collapsed} />
           </nav>
 
-          {!collapsed && <ReadinessCard device={device} onOpen={() => setPage("settings")} />}
-          <UserCard auth={auth} collapsed={collapsed} onLogout={() => void handleLogout()} onProfile={() => setPage("profile")} />
+          {!collapsed && <ReadinessCard device={device} onOpen={() => setPage("settings")} t={t} />}
+          <UserCard auth={auth} collapsed={collapsed} onLogout={() => void handleLogout()} onProfile={() => setPage("profile")} t={t} />
         </aside>
 
         {/* Nội dung */}
         <div className="flex min-w-0 flex-1 flex-col bg-surface">
           <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
-            <Tip label="Thu gọn / mở rộng menu" side="bottom">
+            <Tip label={t("main.nav.collapseTip")} side="bottom">
               <button
                 type="button"
                 onClick={() => setCollapsed((v) => !v)}
                 className="rounded-md p-1 text-muted hover:bg-surface-3 hover:text-fg"
-                aria-label="Thu gọn menu"
+                aria-label={t("main.nav.collapseTip")}
               >
                 <PanelLeft size={16} />
               </button>
             </Tip>
             <span className="h-4 w-px bg-line" />
-            <h1 className="text-[13px] font-semibold text-fg">{PAGE_TITLE[page]}</h1>
+            <h1 className="text-[13px] font-semibold text-fg">{getPageTitle(page)}</h1>
             <div className="ml-auto flex items-center gap-2">
-              <Tip label="Làm mới dữ liệu">
-                <Button size="sm" variant="ghost" icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading} aria-label="Làm mới" />
+              <LangSwitch className="mr-1" />
+              <Tip label={t("common.refresh")}>
+                <Button size="sm" variant="ghost" icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading} aria-label={t("common.refresh")} />
               </Tip>
               <NotificationBell onNavigate={setPage} />
               <ThemeToggle />
@@ -327,7 +339,7 @@ function NavItem({
   );
 }
 
-function ReadinessCard({ device, onOpen }: { device: PageProps["device"]; onOpen: () => void }) {
+function ReadinessCard({ device, onOpen, t }: { device: PageProps["device"]; onOpen: () => void; t: (k: string, vars?: any) => string }) {
   const row = (ok: boolean, icon: React.ReactNode, text: string) => (
     <li className={cx("flex items-center gap-2", ok ? "text-success" : "text-danger")}>
       {icon}
@@ -336,15 +348,15 @@ function ReadinessCard({ device, onOpen }: { device: PageProps["device"]; onOpen
   );
   return (
     <button type="button" onClick={onOpen} className="mx-2.5 mb-2 rounded-xl border border-line bg-surface p-3 text-left transition hover:border-line-strong">
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle">Sẵn sàng thi</p>
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-subtle">{t("main.readiness.title")}</p>
       {device.snapshot ? (
         <ul className="space-y-1 text-xs">
-          {row(device.cameras > 0, <Camera size={13} />, device.cameras > 0 ? `${device.cameras} camera` : "Không có camera")}
-          {row(device.microphones > 0, <Mic size={13} />, device.microphones > 0 ? `${device.microphones} micro` : "Không có micro")}
-          {row(device.displays === 1, <Monitor size={13} />, `${device.displays} màn hình`)}
+          {row(device.cameras > 0, <Camera size={13} />, device.cameras > 0 ? t("main.readiness.cameras", { count: device.cameras }) : t("main.readiness.noCamera"))}
+          {row(device.microphones > 0, <Mic size={13} />, device.microphones > 0 ? t("main.readiness.mics", { count: device.microphones }) : t("main.readiness.noMic"))}
+          {row(device.displays === 1, <Monitor size={13} />, t("main.readiness.displays", { count: device.displays }))}
         </ul>
       ) : (
-        <p className="text-xs text-subtle">{device.checking ? "Đang kiểm tra…" : device.error ?? "—"}</p>
+        <p className="text-xs text-subtle">{device.checking ? t("main.readiness.checking") : device.error ?? "—"}</p>
       )}
     </button>
   );
@@ -355,11 +367,13 @@ function UserCard({
   collapsed,
   onLogout,
   onProfile,
+  t,
 }: {
   auth: AuthData;
   collapsed: boolean;
   onLogout: () => void;
   onProfile: () => void;
+  t: (k: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -374,10 +388,10 @@ function UserCard({
       {open && (
         <div className="absolute bottom-full left-2.5 right-2.5 mb-1 min-w-[180px] rounded-lg border border-line bg-surface p-1 shadow-lg">
           <MenuButton icon={<User size={14} />} onClick={() => (setOpen(false), onProfile())}>
-            Thông tin cá nhân
+            {t("main.nav.profile")}
           </MenuButton>
           <MenuButton icon={<LogOut size={14} />} danger onClick={onLogout}>
-            Đăng xuất
+            {t("main.nav.logout")}
           </MenuButton>
         </div>
       )}

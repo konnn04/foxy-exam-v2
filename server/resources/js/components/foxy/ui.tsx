@@ -4,7 +4,7 @@
  * identical to the Claude Design source ("FoxyExam Screens v2.dc.html").
  */
 import * as React from 'react';
-import { ArrowLeft, ArrowRight, Check, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'info' | 'danger' | 'violet' | 'outline';
@@ -141,19 +141,17 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {onBack && (
-        <IconButton icon={ArrowLeft} label="Quay lại" onClick={onBack} className="size-8" />
-      )}
+    <div className="flex flex-wrap items-start gap-x-3 gap-y-3">
+      {onBack && <IconButton icon={ArrowLeft} label="Quay lại" onClick={onBack} className="mt-0.5 size-8" />}
       {leading}
       <div className="min-w-0 flex-[1_1_260px]">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="m-0 text-xl font-semibold">{title}</h1>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h1 className="m-0 text-lg font-semibold leading-snug text-balance sm:text-xl">{title}</h1>
           {badges}
         </div>
-        {desc && <div className="mt-1 text-[13px] text-muted-foreground">{desc}</div>}
+        {desc && <div className="mt-1 max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">{desc}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto [&>*]:max-sm:flex-1">{actions}</div>}
     </div>
   );
 }
@@ -284,16 +282,18 @@ export function Segmented<T extends string | number>({
   stretch?: boolean;
 }) {
   return (
-    <div className={cn('flex w-fit gap-0.5 rounded-lg border border-border bg-card p-0.5', stretch && 'w-full', className)}>
+    <div role="radiogroup" className={cn('flex w-fit max-w-full gap-0.5 overflow-x-auto rounded-lg border border-border bg-card p-0.5', stretch && 'w-full', className)}>
       {options.map((o) => {
         const on = o.value === value;
         return (
           <button
             key={String(o.value)}
             type="button"
+            role="radio"
+            aria-checked={on}
             onClick={() => onChange(o.value)}
             className={cn(
-              'cursor-pointer whitespace-nowrap rounded-md px-3 font-medium transition-colors',
+              'shrink-0 cursor-pointer whitespace-nowrap rounded-md px-3 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary',
               size === 'sm' ? 'h-7 text-xs' : 'h-8 text-[13px]',
               stretch && 'flex-1',
               on ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground',
@@ -475,56 +475,126 @@ export function RadioCards<T extends string | number>({
   );
 }
 
+interface FieldCtx {
+  id: string;
+  describedBy?: string;
+  invalid: boolean;
+}
+const FieldContext = React.createContext<FieldCtx | null>(null);
+
+/**
+ * Label + control + hint/error. The control inside (FxInput, FxSelect, FxTextarea) is wired to the label and to the
+ * hint/error for screen readers automatically. `required` adds a star, `optional` a quiet "tuỳ chọn".
+ */
 export function Field({
   label,
   hint,
   error,
+  required,
+  optional,
+  aside,
   className,
   children,
 }: {
   label: React.ReactNode;
   hint?: React.ReactNode;
   error?: string;
+  required?: boolean;
+  optional?: boolean;
+  /** small action at the right of the label (e.g. "Tạo từ tên") */
+  aside?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
 }) {
+  const id = React.useId();
+  const msgId = `${id}-msg`;
   return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <label className="text-[13px] font-medium">{label}</label>
-      {children}
-      {hint && !error && <span className="text-xs text-muted-foreground">{hint}</span>}
-      {error && <span className="text-xs text-danger-fg">{error}</span>}
-    </div>
+    <FieldContext.Provider value={{ id, describedBy: hint || error ? msgId : undefined, invalid: !!error }}>
+      <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor={id} className="text-[13px] font-medium text-foreground">
+            {label}
+            {required && <span className="ml-0.5 text-danger-fg" aria-hidden>*</span>}
+            {optional && <span className="ml-1.5 text-xs font-normal text-muted-foreground">tuỳ chọn</span>}
+          </label>
+          {aside && <span className="shrink-0 text-xs">{aside}</span>}
+        </div>
+        {children}
+        {error ? (
+          <span id={msgId} role="alert" className="text-xs text-danger-fg">
+            {error}
+          </span>
+        ) : (
+          hint && (
+            <span id={msgId} className="text-xs leading-relaxed text-muted-foreground">
+              {hint}
+            </span>
+          )
+        )}
+      </div>
+    </FieldContext.Provider>
+  );
+}
+
+/** id / aria props of the Field a control sits in (an explicit id on the control wins). */
+function useFieldProps(id?: string) {
+  const ctx = React.useContext(FieldContext);
+  if (!ctx) return { id };
+  return { id: id ?? ctx.id, 'aria-describedby': ctx.describedBy, 'aria-invalid': ctx.invalid || undefined };
+}
+
+/**
+ * Two-column form block: what the section is about on the left, its fields on the right. Stacks on narrow screens.
+ * Use it for long forms so people can scan the sections instead of reading every label.
+ */
+export function FormSection({ title, desc, children, className }: { title: React.ReactNode; desc?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn('grid gap-4 border-b border-border py-6 first:pt-0 last:border-b-0 last:pb-0 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-10', className)}>
+      <div>
+        <h2 className="text-[15px] font-semibold">{title}</h2>
+        {desc && <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{desc}</p>}
+      </div>
+      <div className="flex min-w-0 flex-col gap-4">{children}</div>
+    </section>
   );
 }
 
 export const inputCls =
-  'h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25';
+  'h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/80 hover:border-foreground/25 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger sm:h-9';
 
 export const FxInput = React.forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement> & { suffix?: React.ReactNode; mono?: boolean }
->(({ className, suffix, mono, ...rest }, ref) => {
-  if (!suffix) return <input ref={ref} className={cn(inputCls, mono && 'font-mono text-[13px]', className)} {...rest} />;
+>(({ className, suffix, mono, id, ...rest }, ref) => {
+  const field = useFieldProps(id);
+  if (!suffix) return <input ref={ref} className={cn(inputCls, mono && 'font-mono text-[13px]', className)} {...field} {...rest} />;
   return (
-    <div className={cn('flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-2.5 focus-within:border-primary', className)}>
-      <input ref={ref} className={cn('h-full min-w-0 flex-1 bg-transparent text-sm outline-none', mono && 'font-mono text-[13px]')} {...rest} />
+    <div
+      className={cn(
+        'flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 transition-colors hover:border-foreground/25 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25 sm:h-9',
+        field['aria-invalid'] && 'border-danger',
+        className,
+      )}
+    >
+      <input ref={ref} className={cn('h-full min-w-0 flex-1 bg-transparent text-sm outline-none', mono && 'font-mono text-[13px]')} {...field} {...rest} />
       <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span>
     </div>
   );
 });
 FxInput.displayName = 'FxInput';
 
-export function FxSelect({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function FxSelect({ className, children, id, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const field = useFieldProps(id);
   return (
-    <select className={cn(inputCls, 'cursor-pointer pr-2', className)} {...rest}>
+    <select className={cn(inputCls, 'cursor-pointer pr-2', className)} {...field} {...rest}>
       {children}
     </select>
   );
 }
 
-export function FxTextarea({ className, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(inputCls, 'h-auto min-h-[88px] py-2 leading-relaxed', className)} {...rest} />;
+export function FxTextarea({ className, id, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const field = useFieldProps(id);
+  return <textarea className={cn(inputCls, 'h-auto min-h-[88px] py-2 leading-relaxed sm:h-auto', className)} {...field} {...rest} />;
 }
 
 export function EmptyState({
@@ -583,33 +653,42 @@ export function Modal({
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const box = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    box.current?.focus();
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-[4px]"
-    >
+    <div onClick={onClose} className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-[4px] sm:items-center sm:p-6">
       <div
+        ref={box}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full flex-col overflow-auto rounded-xl border border-border bg-card shadow-[0_24px_64px_rgb(0_0_0/0.5)]"
+        className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-[0_24px_64px_rgb(0_0_0/0.5)] outline-none sm:max-h-[90vh] sm:rounded-xl"
         style={{ maxWidth: width }}
       >
         {title && (
-          <div className="px-5 pt-5">
-            <div className="text-[17px] font-semibold">{title}</div>
-            {desc && <div className="mt-1 text-[13px] text-muted-foreground">{desc}</div>}
+          <div className="flex items-start gap-3 border-b border-border px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <div className="text-[17px] font-semibold">{title}</div>
+              {desc && <div className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{desc}</div>}
+            </div>
+            <IconButton icon={X} label="Đóng" onClick={onClose} className="-mr-1.5 -mt-0.5" />
           </div>
         )}
-        <div className="flex flex-col gap-3.5 px-5 py-4">{children}</div>
-        {footer && <div className="mt-1 flex justify-end gap-2 border-t border-border px-5 py-4">{footer}</div>}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">{children}</div>
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border bg-card px-5 py-3.5 [&>*]:max-sm:flex-1">{footer}</div>}
       </div>
     </div>
   );

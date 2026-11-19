@@ -649,10 +649,13 @@ export const sendAttemptChat = (attemptId: number, body: string) =>
 export interface BiometricPolicy {
   version: string;
   sections: { title: string; body: string }[];
+  sections_vi?: { title: string; body: string }[];
+  sections_en?: { title: string; body: string }[];
   url: string;
 }
 
-export const getBiometricPolicy = () => request<{ data: BiometricPolicy }>("/public/biometric-policy", {}, { auth: false });
+export const getBiometricPolicy = (lang?: string) =>
+  request<{ data: BiometricPolicy }>(lang ? `/public/biometric-policy?lang=${encodeURIComponent(lang)}` : "/public/biometric-policy", {}, { auth: false });
 export const getBiometricStatus = () => request<{ data: { accepted: boolean; version: string } }>("/student/biometric");
 export const acceptBiometric = () => request<{ success: boolean }>("/student/biometric/consent", { method: "POST", body: JSON.stringify({ agree: true }) });
 export const requestFaceChange = (reason: string) => request<{ success: boolean; message: string }>("/student/face/change-request", { method: "POST", body: JSON.stringify({ reason }) });

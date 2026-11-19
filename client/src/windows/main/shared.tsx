@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClipboardX, Code2, Keyboard, Layers, ListChecks, ScanFace, AppWindow as AppWindowIcon } from "lucide-react";
 import type { Course, CourseExam, DashboardData, ExamKind, MeDto } from "../../lib/api";
 import { captureDevices, getSnapshot, screenCount, type SystemSnapshot } from "../../lib/monitor";
+import { getLang } from "../../lib/i18n";
 import { Badge, Tip } from "../../components/ui";
 import { formatDate, formatDateTime, formatTime } from "../../lib/datetime";
 
@@ -65,21 +66,22 @@ export function canRetake(e: CourseExam) {
 }
 
 export function ExamStateBadge({ exam }: { exam: CourseExam }) {
+  const isEn = getLang() === "en";
   const s = examState(exam);
   switch (s) {
     case "in_progress":
-      return <Badge tone="danger">Đang thi</Badge>;
+      return <Badge tone="danger">{isEn ? "In Progress" : "Đang thi"}</Badge>;
     case "open":
-      return <Badge tone="accent">Sẵn sàng</Badge>;
+      return <Badge tone="accent">{isEn ? "Open" : "Sẵn sàng"}</Badge>;
     case "upcoming":
-      return <Badge>Chưa mở</Badge>;
+      return <Badge>{isEn ? "Not Started" : "Chưa mở"}</Badge>;
     case "missed":
-      return <Badge tone="warning">Quá hạn</Badge>;
+      return <Badge tone="warning">{isEn ? "Missed" : "Quá hạn"}</Badge>;
     case "done":
       return exam.latest_attempt?.score != null ? (
-        <Badge tone="success">{fmtScore(exam.latest_attempt.score)} điểm</Badge>
+        <Badge tone="success">{fmtScore(exam.latest_attempt.score)} {isEn ? "pts" : "điểm"}</Badge>
       ) : (
-        <Badge tone="success">Đã nộp</Badge>
+        <Badge tone="success">{isEn ? "Submitted" : "Đã nộp"}</Badge>
       );
   }
 }
@@ -89,6 +91,12 @@ export const KIND_LABEL: Record<ExamKind, string> = {
   QUIZ: "Trắc nghiệm",
   HYBRID: "Hỗn hợp",
 };
+
+export function getKindLabel(kind: ExamKind, isEn = getLang() === "en"): string {
+  if (kind === "PROGRAMMING") return isEn ? "Programming" : "Lập trình";
+  if (kind === "QUIZ") return isEn ? "Quiz" : "Trắc nghiệm";
+  return isEn ? "Hybrid" : "Hỗn hợp";
+}
 
 export function KindIcon({ kind, size = 15 }: { kind: ExamKind; size?: number }) {
   if (kind === "PROGRAMMING") return <Code2 size={size} />;
@@ -104,8 +112,18 @@ export const MONITOR_FLAGS = [
   { key: "track_keystroke_dynamics", label: "Ghi nhận nhịp gõ phím", icon: Keyboard },
 ] as const;
 
+export function getMonitorFlags(isEn = getLang() === "en") {
+  return [
+    { key: "ai_face_check", label: isEn ? "AI Facial Verification" : "Xác thực khuôn mặt (AI)", icon: ScanFace },
+    { key: "prevent_tab_switch", label: isEn ? "Prevent Tab Switching" : "Chặn chuyển cửa sổ", icon: AppWindowIcon },
+    { key: "prevent_paste", label: isEn ? "Prevent Clipboard Pasting" : "Chặn dán từ ngoài", icon: ClipboardX },
+    { key: "track_keystroke_dynamics", label: isEn ? "Keystroke Dynamics Tracking" : "Ghi nhận nhịp gõ phím", icon: Keyboard },
+  ] as const;
+}
+
 export function MonitorIcons({ config }: { config: CourseExam["monitoring_config"] }) {
-  const active = MONITOR_FLAGS.filter((f) => config?.[f.key]);
+  const flags = getMonitorFlags();
+  const active = flags.filter((f) => config?.[f.key]);
   if (active.length === 0) return <span className="text-subtle">—</span>;
   return (
     <span className="flex items-center gap-1.5 text-muted">
@@ -140,15 +158,25 @@ export function fmtDateTime(iso: string | null) {
   return formatDateTime(iso);
 }
 
-/** "4 giờ nữa", "2 ngày trước"... */
+/** "4 hours later", "2 days ago"... */
 export function fromNow(iso: string | null, now = Date.now()) {
   if (!iso) return "";
+  const isEn = getLang() === "en";
   const diff = Date.parse(iso) - now;
   const abs = Math.abs(diff);
   const min = 60_000;
   const [v, unit] =
-    abs < min ? [0, "phút"] : abs < 60 * min ? [Math.round(abs / min), "phút"] : abs < 24 * 60 * min ? [Math.round(abs / (60 * min)), "giờ"] : [Math.round(abs / (24 * 60 * min)), "ngày"];
-  if (v === 0) return "bây giờ";
+    abs < min
+      ? [0, isEn ? "m" : "phút"]
+      : abs < 60 * min
+      ? [Math.round(abs / min), isEn ? "m" : "phút"]
+      : abs < 24 * 60 * min
+      ? [Math.round(abs / (60 * min)), isEn ? "h" : "giờ"]
+      : [Math.round(abs / (24 * 60 * min)), isEn ? "d" : "ngày"];
+  if (v === 0) return isEn ? "now" : "bây giờ";
+  if (isEn) {
+    return diff > 0 ? `in ${v} ${unit}` : `${v} ${unit} ago`;
+  }
   return diff > 0 ? `${v} ${unit} nữa` : `${v} ${unit} trước`;
 }
 

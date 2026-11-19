@@ -15,6 +15,15 @@ const STORAGE_KEY = 'examguard_lang';
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlLang = params.get('lang');
+        if (urlLang === 'vi' || urlLang === 'en') {
+          return urlLang;
+        }
+      } catch {
+        /* ignore */
+      }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved === 'vi' || saved === 'en') {
         return saved;

@@ -36,7 +36,16 @@ use Inertia\Inertia;
 Route::get('/m/camera/{token}', fn (string $token) => Inertia::render('Public/MobileCamera', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
 
 Route::get('/m/face/{token}', fn (string $token) => Inertia::render('Public/FaceEnroll', ['token' => $token]))->where('token', '[A-Za-z0-9]{20,100}');
-Route::get('/biometric-policy', fn () => Inertia::render('Public/BiometricPolicy', ['version' => \App\Support\BiometricPolicy::VERSION, 'sections' => \App\Support\BiometricPolicy::sections()]));
+Route::get('/biometric-policy', function (\Illuminate\Http\Request $request) {
+    $lang = $request->query('lang', 'vi');
+    return Inertia::render('Public/BiometricPolicy', [
+        'version' => \App\Support\BiometricPolicy::VERSION,
+        'initialLang' => $lang,
+        'sections' => \App\Support\BiometricPolicy::sections($lang),
+        'sections_vi' => \App\Support\BiometricPolicy::sections('vi'),
+        'sections_en' => \App\Support\BiometricPolicy::sections('en'),
+    ]);
+});
 
 // Public shareable Violation Report web page (no login required, protected by unique slug & expiration)
 Route::get('/violation-report/{slug}', [\App\Http\Controllers\ViolationReportController::class, 'show'])->where('slug', '[A-Za-z0-9\-]{8,120}');
@@ -55,6 +64,8 @@ Route::get('/', function () {
         'plans' => $plans,
     ]);
 })->name('landing');
+
+Route::post('/pilot-requests', [\App\Http\Controllers\PilotRequestController::class, 'store'])->middleware('throttle:6,1')->name('pilot.store');
 
 Route::get('/features', fn () => Inertia::render('Public/Features'))->name('features');
 Route::get('/pricing', function () {
@@ -119,9 +130,12 @@ Route::post('/login', function (Request $request) {
     if ($user && Hash::check($credentials['password'], $user->password)) {
         Auth::login($user);
         $request->session()->regenerate();
+        \App\Support\Audit::record('auth.login', 'Đăng nhập', 'user', $user->id, [], $user);
 
         return redirect()->intended(\App\Http\Middleware\PortalRole::home($user->role));
     }
+
+    \App\Support\Audit::record('auth.login_failed', 'Đăng nhập sai: ' . mb_substr((string) $credentials['username'], 0, 60), 'user', $user?->id);
 
     return back()->withErrors([
         'username' => 'Tên đăng nhập hoặc mật khẩu không chính xác.',
@@ -129,6 +143,7 @@ Route::post('/login', function (Request $request) {
 });
 
 Route::post('/logout', function (Request $request) {
+    \App\Support\Audit::record('auth.logout', 'Đăng xuất');
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();
@@ -265,6 +280,8 @@ Route::middleware(['auth'])->group(function () {
             'status' => 'ACTIVE',
         ]);
 
+        \App\Support\Audit::record('org.create', "Tạo tổ chức {$org->code}", 'organization', $org->id);
+
         return redirect('/admin/organizations');
     });
 
@@ -320,6 +337,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         $org->update($updateData);
+        \App\Support\Audit::record('org.update', "Cập nhật tổ chức {$org->code}", 'organization', $org->id, ['fields' => array_keys($updateData), 'plan' => $validated['plan_name'] ?? null]);
 
         if (!empty($validated['plan_name'])) {
             $plan = Plan::where('name', $validated['plan_name'])->first();
@@ -386,6 +404,7 @@ Route::middleware(['auth'])->group(function () {
             return back()->withErrors(['message' => 'Không thể xóa tổ chức gốc ROOT!']);
         }
 
+        \App\Support\Audit::record('org.delete', "Xóa tổ chức {$org->code}", 'organization', $org->id);
         $org->delete();
         return redirect('/admin/organizations');
     });
@@ -479,6 +498,7 @@ Route::middleware(['auth'])->group(function () {
             'role' => $validated['role'],
             'status' => 'ACTIVE',
         ]);
+        \App\Support\Audit::record('user.create', 'Tạo tài khoản ' . ($validated['username'] ?? ''), 'user', null);
 
         session()->put('foxy_active_org_id', $targetOrgId);
         cookie()->queue('foxy_active_org_id', (string)$targetOrgId, 60 * 24 * 30);
@@ -651,6 +671,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         $targetUser->update($data);
+        \App\Support\Audit::record('user.update', "Cập nhật tài khoản {$targetUser->username}", 'user', $targetUser->id, ['role' => $data['role'], 'status' => $data['status'], 'password_changed' => !empty($validated['password'])]);
 
         session()->put('foxy_active_org_id', $targetOrgId);
         cookie()->queue('foxy_active_org_id', (string)$targetOrgId, 60 * 24 * 30);
@@ -673,6 +694,7 @@ Route::middleware(['auth'])->group(function () {
         $tenantContext->enforceOwnership($targetUser);
 
         $orgId = $targetUser->organization_id;
+        \App\Support\Audit::record('user.delete', "Xóa tài khoản {$targetUser->username}", 'user', $targetUser->id, ['role' => $targetUser->role]);
         $targetUser->delete();
 
         $scopedOrgId = $request->query('org_id') ?: $request->input('org_id') ?: $request->cookie('foxy_active_org_id') ?: session('foxy_active_org_id') ?: $orgId;
@@ -866,6 +888,7 @@ Route::middleware(['auth'])->group(function () {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50'],
+            'department' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string'],
             'teacher_id' => ['nullable', 'exists:users,id'],
             'organization_id' => ['nullable', 'exists:organizations,id'],
@@ -882,6 +905,7 @@ Route::middleware(['auth'])->group(function () {
             'organization_id' => $orgId,
             'name' => $validated['name'],
             'code' => strtoupper($validated['code']),
+            'department' => isset($validated['department']) ? trim(strip_tags($validated['department'])) ?: null : null,
             'description' => $validated['description'] ?? '',
             'teacher_id' => $validated['teacher_id'] ?? $currentUser->id,
         ]);
@@ -937,6 +961,7 @@ Route::middleware(['auth'])->group(function () {
                 'id' => $course->id,
                 'name' => $course->name,
                 'code' => $course->code,
+                'department' => $course->department,
                 'description' => $course->description,
                 'teacher_id' => $course->teacher_id,
                 'organization_id' => $course->organization_id,
@@ -952,6 +977,7 @@ Route::middleware(['auth'])->group(function () {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50'],
+            'department' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string'],
             'teacher_id' => ['nullable', 'exists:users,id'],
         ]);
@@ -964,6 +990,7 @@ Route::middleware(['auth'])->group(function () {
         $course->update([
             'name' => $validated['name'],
             'code' => strtoupper($validated['code']),
+            'department' => isset($validated['department']) ? trim(strip_tags($validated['department'])) ?: null : null,
             'description' => $validated['description'] ?? '',
             'teacher_id' => $validated['teacher_id'] ?? $course->teacher_id,
         ]);
@@ -1695,20 +1722,7 @@ Route::middleware(['auth'])->group(function () {
         app(TenantContext::class)->enforceOwnership($qs);
         abort_unless($qs->type === 'CLASSICAL', 422, 'Bộ đề lập trình không có câu hỏi phổ thông.');
 
-        $rules = fn (string $p = '') => [
-            $p . 'type' => ['required', Rule::in(ClassicalQuestion::TYPES)],
-            $p . 'content' => ['required', 'string'],
-            $p . 'explanation' => ['nullable', 'string'],
-            $p . 'points' => ['nullable', 'numeric', 'min:0', 'max:1000'],
-            $p . 'difficulty' => ['required', Rule::in(ClassicalQuestion::DIFFICULTIES)],
-            $p . 'skill' => ['nullable', 'string', 'max:40'],
-            $p . 'image' => ['nullable', 'string', 'max:500'],
-            $p . 'is_true' => ['nullable', 'boolean'],
-            $p . 'settings' => ['nullable', 'array'],
-            $p . 'answers' => ['nullable', 'array', 'max:8'],
-            $p . 'answers.*.content' => ['required_with:' . $p . 'answers', 'string'],
-            $p . 'answers.*.is_correct' => ['nullable', 'boolean'],
-        ];
+        $rules = fn (string $p = '') => \App\Support\ClassicalQuestionWriter::rules($p);
 
         $validated = $request->validate([
             'id' => ['nullable', 'integer'],
@@ -1730,79 +1744,8 @@ Route::middleware(['auth'])->group(function () {
         ]);
 
         // Semantic checks the form also shows, enforced here so API clients cannot skip them
-        $check = function (array $q, string $label) {
-            $type = $q['type'];
-            $answers = collect($q['answers'] ?? [])->filter(fn ($a) => trim((string) ($a['content'] ?? '')) !== '');
-            if (in_array($type, ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'], true)) {
-                if ($answers->count() < 2) {
-                    throw ValidationException::withMessages(['answers' => "$label: trắc nghiệm cần ít nhất 2 đáp án."]);
-                }
-                if ($answers->where('is_correct', true)->count() < 1) {
-                    throw ValidationException::withMessages(['answers' => "$label: cần đánh dấu ít nhất 1 đáp án đúng."]);
-                }
-            }
-            if ($type === 'TRUE_FALSE' && !array_key_exists('is_true', $q)) {
-                throw ValidationException::withMessages(['is_true' => "$label: chọn Đúng hoặc Sai."]);
-            }
-            if ($type === 'MULTIPLE_FILL_IN_BLANK') {
-                $blanks = $q['settings']['blanks'] ?? [];
-                preg_match_all('/\[(\d+)\]/', $q['content'], $m);
-                $used = collect($m[1])->unique()->count();
-                if ($used < 1) {
-                    throw ValidationException::withMessages(['content' => "$label: dùng [1], [2]… trong nội dung để tạo ô trống."]);
-                }
-                if (count($blanks) < $used) {
-                    throw ValidationException::withMessages(['settings' => "$label: nhập đáp án cho đủ $used ô trống."]);
-                }
-            }
-        };
-
-        $store = function (array $q, ?int $parentId, int $order, ?ClassicalQuestion $existing = null) use ($qs) {
-            $type = $q['type'];
-            $attrs = [
-                'type' => $type,
-                'content' => $q['content'],
-                'explanation' => $q['explanation'] ?? null,
-                'points' => $type === 'GROUP_QUESTION' ? 0 : ($q['points'] ?? 1),
-                'difficulty' => $q['difficulty'] ?? 'MEDIUM',
-                'skill' => $q['skill'] ?? null,
-                'image' => $q['image'] ?? null,
-                'is_true' => $type === 'TRUE_FALSE' ? (bool) ($q['is_true'] ?? false) : null,
-                'settings' => \App\Support\QuestionSettings::sanitize($type, $q['settings'] ?? []),
-            ];
-
-            if ($existing) {
-                $existing->update($attrs);
-                $question = $existing;
-            } else {
-                $question = ClassicalQuestion::create([
-                    ...$attrs,
-                    'question_set_id' => $qs->id,
-                    'parent_id' => $parentId,
-                    'order' => $order,
-                    'created_by' => Auth::id(),
-                ]);
-            }
-
-            $question->answers()->delete();
-            if (in_array($type, ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'], true)) {
-                $answers = collect($q['answers'] ?? [])->filter(fn ($a) => trim((string) ($a['content'] ?? '')) !== '')->values();
-                // one correct answer => radio, several => checkboxes
-                if ($answers->where('is_correct', true)->count() > 1 && $type === 'SINGLE_CHOICE') {
-                    $question->update(['type' => 'MULTIPLE_CHOICE']);
-                }
-                foreach ($answers as $i => $a) {
-                    ClassicalQuestionAnswer::create([
-                        'classical_question_id' => $question->id,
-                        'content' => $a['content'],
-                        'is_correct' => !empty($a['is_correct']),
-                        'order' => $i + 1,
-                    ]);
-                }
-            }
-
-            return $question;
-        };
+        $check = fn (array $q, string $label) => \App\Support\ClassicalQuestionWriter::check($q, $label);
+        $store = fn (array $q, ?int $parentId, int $order, ?ClassicalQuestion $existing = null) => \App\Support\ClassicalQuestionWriter::store($qs, $q, $parentId, $order, $existing);
 
         DB::transaction(function () use ($validated, $qs, $store, $check) {
             $check($validated, 'Câu hỏi');
@@ -2096,6 +2039,50 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/users/{id}/face/delete', [\App\Http\Controllers\Admin\FaceController::class, 'destroy'])->whereNumber('id');
     Route::post('/users/{id}/face/lock', [\App\Http\Controllers\Admin\FaceController::class, 'lock'])->whereNumber('id');
     Route::get('/live', [\App\Http\Controllers\Admin\MonitoringController::class, 'index']);
+    Route::get('/platform', [\App\Http\Controllers\Admin\PlatformController::class, 'overview']);
+    Route::get('/platform/health', [\App\Http\Controllers\Admin\PlatformController::class, 'health']);
+    Route::get('/platform/health.json', [\App\Http\Controllers\Admin\PlatformController::class, 'healthJson']);
+    Route::get('/leads', [\App\Http\Controllers\Admin\LeadController::class, 'index']);
+    Route::post('/leads/{id}', [\App\Http\Controllers\Admin\LeadController::class, 'update'])->whereNumber('id');
+    Route::get('/audit-log', [\App\Http\Controllers\Admin\AuditLogController::class, 'index']);
+    Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
+    Route::post('/announcements/preview', [\App\Http\Controllers\Admin\AnnouncementController::class, 'preview']);
+    Route::post('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'store']);
+    Route::get('/import/students', [\App\Http\Controllers\Admin\StudentImportController::class, 'page']);
+    Route::post('/import/students/preview', [\App\Http\Controllers\Admin\StudentImportController::class, 'preview']);
+    Route::post('/import/students/commit', [\App\Http\Controllers\Admin\StudentImportController::class, 'commit']);
+    Route::get('/analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index']);
+    Route::get('/analytics/export', [\App\Http\Controllers\Admin\AnalyticsController::class, 'export']);
+    Route::post('/organization/policy', [\App\Http\Controllers\Admin\OrgPolicyController::class, 'update']);
+    Route::post('/organization/ai', [\App\Http\Controllers\Admin\AiQuestionController::class, 'updateSettings']);
+    Route::post('/organization/ai/test', [\App\Http\Controllers\Admin\AiQuestionController::class, 'test'])->middleware('throttle:5,1');
+    Route::post('/question-sets/{id}/ai/prompt', [\App\Http\Controllers\Admin\AiQuestionController::class, 'prompt'])->whereNumber('id');
+    Route::post('/question-sets/{id}/ai/generate', [\App\Http\Controllers\Admin\AiQuestionController::class, 'generate'])->whereNumber('id')->middleware('throttle:10,1');
+    Route::post('/question-sets/{id}/ai/parse', [\App\Http\Controllers\Admin\AiQuestionController::class, 'parse'])->whereNumber('id');
+    Route::post('/question-sets/{id}/ai/save', [\App\Http\Controllers\Admin\AiQuestionController::class, 'save'])->whereNumber('id');
+    // "Xem trước": one paper dealt exactly like an exam would (QuestionSettings::draw); limit/ratio may be unsaved edits
+    Route::get('/question-sets/{id}/sample-paper', function (Request $request, int $id) {
+        $qs = QuestionSet::findOrFail($id);
+        app(TenantContext::class)->enforceOwnership($qs);
+        $v = $request->validate([
+            'seed' => ['nullable', 'integer', 'min:0', 'max:2147483647'],
+            'limit' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'ratio' => ['nullable', 'array'],
+            'ratio.*' => ['integer', 'min:0', 'max:100'],
+        ]);
+        if (array_key_exists('limit', $v)) {
+            $qs->limit_questions = (int) $v['limit'];
+        }
+        if ($request->has('ratio')) {
+            $qs->ratio_per_difficulty = array_intersect_key($v['ratio'] ?? [], array_flip(['EASY', 'MEDIUM', 'HARD', 'EXPERT'])) ?: null;
+        }
+        $seed = (int) ($v['seed'] ?? random_int(1, 1_000_000));
+
+        return response()->json(['seed' => $seed, 'ids' => \App\Support\QuestionSettings::draw($qs, $seed)->pluck('id')->values()]);
+    })->whereNumber('id');
+    Route::get('/site', [\App\Http\Controllers\Admin\SiteSettingsController::class, 'show']);
+    Route::post('/site', [\App\Http\Controllers\Admin\SiteSettingsController::class, 'update']);
+    Route::post('/site/upload', [\App\Http\Controllers\Admin\SiteSettingsController::class, 'upload']);
     Route::get('/faces', [\App\Http\Controllers\Admin\FaceManagementController::class, 'index']);
     Route::post('/faces/bulk', [\App\Http\Controllers\Admin\FaceManagementController::class, 'bulk']);
     Route::post('/faces/lock-all', [\App\Http\Controllers\Admin\FaceManagementController::class, 'lockAll']);

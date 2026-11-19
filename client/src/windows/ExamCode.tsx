@@ -18,6 +18,7 @@ import { Terminal } from "../components/Terminal";
 import { ResizeHandle, useResizable } from "../components/Resizable";
 import ExamLobby from "../components/ExamLobby";
 import { clearPendingExam, getLobbyMedia, getPendingExam, savePendingExam, type PendingExam } from "../lib/lobbyMedia";
+import { useI18n } from "../lib/i18n";
 import {
   ApiError,
   finishExam,
@@ -54,6 +55,7 @@ function starterCode(problem: Problem, language: string): string {
  *
  */
 export default function ExamCode() {
+  const { t } = useI18n();
   const [pending, setPending] = useState<PendingExam | null>(() => getPendingExam("code"));
   const [session, setSession] = useState<Session | null>(() => getSession());
   const loadRef = useRef<(() => Promise<void>) | null>(null);
@@ -308,12 +310,12 @@ export default function ExamCode() {
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-app text-sm text-muted">
         {loadingPaper && session ? (
           <>
-            <Loader2 size={18} className="animate-spin" /> Đang tải đề thi…
+            <Loader2 size={18} className="animate-spin" /> {t("common.loading")}
           </>
         ) : (
           <>
-            <p className={loadError ? "text-danger" : ""}>{loadError ?? (session ? "Đề thi chưa có bài nào." : "Chưa chọn kỳ thi.")}</p>
-            <Button onClick={() => void leave()}>Về trang chủ</Button>
+            <p className={loadError ? "text-danger" : ""}>{loadError ?? (session ? t("exam.noQuestions") : t("exam.noExamSelected"))}</p>
+            <Button onClick={() => void leave()}>{t("common.back")}</Button>
           </>
         )}
       </div>
@@ -329,9 +331,9 @@ export default function ExamCode() {
     <>
       <ExamShell
         title={examInfo.title}
-        subtitle={`${session.exam.code} · Bài ${activeIdx + 1}/${problems.length} · Lần thi #${session.attemptNumber}${flagged ? " · ⚠ đang bị đánh dấu nghi vấn" : ""}`}
+        subtitle={`${session.exam.code} · ${t("exam.codeProblemPrefix", { order: activeIdx + 1 })}/${problems.length} · ${t("exam.attemptSubtitle", { code: "", attempt: session.attemptNumber }).replace(/^ · /, "")}${flagged ? " · ⚠" : ""}`}
         remainingSeconds={remainingSeconds}
-        submitLabel="Kết thúc ca thi"
+        submitLabel={t("exam.codeFinishSession")}
         onSubmit={() => setConfirmFinish(true)}
         runtime={runtime}
         onLeave={leave}
@@ -354,7 +356,7 @@ export default function ExamCode() {
                         : "border-line text-muted hover:bg-surface-3",
                   )}
                 >
-                  Bài {p.order}
+                  {t("exam.codeProblemPrefix", { order: p.order })}
                   {s && ` · ${s.passed_cases_count}/${s.total_cases_count}`}
                 </button>
               );
@@ -372,10 +374,10 @@ export default function ExamCode() {
           <section className="flex shrink-0 flex-col bg-surface" style={{ width: left.size }}>
             <div className="flex shrink-0 gap-4 border-b border-line px-4 text-xs">
               <Tab active={leftTab === "problem"} onClick={() => setLeftTab("problem")} icon={<FileCode2 size={13} />}>
-                Đề bài
+                {t("exam.codeTabProblem")}
               </Tab>
               <Tab active={leftTab === "history"} onClick={() => setLeftTab("history")} icon={<History size={13} />}>
-                Lịch sử ({historyForCurrent.length})
+                {t("exam.codeTabHistory")} ({historyForCurrent.length})
               </Tab>
             </div>
             <div className="selectable min-h-0 flex-1 overflow-y-auto p-5">
@@ -393,7 +395,7 @@ export default function ExamCode() {
                   <Markdown className="mt-3">{currentProblem.description}</Markdown>
                   {currentProblem.sample_test_cases.map((tc, i) => (
                     <div key={i} className="mt-4">
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">Ví dụ {i + 1}</p>
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">{t("exam.codeExample")} {i + 1}</p>
                       <div className="overflow-hidden rounded-lg border border-line font-mono text-xs">
                         <p className="border-b border-line bg-surface-2 px-3 py-1 text-[10px] text-subtle">input</p>
                         <pre className="whitespace-pre-wrap px-3 py-2 text-fg">{tc.input}</pre>
@@ -404,11 +406,11 @@ export default function ExamCode() {
                   ))}
                 </>
               ) : historyForCurrent.length === 0 ? (
-                <Empty text="Chưa nộp lần nào cho bài này." />
+                <Empty text={t("exam.codeNoSubmissions")} />
               ) : (
                 <ul className="space-y-2">
                   {historyForCurrent.map((s, i) => (
-                    <SubmissionRow key={s.id} s={s} n={historyForCurrent.length - i} />
+                    <SubmissionRow key={s.id} s={s} n={historyForCurrent.length - i} t={t} />
                   ))}
                 </ul>
               )}
@@ -445,9 +447,9 @@ export default function ExamCode() {
                   ))}
                 </select>
               ) : (
-                <span className="text-[11px] text-warning">Máy chưa có trình biên dịch cho {LANG_LABEL[currentLanguage] ?? currentLanguage}</span>
+                <span className="text-[11px] text-warning">{t("exam.codeNoCompiler", { lang: LANG_LABEL[currentLanguage] ?? currentLanguage })}</span>
               )}
-              <span className="ml-auto text-[11px] text-subtle">Không cho sao chép / dán</span>
+              <span className="ml-auto text-[11px] text-subtle">{t("exam.codeNoCopyPaste")}</span>
             </div>
             <div className="min-h-0 flex-1 overflow-auto bg-surface">
               <Editor
@@ -468,9 +470,9 @@ export default function ExamCode() {
             <div className="flex shrink-0 flex-col border-b border-line" style={{ height: termHeight.size }}>
               <div className="flex shrink-0 items-center gap-2 border-b border-line bg-surface px-3 py-1.5">
                 <Button size="sm" variant="primary" icon={<Play size={12} />} disabled={locked || !activeToolchain || term.running} onClick={() => void handleRun()}>
-                  Chạy
+                  {t("exam.codeRun")}
                 </Button>
-                <span className="text-[11px] text-muted">Chạy bằng trình biên dịch trên máy bạn; nhập dữ liệu ngay trong terminal bên dưới.</span>
+                <span className="text-[11px] text-muted">{t("exam.codeRunHint")}</span>
               </div>
               <Terminal
                 className="min-h-0 flex-1"
@@ -487,9 +489,9 @@ export default function ExamCode() {
               {submitError ? (
                 <p className="text-xs text-danger">{submitError}</p>
               ) : current ? (
-                <SubmissionSummary s={current} />
+                <SubmissionSummary s={current} t={t} />
               ) : (
-                <p className="text-xs text-subtle">Chưa nộp bài này.</p>
+                <p className="text-xs text-subtle">{t("exam.codeNoSubmissions")}</p>
               )}
               <Button
                 variant="primary"
@@ -499,7 +501,7 @@ export default function ExamCode() {
                 disabled={locked}
                 onClick={() => void handleSubmit()}
               >
-                Nộp bài {currentProblem.order}
+                {t("exam.codeSubmitProblem", { order: currentProblem.order })}
               </Button>
             </div>
           </section>
@@ -508,14 +510,16 @@ export default function ExamCode() {
 
       {confirmFinish && (
         <ConfirmModal
-          title="Kết thúc ca thi?"
-          confirmLabel="Kết thúc"
+          title={t("exam.codeFinishConfirmTitle")}
+          confirmLabel={t("exam.codeFinishConfirmBtn")}
           busy={finishing}
           onCancel={() => setConfirmFinish(false)}
           onConfirm={() => void handleFinish()}
         >
-          Sau khi kết thúc sẽ không thể nộp bài thêm. Bài đã nộp: {new Set(submissions.map((s) => s.programming_problem_id)).size}/
-          {problems.length}.
+          {t("exam.codeFinishConfirmDesc", {
+            submitted: new Set(submissions.map((s) => s.programming_problem_id)).size,
+            total: problems.length,
+          })}
         </ConfirmModal>
       )}
     </>
@@ -538,23 +542,27 @@ function Tab({ active, onClick, icon, children }: { active: boolean; onClick: ()
   );
 }
 
-function SubmissionSummary({ s }: { s: Submission }) {
+function SubmissionSummary({ s, t }: { s: Submission; t: (k: string, p?: Record<string, string | number>) => string }) {
   if (s.status === "PENDING")
     return (
       <p className="flex items-center gap-1.5 text-xs text-muted">
-        <Clock size={13} /> Lần nộp gần nhất đang chờ chấm…
+        <Clock size={13} /> {t("exam.codePendingJudge")}
       </p>
     );
   const pass = s.total_cases_count > 0 && s.passed_cases_count === s.total_cases_count;
   return (
     <p className={cx("flex items-center gap-1.5 text-xs", pass ? "text-success" : "text-warning")}>
       {pass ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-      {s.passed_cases_count}/{s.total_cases_count} test đúng · {s.score} điểm
+      {t("exam.codeScoreSummary", {
+        passed: s.passed_cases_count,
+        total: s.total_cases_count,
+        score: s.score,
+      })}
     </p>
   );
 }
 
-function SubmissionRow({ s, n }: { s: Submission; n: number }) {
+function SubmissionRow({ s, n, t }: { s: Submission; n: number; t: (k: string, p?: Record<string, string | number>) => string }) {
   return (
     <li className="rounded-lg border border-line bg-surface-2 px-3 py-2">
       <div className="flex items-center justify-between">
@@ -564,7 +572,7 @@ function SubmissionRow({ s, n }: { s: Submission; n: number }) {
         <span className="font-mono text-[10px] text-subtle">{formatTime(s.submitted_at ?? s.created_at, true)}</span>
       </div>
       <div className="mt-1">
-        <SubmissionSummary s={s} />
+        <SubmissionSummary s={s} t={t} />
       </div>
     </li>
   );

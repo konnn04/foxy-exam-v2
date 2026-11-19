@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import PageHero from '@/components/public/PageHero';
+import { CtaBand } from '@/components/public/blocks';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   PROJECT_INFO,
@@ -93,20 +95,7 @@ export default function About() {
       <Head title={t.about.metaTitle} />
 
       {/* Hero */}
-      <section className="relative pt-12 sm:pt-16 pb-12 sm:pb-16 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
-            <GraduationCap className="w-3.5 h-3.5" />
-            {lang === 'vi' ? PROJECT_INFO.competition : 'STEM 2026 Student Entrepreneurship Competition'}
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            {t.about.heroTitle}
-          </h1>
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-            {t.about.heroDesc}
-          </p>
-        </div>
-      </section>
+      <PageHero icon={GraduationCap} eyebrow={lang === 'vi' ? PROJECT_INFO.competition : 'STEM 2026 Student Entrepreneurship Competition'} title={t.about.heroTitle} desc={t.about.heroDesc} />
 
       {/* Sứ mệnh & Bối cảnh đề án */}
       <section className="py-12 sm:py-16 bg-white">
@@ -137,12 +126,12 @@ export default function About() {
                   </div>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="text-2xl font-black text-emerald-600 mb-1">0 VNĐ</div>
+                  <div className="text-2xl font-black text-emerald-600 mb-1">{lang === 'vi' ? 'Không cần GPU' : 'No GPU needed'}</div>
                   <div className="text-xs font-semibold text-slate-700">
-                    {lang === 'vi' ? 'Đầu tư máy chủ GPU' : 'GPU Server Investment'}
+                    {lang === 'vi' ? 'Máy chủ xử lý hình ảnh đắt tiền' : 'Costly server-side video processing'}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    {lang === 'vi' ? 'AI chạy trực tiếp tại máy thí sinh' : 'AI runs locally on candidate laptops'}
+                    {lang === 'vi' ? 'AI chạy trên CPU máy thí sinh; chi phí vận hành đã nằm trong giá mỗi lượt thi' : 'AI runs on the candidate laptop CPU; running costs are already included in the per-attempt price'}
                   </div>
                 </div>
               </div>
@@ -342,6 +331,12 @@ export default function About() {
           </div>
         </div>
       </section>
+      <CtaBand
+        title={lang === 'vi' ? 'Cùng thí điểm Exam Guard tại đơn vị của bạn' : 'Pilot Exam Guard at your institution'}
+        desc={lang === 'vi' ? 'Đăng ký thí điểm miễn phí cho một học phần, đội ngũ kỹ thuật sẽ đồng hành trong suốt ca thi.' : 'Register a free pilot for one course; our engineers stand by throughout the exam session.'}
+        primary={{ label: lang === 'vi' ? 'Đăng ký thí điểm' : 'Register a pilot', href: '/#tu-van' }}
+        secondary={{ label: lang === 'vi' ? 'Xem tính năng' : 'See features', href: '/features' }}
+      />
     </PublicLayout>
   );
 }

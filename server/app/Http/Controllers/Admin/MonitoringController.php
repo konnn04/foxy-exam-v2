@@ -231,6 +231,7 @@ class MonitoringController extends Controller
         }
         $attempt->update(['status' => 'FORCE_ENDED', 'submitted_at' => now()]);
         app(Realtime::class)->lifecycle($attempt, 'force_ended'); // the client is told to stop with its next batch
+        \App\Support\Audit::record('exam.force_end', "Đình chỉ phiên thi #{$attempt->id}", 'attempt', $attempt->id);
 
         return back()->with('success', 'Đã đình chỉ phiên thi của thí sinh.');
     }

@@ -9,9 +9,9 @@ import {
   fmtDate,
   fmtTime,
   fromNow,
-  KIND_LABEL,
+  getKindLabel,
+  getMonitorFlags,
   KindIcon,
-  MONITOR_FLAGS,
   MonitorIcons,
   type DeviceCheck,
   type ExamItem,
@@ -19,6 +19,7 @@ import {
   type PageProps,
 } from "./shared";
 import { Chip } from "./Courses";
+import { useI18n } from "../../lib/i18n";
 
 type Tab = "upcoming" | "in_progress" | "done" | "missed";
 
@@ -31,6 +32,7 @@ const TAB_STATES: Record<Tab, ExamState[]> = {
 
 export default function Exams(props: PageProps) {
   const { data, device } = props;
+  const { t, lang } = useI18n();
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const count = (t: Tab) => data.exams.filter((e) => TAB_STATES[t].includes(examState(e))).length;
@@ -46,20 +48,34 @@ export default function Exams(props: PageProps) {
     .filter((e) => ["open", "upcoming"].includes(examState(e)))
     .sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? ""))[0];
 
+  const monitorFlags = getMonitorFlags(lang === "en");
+
   return (
     <div className="space-y-4 px-6 py-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-fg">Kì thi</h2>
+          <h2 className="text-xl font-semibold text-fg">{t("main.exams.title")}</h2>
           <p className="mt-0.5 text-xs text-muted">
-            {count("upcoming")} bài sắp thi · {count("in_progress")} đang diễn ra · {count("done")} đã hoàn thành
+            {t("main.exams.summary", {
+              upcoming: count("upcoming"),
+              inProgress: count("in_progress"),
+              done: count("done"),
+            })}
           </p>
         </div>
         <div className="flex gap-2">
-          <Chip active={tab === "upcoming"} onClick={() => setTab("upcoming")}>Sắp thi</Chip>
-          <Chip active={tab === "in_progress"} onClick={() => setTab("in_progress")}>Đang diễn ra</Chip>
-          <Chip active={tab === "done"} onClick={() => setTab("done")}>Đã xong</Chip>
-          <Chip active={tab === "missed"} onClick={() => setTab("missed")}>Quá hạn</Chip>
+          <Chip active={tab === "upcoming"} onClick={() => setTab("upcoming")}>
+            {t("main.exams.tabUpcoming")}
+          </Chip>
+          <Chip active={tab === "in_progress"} onClick={() => setTab("in_progress")}>
+            {t("main.exams.tabInProgress")}
+          </Chip>
+          <Chip active={tab === "done"} onClick={() => setTab("done")}>
+            {t("main.exams.tabDone")}
+          </Chip>
+          <Chip active={tab === "missed"} onClick={() => setTab("missed")}>
+            {t("main.exams.tabMissed")}
+          </Chip>
         </div>
       </div>
 
@@ -69,20 +85,20 @@ export default function Exams(props: PageProps) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr]">
         <Card>
-          <CardHeader icon={<ShieldCheck size={15} />} title="Yêu cầu giám sát của bài thi kế tiếp" right={next && <span className="text-[11px] text-muted">{next.title}</span>} />
+          <CardHeader icon={<ShieldCheck size={15} />} title={t("main.exams.nextRequirement")} right={next && <span className="text-[11px] text-muted">{next.title}</span>} />
           {next ? (
             <div className="flex flex-wrap items-center gap-2 p-3">
-              {MONITOR_FLAGS.filter(({ key }) => !!next.monitoring_config?.[key]).map(({ key, label, icon: Icon }) => (
+              {monitorFlags.filter(({ key }) => !!next.monitoring_config?.[key]).map(({ key, label, icon: Icon }) => (
                 <Tip key={key} label={label}>
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/40 bg-accent-soft text-accent">
                     <Icon size={15} />
                   </span>
                 </Tip>
               ))}
-              {!MONITOR_FLAGS.some(({ key }) => next.monitoring_config?.[key]) && <span className="text-xs text-muted">Không có yêu cầu đặc biệt.</span>}
+              {!monitorFlags.some(({ key }) => next.monitoring_config?.[key]) && <span className="text-xs text-muted">{t("main.exams.noSpecialRequirement")}</span>}
             </div>
           ) : (
-            <Empty text="Chưa có bài thi kế tiếp." />
+            <Empty text={t("main.exams.noNextExam")} />
           )}
         </Card>
         <DeviceCheckCard device={device} />
@@ -98,18 +114,19 @@ export function ExamTable({
   loading,
   hideCourse,
 }: PageProps & { exams: ExamItem[]; hideCourse?: boolean }) {
-  if (exams.length === 0) return <Empty text={loading ? "Đang tải…" : "Không có bài thi nào."} />;
+  const { t, lang } = useI18n();
+  if (exams.length === 0) return <Empty text={loading ? t("main.exams.loading") : t("main.exams.empty")} />;
 
   return (
     <table className="w-full text-left text-xs">
       <thead>
         <tr className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-subtle">
-          <th className="py-2 pl-4 pr-2 font-semibold" colSpan={2}>Kì thi</th>
-          <th className="px-2 font-semibold">Bắt đầu</th>
-          <th className="px-2 font-semibold">Thời lượng</th>
-          <th className="px-2 font-semibold">Dạng đề</th>
-          <th className="px-2 font-semibold">Giám sát</th>
-          <th className="px-2 font-semibold">Trạng thái</th>
+          <th className="py-2 pl-4 pr-2 font-semibold" colSpan={2}>{t("main.exams.thExam")}</th>
+          <th className="px-2 font-semibold">{t("main.exams.thStart")}</th>
+          <th className="px-2 font-semibold">{t("main.exams.thDuration")}</th>
+          <th className="px-2 font-semibold">{t("main.exams.thKind")}</th>
+          <th className="px-2 font-semibold">{t("main.exams.thMonitor")}</th>
+          <th className="px-2 font-semibold">{t("main.exams.thStatus")}</th>
           <th className="w-28 pr-4" />
         </tr>
       </thead>
@@ -149,7 +166,7 @@ export function ExamTable({
                 {e.start_time && s !== "done" && <p className="text-[11px] text-accent-fg">{fromNow(e.start_time)}</p>}
               </td>
               <td className="px-2 font-mono text-fg">{e.duration_minutes}′</td>
-              <td className="px-2 text-fg">{KIND_LABEL[e.type]}</td>
+              <td className="px-2 text-fg">{getKindLabel(e.type, lang === "en")}</td>
               <td className="px-2">
                 <MonitorIcons config={e.monitoring_config} />
               </td>
@@ -159,12 +176,12 @@ export function ExamTable({
               <td className="pr-4 text-right">
                 {s === "open" && (
                   <Button size="sm" variant="primary" className="w-24" loading={startingId === e.id} disabled={startingId !== null} onClick={() => onStart(e)}>
-                    Vào thi
+                    {t("main.exams.btnEnter")}
                   </Button>
                 )}
                 {s === "in_progress" && (
                   <Button size="sm" variant="danger" className="w-24" loading={startingId === e.id} disabled={startingId !== null} onClick={() => onStart(e)}>
-                    Tiếp tục
+                    {t("main.exams.btnContinue")}
                   </Button>
                 )}
                 {s === "done" && canRetake(e) && (
@@ -172,16 +189,16 @@ export function ExamTable({
                     size="sm"
                     className="w-24"
                     icon={<RotateCcw size={12} />}
-                    title={attemptsLeft(e) === null ? "Không giới hạn số lượt" : `Còn ${attemptsLeft(e)} lượt`}
+                    title={attemptsLeft(e) === null ? t("main.exams.retakeUnlimited") : t("main.exams.retakeRemaining", { count: attemptsLeft(e) ?? 0 })}
                     loading={startingId === e.id}
                     disabled={startingId !== null}
                     onClick={() => onStart(e)}
                   >
-                    Thi lại
+                    {t("main.exams.btnRetake")}
                   </Button>
                 )}
                 {s === "done" && canRetake(e) && attemptsLeft(e) !== null && (
-                  <p className="mt-0.5 text-[10px] text-subtle">còn {attemptsLeft(e)} lượt</p>
+                  <p className="mt-0.5 text-[10px] text-subtle">{t("main.exams.retakeRemainingHint", { count: attemptsLeft(e) ?? 0 })}</p>
                 )}
                 {(s === "upcoming" || s === "missed" || (s === "done" && !canRetake(e))) && <span className="text-subtle">—</span>}
               </td>
@@ -194,6 +211,7 @@ export function ExamTable({
 }
 
 export function DeviceCheckCard({ device }: { device: DeviceCheck }) {
+  const { t } = useI18n();
   const row = (ok: boolean, text: string) => (
     <li className={cx("flex items-center gap-2", ok ? "text-fg" : "font-medium text-danger")}>
       {ok ? <Check size={13} className="text-success" /> : <X size={13} />}
@@ -206,23 +224,23 @@ export function DeviceCheckCard({ device }: { device: DeviceCheck }) {
 
   return (
     <Card>
-      <CardHeader icon={<MonitorCheck size={15} />} title="Kiểm tra thiết bị" />
+      <CardHeader icon={<MonitorCheck size={15} />} title={t("main.exams.deviceCheckTitle")} />
       <div className="p-3">
         {snap ? (
           <ul className="space-y-1.5 text-xs">
-            {row(cams.length > 0, cams.length > 0 ? `Webcam: ${cams[0].name}` : "Không tìm thấy webcam")}
-            {row(!!mic, mic ? `Micro: ${mic.name}` : "Không tìm thấy micro")}
-            {row(device.displays === 1, device.displays === 1 ? "1 màn hình" : `Phát hiện ${device.displays} màn hình`)}
-            {row(device.captureCards === 0, device.captureCards === 0 ? "Không có capture card" : `Có ${device.captureCards} capture card / video-in`)}
-            {row(device.keyboards <= 1, `${device.keyboards} bàn phím ngoài`)}
+            {row(cams.length > 0, cams.length > 0 ? t("main.exams.webcamFound", { name: cams[0].name }) : t("main.exams.noWebcam"))}
+            {row(!!mic, mic ? t("main.exams.micFound", { name: mic.name }) : t("main.exams.noMic"))}
+            {row(device.displays === 1, device.displays === 1 ? t("main.exams.oneDisplay") : t("main.exams.multiDisplayWarn", { count: device.displays }))}
+            {row(device.captureCards === 0, device.captureCards === 0 ? t("main.exams.noCaptureCard") : t("main.exams.hasCaptureCard", { count: device.captureCards }))}
+            {row(device.keyboards <= 1, t("main.exams.externalKeyboards", { count: device.keyboards }))}
           </ul>
         ) : (
           <p className="flex items-center gap-2 text-xs text-muted">
-            <Monitor size={13} /> {device.checking ? "Đang kiểm tra…" : device.error ?? "Chưa kiểm tra"}
+            <Monitor size={13} /> {device.checking ? t("main.exams.checking") : device.error ?? t("main.exams.notChecked")}
           </p>
         )}
         <Button className="mt-3 w-full" icon={<RefreshCw size={13} className={device.checking ? "animate-spin" : ""} />} onClick={device.refresh} disabled={device.checking}>
-          Chạy kiểm tra lại
+          {t("main.exams.recheckBtn")}
         </Button>
       </div>
     </Card>

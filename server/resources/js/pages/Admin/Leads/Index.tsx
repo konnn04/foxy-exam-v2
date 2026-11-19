@@ -1,0 +1,151 @@
+import React, { useEffect, useState } from 'react';
+import { router } from '@inertiajs/react';
+import { ChevronDown, Inbox, Mail, Phone, Save, Search, ShieldCheck } from 'lucide-react';
+import AdminLayout from '@/layouts/AdminLayout';
+import { type TeamItem } from '@/components/team-switcher';
+import { EmptyState, Field, FxButton, FxInput, FxSelect, FxTextarea, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
+import { Pager, type Paginated } from '@/components/foxy/pager';
+import { formatDateTime } from '@/lib/datetime';
+
+interface Lead {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  organization: string | null;
+  locale: string;
+  status: string;
+  note: string | null;
+  handler: string | null;
+  at: string;
+  terms_at: string;
+  terms_hash: string;
+}
+
+const STATUS: Record<string, { label: string; tone: Tone }> = {
+  NEW: { label: 'Mới', tone: 'info' },
+  CONTACTED: { label: 'Đã liên hệ', tone: 'warning' },
+  QUALIFIED: { label: 'Tiềm năng', tone: 'success' },
+  CLOSED: { label: 'Đã đóng', tone: 'neutral' },
+  SPAM: { label: 'Spam', tone: 'danger' },
+};
+
+function LeadRow({ lead }: { lead: Lead }) {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState(lead.status);
+  const [note, setNote] = useState(lead.note ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const save = () => {
+    setSaving(true);
+    router.post(`/admin/leads/${lead.id}`, { status, note }, { preserveScroll: true, onFinish: () => setSaving(false) });
+  };
+
+  return (
+    <li>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full cursor-pointer flex-wrap items-center gap-3 px-5 py-3.5 text-left hover:bg-muted/40">
+        <div className="min-w-0 flex-[1_1_240px]">
+          <div className="truncate text-sm font-medium">{lead.name}</div>
+          <div className="truncate text-xs text-muted-foreground">{lead.organization || 'Chưa ghi đơn vị'}</div>
+        </div>
+        <span className="text-xs text-muted-foreground">{formatDateTime(lead.at)}</span>
+        <Pill tone={STATUS[lead.status]?.tone ?? 'neutral'}>{STATUS[lead.status]?.label ?? lead.status}</Pill>
+        <ChevronDown className={`size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="grid gap-5 border-t border-border bg-surface/50 px-5 py-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-2.5 text-sm">
+            <a href={`mailto:${lead.email}`} className="flex items-center gap-2 text-brand-fg hover:underline">
+              <Mail className="size-4" /> {lead.email}
+            </a>
+            <a href={`tel:${lead.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:underline">
+              <Phone className="size-4 text-muted-foreground" /> {lead.phone}
+            </a>
+            <div className="mt-1 flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success-fg" />
+              <span>
+                Đã đồng ý điều khoản lúc {formatDateTime(lead.terms_at)}
+                <br />
+                Mã điều khoản: <span className="font-mono">{lead.terms_hash}</span> · Ngôn ngữ: {lead.locale.toUpperCase()}
+              </span>
+            </div>
+            {lead.handler && <span className="text-xs text-muted-foreground">Xử lý gần nhất: {lead.handler}</span>}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Field label="Trạng thái">
+              <FxSelect value={status} onChange={(e) => setStatus(e.target.value)}>
+                {Object.entries(STATUS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v.label}
+                  </option>
+                ))}
+              </FxSelect>
+            </Field>
+            <Field label="Ghi chú nội bộ">
+              <FxTextarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} rows={3} placeholder="Đã gọi, hẹn demo thứ Ba…" />
+            </Field>
+            <div>
+              <FxButton variant="primary" icon={Save} disabled={saving} onClick={save}>
+                {saving ? 'Đang lưu…' : 'Lưu'}
+              </FxButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+export default function LeadsIndex({ user, teams, leads, filters, counts }: { user: any; teams: TeamItem[]; leads: Paginated<Lead>; filters: { status: string | null; q: string }; counts: Record<string, number> }) {
+  const [q, setQ] = useState(filters.q ?? '');
+
+  const visit = (next: { status?: string | null; q?: string }) => {
+    const params: Record<string, string> = {};
+    const status = next.status !== undefined ? next.status : filters.status;
+    const query = next.q !== undefined ? next.q : q;
+    if (status) params.status = status;
+    if (query) params.q = query;
+    router.get('/admin/leads', params, { preserveState: true, preserveScroll: true, replace: true });
+  };
+
+  // search as you type, once the visitor pauses
+  useEffect(() => {
+    if (q === (filters.q ?? '')) return;
+    const id = window.setTimeout(() => visit({ q }), 350);
+    return () => window.clearTimeout(id);
+  }, [q]);
+
+  return (
+    <AdminLayout user={user} teams={teams} currentTab="leads" title="Khách tiềm năng" breadcrumbs={[{ label: 'Khách hàng' }, { label: 'Khách tiềm năng' }]}>
+      <div className="flex flex-col gap-4">
+        <PageHeader title="Khách tiềm năng" desc="Yêu cầu thí điểm gửi từ trang công khai, kèm bằng chứng khách đã đồng ý điều khoản." />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented
+            value={filters.status ?? 'ALL'}
+            onChange={(v) => visit({ status: v === 'ALL' ? null : v })}
+            options={[{ value: 'ALL', label: `Tất cả ${counts.ALL ?? 0}` }, ...Object.entries(STATUS).map(([k, v]) => ({ value: k, label: `${v.label} ${counts[k] ?? 0}` }))]}
+          />
+          <div className="min-w-[220px] flex-1 sm:max-w-xs">
+            <FxInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm tên, email, đơn vị…" suffix={<Search className="size-3.5" />} />
+          </div>
+        </div>
+
+        <Panel padded={false}>
+          {leads.data.length === 0 ? (
+            <EmptyState icon={Inbox} title="Chưa có yêu cầu nào" desc="Khi khách điền phiếu đăng ký ở trang chủ, yêu cầu sẽ xuất hiện ở đây." />
+          ) : (
+            <ul className="divide-y divide-border">
+              {leads.data.map((l) => (
+                <LeadRow key={`${l.id}-${l.status}-${l.note}`} lead={l} />
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Pager page={leads} />
+      </div>
+    </AdminLayout>
+  );
+}

@@ -48,7 +48,7 @@ Nguồn sự thật: `server/app/Support/ViolationCatalog.php` (phân loại duy
 ## Đã khai báo nhưng chưa có cơ chế phát
 
 `TAB_SWITCH`, `DEVTOOLS_OPENED`, `OFFLINE_TOO_LONG`: loại hợp lệ ở server nhưng client hiện không gửi. Mất kết nối quá 5 phút
-được xử lý bằng trạng thái vắng thi (`ended_reason = ABSENT`, lệnh `attempts:expire-offline`), không tạo bản ghi vi phạm.
+được xử lý bằng trạng thái vắng thi (`ended_reason = ABSENT`, lệnh `attempts:sweep`), không tạo bản ghi vi phạm.
 
 ## Không tạo vi phạm
 

@@ -15,9 +15,22 @@ use Illuminate\Http\Request;
 class BiometricController extends Controller
 {
     /** Public: the policy text (the client shows it before login completes, the web page renders the same sections). */
-    public function policy(): JsonResponse
+    public function policy(Request $request): JsonResponse
     {
-        return response()->json(['success' => true, 'data' => ['version' => BiometricPolicy::VERSION, 'sections' => BiometricPolicy::sections(), 'url' => url('/biometric-policy')]]);
+        $lang = $request->query('lang', 'vi');
+        $baseUrl = url('/biometric-policy');
+        $policyUrl = strtolower((string) $lang) === 'en' ? $baseUrl . '?lang=en' : $baseUrl;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'version' => BiometricPolicy::VERSION,
+                'sections' => BiometricPolicy::sections($lang),
+                'sections_vi' => BiometricPolicy::sections('vi'),
+                'sections_en' => BiometricPolicy::sections('en'),
+                'url' => $policyUrl,
+            ],
+        ]);
     }
 
     public function status(Request $request): JsonResponse

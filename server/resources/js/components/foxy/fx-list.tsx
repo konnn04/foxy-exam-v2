@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, Search, type LucideIcon } from 'lucide-react';
+import { Check as CheckIcon, ChevronLeft, ChevronRight, Search, type LucideIcon } from 'lucide-react';
 import { EmptyState, FxSelect, IconButton, Panel } from './ui';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,21 @@ export interface FxColumn<T> {
   width: string;
   render: (row: T) => React.ReactNode;
   align?: 'right';
+  /** left out of the phone card view (secondary data such as attempt number, timestamps) */
+  hideOnMobile?: boolean;
+}
+
+/** true below the md breakpoint: tables turn into cards there */
+function useNarrow() {
+  const query = '(max-width: 767px)';
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const on = () => setNarrow(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return narrow;
 }
 
 export interface FxFilter<T> {
@@ -82,6 +97,7 @@ export function FxList<T extends { id: number }>({
   actionsWidth?: string;
   server?: FxServerMode;
 }) {
+  const narrow = useNarrow();
   const [q, setQ] = useState(server?.values.q ?? '');
   const [fv, setFv] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<number[]>([]);
@@ -165,7 +181,7 @@ export function FxList<T extends { id: number }>({
   return (
     <Panel padded={false} className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex h-9 w-[300px] max-w-full items-center gap-2 rounded-lg border border-border px-2.5 text-muted-foreground focus-within:border-primary">
+        <div className="flex h-10 w-full items-center gap-2 rounded-lg border border-border px-2.5 text-muted-foreground focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25 sm:h-9 sm:w-[300px]">
           <Search className="size-4 opacity-60" />
           <input
             value={q}
@@ -174,6 +190,7 @@ export function FxList<T extends { id: number }>({
               if (!server) setPage(1);
             }}
             placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
@@ -201,6 +218,46 @@ export function FxList<T extends { id: number }>({
         {toolbarExtra}
       </div>
 
+      {narrow ? (
+        <div className="flex flex-col gap-2">
+          {visible.length === 0 ? (
+            <EmptyState {...empty} />
+          ) : (
+            visible.map((r) => {
+              const [first, ...rest] = columns.filter((c) => !c.hideOnMobile);
+              return (
+                <div key={r.id} onClick={() => onRowClick?.(r)} className={cn('rounded-xl border border-border bg-card p-3', onRowClick && 'cursor-pointer active:bg-surface')}>
+                  <div className="flex items-start gap-3">
+                    <Check
+                      on={selected.includes(r.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelected((s) => (s.includes(r.id) ? s.filter((x) => x !== r.id) : [...s, r.id]));
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">{first?.render(r)}</div>
+                    {actions && (
+                      <div className="-mr-1 -mt-1 flex shrink-0 gap-0.5" onClick={(e) => e.stopPropagation()}>
+                        {actions(r)}
+                      </div>
+                    )}
+                  </div>
+                  {rest.length > 0 && (
+                    <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-2.5 pl-7 text-[13px]">
+                      {rest.map((c) => (
+                        <div key={c.key} className="min-w-0">
+                          <dt className="truncate text-xs text-muted-foreground">{c.label}</dt>
+                          <dd className="min-w-0 truncate">{c.render(r)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
       <div className="overflow-auto rounded-lg border border-border">
         <div style={{ minWidth }}>
           <div className="grid h-10 items-center gap-3 border-b border-border px-2 text-[13px] font-medium text-muted-foreground" style={{ gridTemplateColumns: grid }}>
@@ -251,12 +308,13 @@ export function FxList<T extends { id: number }>({
           )}
         </div>
       </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-muted-foreground">
         <span>
           Đã chọn {selected.length} / {total.toLocaleString('en')}
         </span>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="flex items-center gap-2">
             Số dòng
             <FxSelect
@@ -296,9 +354,10 @@ function Check({ on, onClick }: { on: boolean; onClick: (e: React.MouseEvent) =>
       role="checkbox"
       aria-checked={on}
       onClick={onClick}
-      className={cn('flex size-4 cursor-pointer items-center justify-center rounded border', on ? 'border-primary bg-primary text-primary-foreground' : 'border-foreground/30')}
+      aria-label={on ? 'Bỏ chọn' : 'Chọn'}
+      className={cn('mt-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center rounded border outline-none focus-visible:ring-2 focus-visible:ring-primary/40', on ? 'border-primary bg-primary text-primary-foreground' : 'border-foreground/30')}
     >
-      {on && <span className="text-[10px] leading-none">✓</span>}
+      {on && <CheckIcon className="size-3" strokeWidth={3} />}
     </button>
   );
 }

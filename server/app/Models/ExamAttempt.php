@@ -43,6 +43,36 @@ class ExamAttempt extends Model
         ];
     }
 
+    /** When the candidate's time runs out. `end_time` of the exam only closes the door for NEW attempts. */
+    public function deadline(): ?\Illuminate\Support\Carbon
+    {
+        $minutes = $this->exam?->duration_minutes;
+
+        return $this->started_at && $minutes ? $this->started_at->copy()->addMinutes($minutes) : null;
+    }
+
+    /** Seconds the candidate still has (never negative). */
+    public function secondsLeft(): int
+    {
+        $deadline = $this->deadline();
+
+        return $deadline ? max(0, (int) now()->diffInSeconds($deadline, false)) : 0;
+    }
+
+    /** Past the deadline by more than $graceSeconds (the last autosave of a slow network still counts). */
+    public function isOverdue(int $graceSeconds = 60): bool
+    {
+        $deadline = $this->deadline();
+
+        return $deadline !== null && now()->gt($deadline->copy()->addSeconds($graceSeconds));
+    }
+
+    /** Newest sign of life: realtime presence, any REST call that touched the row, or the start. */
+    public function lastSeen(): ?\Illuminate\Support\Carbon
+    {
+        return collect([$this->last_seen_at, $this->updated_at, $this->started_at])->filter()->max();
+    }
+
     public function exam(): BelongsTo
     {
         return $this->belongsTo(Exam::class);

@@ -3,11 +3,13 @@ import { ArrowLeft, BookOpen, CalendarDays, ChevronRight, FileText, Search, Time
 import { Button, Card, Empty, Input, cx } from "../../components/ui";
 import { examState, fmtDateTime, fromNow, type PageProps } from "./shared";
 import { ExamTable } from "./Exams";
+import { useI18n } from "../../lib/i18n";
 
 type Filter = "all" | "has-exam" | "done";
 
 export default function Courses(props: PageProps) {
   const { data, loading } = props;
+  const { t } = useI18n();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -38,7 +40,7 @@ export default function Courses(props: PageProps) {
     return (
       <div className="space-y-4 px-6 py-5">
         <button type="button" onClick={() => setOpenId(null)} className="flex items-center gap-1 text-xs text-muted hover:text-fg">
-          <ArrowLeft size={13} /> Khoá học
+          <ArrowLeft size={13} /> {t("main.courses.back")}
         </button>
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
@@ -47,8 +49,8 @@ export default function Courses(props: PageProps) {
           <div>
             <h2 className="text-lg font-semibold text-fg">{opened.name}</h2>
             <p className="text-xs text-muted">
-              {opened.code} · {opened.teacher?.name ?? "Chưa phân công giảng viên"}
-              {opened.enrolled_at && ` · ghi danh ${fmtDateTime(opened.enrolled_at)}`}
+              {opened.code} · {opened.teacher?.name ?? t("main.courses.unassigned")}
+              {opened.enrolled_at && ` · ${t("main.courses.enrolledAt", { date: fmtDateTime(opened.enrolled_at) })}`}
             </p>
           </div>
         </div>
@@ -67,28 +69,28 @@ export default function Courses(props: PageProps) {
     <div className="space-y-4 px-6 py-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-fg">Khoá học của tôi</h2>
+          <h2 className="text-xl font-semibold text-fg">{t("main.courses.myCourses")}</h2>
           <p className="mt-0.5 text-xs text-muted">
-            {data.courses.length} khoá học · {data.exams.length} bài thi
+            {t("main.courses.summary", { courses: data.courses.length, exams: data.exams.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Input icon={<Search size={14} />} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm khoá học" className="h-8 w-52" />
+          <Input icon={<Search size={14} />} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("main.courses.searchPlaceholder")} className="h-8 w-52" />
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>
-            Tất cả · {data.courses.length}
+            {t("main.courses.filterAll")} · {data.courses.length}
           </Chip>
           <Chip active={filter === "has-exam"} onClick={() => setFilter("has-exam")}>
-            Có bài thi · {withExam}
+            {t("main.courses.filterHasExam")} · {withExam}
           </Chip>
           <Chip active={filter === "done"} onClick={() => setFilter("done")}>
-            Đã hoàn thành · {done}
+            {t("main.courses.filterDone")} · {done}
           </Chip>
         </div>
       </div>
 
       {list.length === 0 ? (
         <Card>
-          <Empty icon={<BookOpen size={18} />} text={loading ? "Đang tải…" : "Không có khoá học nào."} />
+          <Empty icon={<BookOpen size={18} />} text={loading ? t("common.loading") : t("main.courses.empty")} />
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -113,10 +115,10 @@ export default function Courses(props: PageProps) {
                 </div>
                 <p className="mt-3 text-[13px] font-semibold text-fg">{c.name}</p>
                 <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
-                  <User size={11} /> {c.teacher?.name ?? "Chưa phân công"}
+                  <User size={11} /> {c.teacher?.name ?? t("main.courses.unassigned")}
                 </p>
                 <p className="mt-2 flex items-center gap-1 text-[11px] text-muted">
-                  <FileText size={11} /> {c.exams_count} bài thi
+                  <FileText size={11} /> {t("main.courses.examsCount", { count: c.exams_count })}
                 </p>
                 <div
                   className={cx(
@@ -128,12 +130,12 @@ export default function Courses(props: PageProps) {
                     <>
                       {hot ? <Timer size={12} /> : <CalendarDays size={12} />}
                       <span className="truncate">
-                        {next.title} · {hot ? "đang mở" : fromNow(next.start_time)}
+                        {next.title} · {hot ? t("main.courses.nowOpen") : fromNow(next.start_time)}
                       </span>
                     </>
                   ) : (
                     <>
-                      <CalendarDays size={12} /> Chưa có bài thi mới
+                      <CalendarDays size={12} /> {t("main.courses.noNewExams")}
                     </>
                   )}
                   <ChevronRight size={12} className="ml-auto shrink-0" />

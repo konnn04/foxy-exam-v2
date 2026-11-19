@@ -189,6 +189,16 @@
     50% { opacity: 0.2; }
 }
 
+@keyframes heroFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes heroSweep {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(400%); }
+}
+
 @theme inline {
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);

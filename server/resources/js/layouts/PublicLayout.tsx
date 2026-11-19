@@ -5,13 +5,15 @@ import {
   Menu,
   X,
   ArrowUp,
-  ExternalLink,
+  ArrowRight,
   Laptop,
   CheckCircle2,
   ShieldCheck,
   Globe,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSite } from '@/hooks/use-site';
+import CookieConsent from '@/components/public/CookieConsent';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -19,7 +21,12 @@ interface PublicLayoutProps {
 
 function PublicLayoutContent({ children }: PublicLayoutProps) {
   const { url } = usePage();
-  const { lang, setLang, toggleLang, t } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
+  const site = useSite();
+  const brandName = site.get('brand.name', 'EXAM GUARD');
+  const logo = site.get('brand.logo', '/mark.png');
+  const email = site.get('contact.email');
+  const phone = site.get('contact.phone');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -50,23 +57,25 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-['Be_Vietnam_Pro','Instrument_Sans',system-ui,sans-serif] selection:bg-blue-600 selection:text-white antialiased flex flex-col justify-between">
       {/* Top Banner */}
+      {site.flag('banner.enabled') && (
       <div className="bg-slate-950 text-slate-200 border-b border-slate-800 py-1.5 px-4 sm:px-6">
         <div className="max-w-[1360px] mx-auto flex items-center justify-between gap-3 text-[11px] sm:text-[12px]">
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
             <span className="font-bold text-white tracking-wide truncate">
-              {t.topBanner.institution}
+              {site.text('banner.institution', t.topBanner.institution)}
             </span>
             <span className="text-slate-600 hidden md:inline">|</span>
             <span className="text-slate-300 hidden md:inline truncate">
-              {t.topBanner.project}
+              {site.text('banner.project', t.topBanner.project)}
             </span>
           </div>
           <div className="text-slate-400 hidden lg:flex items-center gap-3 shrink-0 text-[11.5px] font-mono">
-            <span className="text-blue-400 font-semibold">{t.topBanner.faculty}</span>
+            <span className="text-blue-400 font-semibold">{site.text('banner.faculty', t.topBanner.faculty)}</span>
           </div>
         </div>
       </div>
+      )}
 
       {/* Sticky Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
@@ -74,19 +83,19 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 shrink-0 transition-transform group-hover:scale-105">
-              <img src="/mark.png" alt="Exam Guard Logo" className="w-full h-full object-contain" />
+              <img src={logo} alt={brandName} className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-[17px] sm:text-[19px] font-black tracking-tight text-slate-900 leading-none whitespace-nowrap group-hover:text-blue-600 transition-colors">
-                  EXAM GUARD
+                  {brandName}
                 </span>
                 <span className="text-[9.5px] sm:text-[10px] font-bold tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase whitespace-nowrap">
-                  STEM 2026
+                  {site.get('brand.badge', 'STEM 2026')}
                 </span>
               </div>
               <span className="text-[11px] font-medium text-slate-500 hidden sm:block truncate mt-0.5">
-                {lang === 'vi' ? 'Hệ thống Giám sát Thi cử Trực tuyến' : 'Smart Online Proctoring System'}
+                {site.text('brand.tagline', lang === 'vi' ? 'Hệ thống Giám sát Thi cử Trực tuyến' : 'Smart Online Proctoring System')}
               </span>
             </div>
           </Link>
@@ -109,15 +118,6 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
                 )}
               </Link>
             ))}
-            <a
-              href="/docs/api"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1"
-            >
-              <span>{t.nav.apiDocs}</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </nav>
 
           {/* Action Buttons & Language Switcher */}
@@ -221,15 +221,6 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
                 {item.label}
               </Link>
             ))}
-            <a
-              href="/docs/api"
-              target="_blank"
-              rel="noreferrer"
-              className="block px-3 py-2 text-sm text-slate-600 hover:text-blue-600 flex items-center justify-between"
-            >
-              <span>{t.nav.apiDocs}</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </div>
         )}
       </header>
@@ -246,15 +237,15 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
             <div className="md:col-span-2">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center p-1.5 shadow-2xs">
-                  <img src="/mark.png" alt="Exam Guard Logo" className="w-full h-full object-contain" />
+                  <img src={logo} alt={brandName} className="w-full h-full object-contain" />
                 </div>
-                <span className="text-[18px] font-bold text-white tracking-tight">EXAM GUARD</span>
+                <span className="text-[18px] font-bold text-white tracking-tight">{brandName}</span>
               </div>
               <p className="mt-3 text-xs sm:text-sm text-slate-400 leading-relaxed max-w-[420px]">
-                {t.footer.brandDesc}
+                {site.text('footer.description', t.footer.brandDesc)}
               </p>
               <div className="mt-4 text-xs text-slate-500 font-mono">
-                {t.footer.stemBadge}
+                {site.text('footer.badge', t.footer.stemBadge)}
               </div>
             </div>
 
@@ -273,23 +264,28 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
                 {t.footer.contactTitle}
               </div>
-              <div>Email: <a href="mailto:minkhoi.dev@gmail.com" className="hover:text-white text-slate-300">minkhoi.dev@gmail.com</a></div>
-              <div>Hotline: <span className="text-slate-300 font-semibold">0387 291 237</span> ({t.footer.leaderRole})</div>
-              <div>{lang === 'vi' ? 'Địa chỉ' : 'Address'}: <span className="text-slate-300">{t.footer.address}</span></div>
+              {email && <div>Email: <a href={`mailto:${email}`} className="hover:text-white text-slate-300">{email}</a></div>}
+              {phone && <div>Hotline: <span className="text-slate-300 font-semibold">{phone}</span> ({site.text('contact.phone_role', t.footer.leaderRole)})</div>}
+              <div>{lang === 'vi' ? 'Địa chỉ' : 'Address'}: <span className="text-slate-300">{site.text('contact.address', t.footer.address)}</span></div>
               <div className="pt-2">
                 <Link href="/login" className="text-blue-400 hover:text-blue-300 font-bold inline-block">
-                  {t.footer.accessPortal}
+                  <span className="inline-flex items-center gap-1.5">
+                    {t.footer.accessPortal}
+                    <ArrowRight className="size-3.5" />
+                  </span>
                 </Link>
               </div>
             </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-mono">
-            <span>{t.footer.copyright}</span>
-            <span>{t.footer.legalBadge}</span>
+            <span>{site.text('footer.copyright', t.footer.copyright)}</span>
+            <span>{site.text('footer.legal', t.footer.legalBadge)}</span>
           </div>
         </div>
       </footer>
+
+      <CookieConsent />
 
       {/* Back to top */}
       <button

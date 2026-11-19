@@ -7,6 +7,13 @@ import {
   Eye,
   EllipsisVertical,
   Gauge,
+  Globe,
+  BarChart3,
+  FileSpreadsheet,
+  Megaphone,
+  HeartPulse,
+  Inbox,
+  ScrollText,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -51,15 +58,31 @@ interface NavItem {
  * account's role alone: a Root Admin who switched into a school sees exactly what that school's
  * Org Admin sees, and in the ROOT context only the three platform pages exist.
  */
-function navFor(can: Capabilities, isPlatform: boolean, pending: number): { label: string; items: NavItem[] }[] {
+function navFor(can: Capabilities, isPlatform: boolean, pending: number, newLeads: number): { label: string; items: NavItem[] }[] {
   if (isPlatform) {
     return [
       {
         label: 'Nền tảng',
         items: [
+          { id: 'platform', label: 'Tổng quan', icon: LayoutDashboard, href: '/admin/platform' },
           { id: 'organizations', label: 'Tổ chức', icon: Building2, href: '/admin/organizations' },
           { id: 'saas-plans', label: 'Gói cước', icon: Package, href: '/admin/saas-plans' },
           { id: 'users', label: 'Tài khoản hệ thống', icon: Users, href: '/admin/users' },
+        ],
+      },
+      {
+        label: 'Khách hàng',
+        items: [
+          { id: 'leads', label: 'Khách tiềm năng', icon: Inbox, href: '/admin/leads', count: newLeads },
+          { id: 'announcements', label: 'Thông báo hàng loạt', icon: Megaphone, href: '/admin/announcements' },
+        ],
+      },
+      {
+        label: 'Vận hành',
+        items: [
+          { id: 'health', label: 'Sức khỏe hệ thống', icon: HeartPulse, href: '/admin/platform/health' },
+          { id: 'audit', label: 'Nhật ký hoạt động', icon: ScrollText, href: '/admin/audit-log' },
+          { id: 'site', label: 'Nội dung website', icon: Globe, href: '/admin/site' },
         ],
       },
     ];
@@ -68,6 +91,7 @@ function navFor(can: Capabilities, isPlatform: boolean, pending: number): { labe
   const org: NavItem[] = [{ id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, href: '/admin' }];
   if (can.users) org.push({ id: 'users', label: 'Giảng viên & Sinh viên', icon: Users, href: '/admin/users' });
   org.push({ id: 'courses', label: 'Khóa học', icon: GraduationCap, href: '/admin/courses' });
+  if (can.orgSettings) org.push({ id: 'import', label: 'Nhập sinh viên (Excel)', icon: FileSpreadsheet, href: '/admin/import/students' });
   if (can.quota) org.push({ id: 'saas-plans', label: 'Quota & Gói cước', icon: Gauge, href: '/admin/saas-plans' });
 
   const groups = [
@@ -82,7 +106,11 @@ function navFor(can: Capabilities, isPlatform: boolean, pending: number): { labe
       ],
     },
   ];
-  if (can.orgSettings) groups.push({ label: 'Cấu hình', items: [{ id: 'settings', label: 'Cài đặt tổ chức', icon: SlidersHorizontal, href: '/admin/settings' }] });
+  const config: NavItem[] = [];
+  if (can.orgSettings) config.push({ id: 'analytics', label: 'Báo cáo theo khoa & học kỳ', icon: BarChart3, href: '/admin/analytics' });
+  if (can.orgSettings) config.push({ id: 'settings', label: 'Cài đặt tổ chức', icon: SlidersHorizontal, href: '/admin/settings' });
+  if (can.users) config.push({ id: 'audit', label: 'Nhật ký hoạt động', icon: ScrollText, href: '/admin/audit-log' });
+  if (config.length) groups.push({ label: 'Cấu hình', items: config });
   return groups;
 }
 
@@ -114,9 +142,9 @@ export function FxSidebar({
   currentTab?: NavTab;
   onNavigate: (tab: NavTab, href: string) => void;
 }) {
-  const { props } = usePage<{ navCounts?: { pendingViolations?: number } | null }>();
+  const { props } = usePage<{ navCounts?: { pendingViolations?: number } | null; newLeads?: number | null }>();
   const { isMobile } = useSidebar();
-  const groups = navFor(can, isPlatform, props.navCounts?.pendingViolations ?? 0);
+  const groups = navFor(can, isPlatform, props.navCounts?.pendingViolations ?? 0, props.newLeads ?? 0);
   const chip = roleChip(user.role, isPlatform, activeTeam.code);
 
   return (

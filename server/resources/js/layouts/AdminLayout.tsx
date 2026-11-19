@@ -58,7 +58,7 @@ export default function AdminLayout({ user, currentTab = 'overview', title, brea
       />
 
       <SidebarInset className="flex min-h-svh min-w-0 flex-col bg-background text-sm">
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/72 px-4 backdrop-blur-[14px]">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/72 px-3 backdrop-blur-[14px] sm:h-16 sm:px-4">
           <SidebarTrigger className="-ml-1 size-7" />
           <div className="mr-2 h-4 w-px bg-border" />
           {backUrl && (
@@ -105,10 +105,10 @@ export default function AdminLayout({ user, currentTab = 'overview', title, brea
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">{initials(displayUser.name)}</div>
         </header>
 
-        <main className="flex flex-1 flex-col p-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-5 rounded-xl bg-muted/50 p-5">{children}</div>
+        <main className="flex flex-1 flex-col p-2 sm:p-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-5 rounded-xl bg-muted/50 p-3 sm:p-5">{children}</div>
         </main>
-        <footer className="border-t border-border p-4 text-center text-[13px] text-muted-foreground">© {new Date().getFullYear()} Foxy Exam. All rights reserved.</footer>
+        <footer className="border-t border-border p-3 text-center text-xs text-muted-foreground sm:p-4">© {new Date().getFullYear()} Foxy Exam. All rights reserved.</footer>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -256,6 +256,7 @@ export interface CourseFormData {
   id: number;
   name: string;
   code: string;
+  department?: string | null;
   description?: string | null;
   teacher_id?: number | null;
   organization_id?: number;
@@ -278,6 +279,7 @@ export function CourseForm({
   const [form, setForm] = useState({
     name: course?.name ?? '',
     code: course?.code ?? '',
+    department: course?.department ?? '',
     description: course?.description ?? '',
     teacher_id: course?.teacher_id ?? teachers[0]?.id ?? user?.id,
     organization_id: course?.organization_id ?? user?.organization?.id,
@@ -329,6 +331,9 @@ export function CourseForm({
                 <FxInput value={form.name} placeholder="Cấu trúc dữ liệu & Giải thuật" onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>
             </div>
+            <Field label="Khoa / Bộ môn" hint="Dùng để gom nhóm trong báo cáo. Các khóa cùng khoa nên ghi giống hệt nhau." error={errors.department}>
+              <FxInput value={form.department} placeholder="Khoa Công nghệ Thông tin" maxLength={120} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+            </Field>
             <div className="grid gap-3.5" style={grid()}>
               <Field label="Giảng viên phụ trách" error={errors.teacher_id}>
                 <FxSelect value={form.teacher_id} onChange={(e) => setForm({ ...form, teacher_id: Number(e.target.value) })}>

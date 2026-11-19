@@ -17,6 +17,7 @@ class Course extends Model
         'organization_id',
         'code',
         'name',
+        'department',
         'description',
         'teacher_id',
     ];

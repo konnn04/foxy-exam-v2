@@ -66,6 +66,16 @@ class HandleInertiaRequests extends Middleware
                     ] : null,
                 ] : null,
             ],
+            // White-label content of the public website (cached; only the public pages read it)
+            'site' => fn () => \App\Support\SiteSettings::all(),
+            // default monitoring policy of the ACTIVE school: a NEW exam starts from it
+            'orgPolicy' => fn () => $user && $tenantContext->capabilities()['academic'] ? ($tenantContext->current()->settings['monitoring_defaults'] ?? null) : null,
+            // AI question generator of the ACTIVE school (the key itself never leaves the server)
+            'orgAi' => fn () => $user && $tenantContext->capabilities()['academic']
+                ? array_merge(\App\Services\QuestionGenerator::settingsFor($tenantContext->current()), $tenantContext->capabilities()['orgSettings'] ? [] : ['key_hint' => null])
+                : null,
+            // sidebar badge of the platform context only
+            'newLeads' => fn () => $user && $tenantContext->inPlatformContext() && \Illuminate\Support\Facades\Schema::hasTable('leads') ? \App\Models\Lead::where('status', 'NEW')->count() : null,
             'tenant' => $user ? $tenantContext->toInertiaArray() : null,
             // Sidebar badge ("Phiên thi & vi phạm"): unreviewed violations of the ACTIVE organization.
             // Never computed in the platform (ROOT) context where proctoring does not exist.

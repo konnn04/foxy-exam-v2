@@ -147,9 +147,13 @@ class ExamController extends Controller
 
             app(\App\Services\Realtime::class)->lifecycle($activeAttempt, 'active');
             \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $activeAttempt);
-            $elapsedSeconds = now()->diffInSeconds($activeAttempt->started_at);
-            $totalSeconds = $exam->duration_minutes * 60;
-            $timeRemaining = max(0, $totalSeconds - $elapsedSeconds);
+            $activeAttempt->setRelation('exam', $exam);
+            if ($activeAttempt->isOverdue()) {
+                app(\App\Services\AttemptFinisher::class)->submit($activeAttempt, 'TIME_UP');
+
+                return response()->json(['success' => false, 'error_code' => 'TIME_UP', 'message' => 'Lượt thi trước đã hết giờ và được nộp tự động với các câu trả lời đã lưu.'], 409);
+            }
+            $timeRemaining = $activeAttempt->secondsLeft();
 
             return response()->json([
                 'success' => true,
@@ -252,9 +256,8 @@ class ExamController extends Controller
         }
 
         // Tính thời gian còn lại
-        $elapsedSeconds = now()->diffInSeconds($attempt->started_at);
-        $totalSeconds = $exam->duration_minutes * 60;
-        $timeRemaining = max(0, $totalSeconds - $elapsedSeconds);
+        $attempt->setRelation('exam', $exam);
+        $timeRemaining = $attempt->secondsLeft();
 
         $exam->loadMissing('questionSet');
         $isClassical = ($exam->type === 'QUIZ') || ($exam->questionSet?->type === 'CLASSICAL');
@@ -377,6 +380,14 @@ class ExamController extends Controller
             return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp.'], 400);
         }
 
+        // the clock is the server's: an answer after the deadline (+1 minute for the network) is not taken
+        $attempt->setRelation('exam', $exam);
+        if ($attempt->isOverdue()) {
+            app(\App\Services\AttemptFinisher::class)->submit($attempt, 'TIME_UP');
+
+            return response()->json(['success' => false, 'error_code' => 'TIME_UP', 'message' => 'Đã hết giờ làm bài. Bài đã được nộp tự động với các câu trả lời đã lưu.'], 409);
+        }
+
         // Xử lý câu hỏi trắc nghiệm / tự luận cổ điển
         if ($request->has('question_id')) {
             $validated = $request->validate([
@@ -453,11 +464,15 @@ class ExamController extends Controller
             return response()->json(['success' => false, 'message' => 'Không có quyền truy cập.'], 403);
         }
 
-        if ($attempt->status === 'SUBMITTED') {
-            return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp trước đó.'], 400);
+        if (!in_array($attempt->status, \App\Services\AttemptFinisher::OPEN, true)) {
+            return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp hoặc đã bị kết thúc trước đó.'], 400);
         }
 
-        $attempt = app(\App\Services\AttemptFinisher::class)->submit($attempt);
+        $attempt->setRelation('exam', $exam);
+        $attempt = app(\App\Services\AttemptFinisher::class)->submit($attempt, $attempt->isOverdue() ? 'TIME_UP' : null);
+        if ($attempt->status !== 'SUBMITTED') {
+            return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp hoặc đã bị kết thúc trước đó.'], 400);
+        }
         $finalScore = $attempt->score;
 
         return response()->json([

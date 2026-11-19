@@ -3,7 +3,7 @@ import { ExternalLink, ShieldCheck } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { acceptBiometric, getBiometricPolicy, type BiometricPolicy } from "../lib/api";
 import { Button } from "./ui";
-import { useI18n } from "../lib/i18n";
+import { useI18n, BIOMETRIC_SECTIONS_VI, BIOMETRIC_SECTIONS_EN } from "../lib/i18n";
 import { LangSwitch } from "./LangSwitch";
 
 /**
@@ -11,17 +11,29 @@ import { LangSwitch } from "./LangSwitch";
  * biometric endpoints without it), and again on first use because the first use is also a login.
  */
 export function ConsentGate({ onAccepted, onDeclined }: { onAccepted: () => void; onDeclined: () => void }) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const [policy, setPolicy] = useState<BiometricPolicy | null>(null);
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getBiometricPolicy()
+    getBiometricPolicy(lang)
       .then((r) => setPolicy(r.data))
       .catch(() => setError(t("consent.errPolicy")));
-  }, []);
+  }, [lang]);
+
+  const sections =
+    lang === "en"
+      ? (policy?.sections_en && policy.sections_en.length > 0 ? policy.sections_en : BIOMETRIC_SECTIONS_EN)
+      : (policy?.sections_vi && policy.sections_vi.length > 0 ? policy.sections_vi : (policy?.sections ?? BIOMETRIC_SECTIONS_VI));
+
+  const handleOpenWeb = () => {
+    if (!policy) return;
+    const base = policy.url.replace(/\?.*$/, "");
+    const targetUrl = lang === "en" ? `${base}?lang=en` : base;
+    void openUrl(targetUrl);
+  };
 
   async function accept() {
     setBusy(true);
@@ -46,7 +58,7 @@ export function ConsentGate({ onAccepted, onDeclined }: { onAccepted: () => void
       <p className="mt-1 text-xs text-muted">{t("consent.subtitle", { version: policy?.version ?? "…" })}</p>
 
       <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto rounded-xl border border-line bg-surface p-4 text-xs leading-relaxed">
-        {policy?.sections.map((s, i) => (
+        {sections.map((s, i) => (
           <div key={s.title}>
             <p className="font-semibold text-fg">
               {i + 1}. {s.title}
@@ -58,7 +70,7 @@ export function ConsentGate({ onAccepted, onDeclined }: { onAccepted: () => void
       </div>
 
       {policy && (
-        <button type="button" onClick={() => void openUrl(policy.url)} className="mt-2 flex items-center gap-1 self-start text-[11px] text-accent hover:underline">
+        <button type="button" onClick={handleOpenWeb} className="mt-2 flex items-center gap-1 self-start text-[11px] text-accent hover:underline">
           <ExternalLink size={11} /> {t("consent.full")}
         </button>
       )}

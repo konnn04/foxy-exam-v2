@@ -33,9 +33,10 @@ fi
 
 php artisan view:cache
 
-# a candidate gone for more than 5 minutes is closed as absent (no cron in the container)
+# Laravel scheduler (routes/console.php): every minute closes attempts past their time or offline for too long.
+# No cron in the container; schedule:work restarts itself if it dies. Run it in ONE replica only.
 if [ "${RUN_SCHEDULER:-true}" = "true" ]; then
-  ( while true; do php artisan attempts:expire-offline >/dev/null 2>&1; sleep 60; done ) &
+  ( while true; do php artisan schedule:work >/dev/null 2>&1; sleep 5; done ) &
 fi
 
 echo ">> starting FrankenPHP on ${SERVER_NAME}"

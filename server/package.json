@@ -44,6 +44,7 @@
         "livekit-client": "^2.22.3",
         "lucide-react": "^1.47.0",
         "medium-zoom": "^1.1.2",
+        "pdfjs-dist": "^4.10.38",
         "prismjs": "^1.30.0",
         "react": "^19.3.0",
         "react-dom": "^19.3.0",

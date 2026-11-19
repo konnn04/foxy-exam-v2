@@ -8,12 +8,12 @@ import type { ClassicalQuestionItem, QuestionSettings } from '@/types/questions'
 export type Kind = 'CHOICE' | 'TRUE_FALSE' | 'FILL' | 'SHORT_ANSWER' | 'ESSAY' | 'GROUP_QUESTION';
 
 export const KINDS: Record<Kind, { label: string; icon: LucideIcon; desc: string }> = {
-  CHOICE: { label: 'Trắc nghiệm', icon: ListChecks, desc: 'Có ≥ 2 đáp án, ≥ 1 đúng' },
+  CHOICE: { label: 'Trắc nghiệm', icon: ListChecks, desc: 'Từ 2 phương án, một hoặc nhiều đáp án đúng' },
   TRUE_FALSE: { label: 'Đúng/Sai', icon: ToggleRight, desc: 'Chọn Đúng hoặc Sai' },
   FILL: { label: 'Điền khuyết', icon: TextCursorInput, desc: 'Mỗi ô trống [1], [2]… một đáp án' },
-  SHORT_ANSWER: { label: 'Trả lời ngắn', icon: PencilLine, desc: '< 300 ký tự, chấm tự động nếu có đáp án mẫu' },
-  ESSAY: { label: 'Tự luận', icon: FileText, desc: 'Viết, ghi âm hoặc nộp tệp — chấm tay' },
-  GROUP_QUESTION: { label: 'Câu hỏi nhóm', icon: Layers, desc: 'Đoạn văn / audio / hình + câu con' },
+  SHORT_ANSWER: { label: 'Trả lời ngắn', icon: PencilLine, desc: 'Dưới 300 ký tự, tự chấm nếu có đáp án mẫu' },
+  ESSAY: { label: 'Tự luận', icon: FileText, desc: 'Viết, ghi âm hoặc nộp tệp; giảng viên chấm' },
+  GROUP_QUESTION: { label: 'Câu hỏi nhóm', icon: Layers, desc: 'Một đoạn văn, audio hoặc hình dùng chung cho nhiều câu' },
 };
 
 export const DIFFICULTY_ORDER = ['EASY', 'MEDIUM', 'HARD', 'EXPERT'] as const;
@@ -116,7 +116,7 @@ export function newDraft(kind: Kind, parent_id: number | null): Draft {
     skill: '',
     image: '',
     is_true: true,
-    answers: kind === 'CHOICE' ? ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'].map((content, i) => ({ content, is_correct: i === 0 })) : [],
+    answers: kind === 'CHOICE' ? ['', '', '', ''].map((content, i) => ({ content, is_correct: i === 0 })) : [],
     blanks: [],
     reference: '',
     essay: { ...ESSAY0 },
@@ -159,6 +159,7 @@ export function payloadOf(d: Draft): Record<string, any> {
 export function validateDraft(d: Draft): Record<string, string> {
   const e: Record<string, string> = {};
   if (!d.content.trim()) e.content = 'Nhập nội dung câu hỏi.';
+  if (d.kind === 'CHOICE' && d.answers.some((a) => !a.content.trim()) && d.answers.filter((a) => a.content.trim()).length >= 2) e.answers = 'Điền hoặc xoá các phương án đang để trống.';
   if (d.kind === 'CHOICE') {
     const filled = d.answers.filter((a) => a.content.trim());
     if (filled.length < 2) e.answers = 'Trắc nghiệm cần ít nhất 2 đáp án.';

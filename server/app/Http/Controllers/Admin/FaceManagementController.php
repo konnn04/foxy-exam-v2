@@ -104,6 +104,8 @@ class FaceManagementController extends Controller
             };
         }
 
+        \App\Support\Audit::record('face.bulk_' . $data['action'], 'Áp dụng cho ' . $users->count() . ' sinh viên', null, null, ['count' => $users->count()]);
+
         return back()->with('success', 'Đã áp dụng cho ' . $users->count() . ' sinh viên.');
     }
 
@@ -112,6 +114,8 @@ class FaceManagementController extends Controller
     {
         $this->guard();
         $n = $this->students()->whereNotNull('face_enrolled_at')->whereNull('face_locked_at')->update(['face_locked_at' => now()]);
+
+        \App\Support\Audit::record('face.lock_all', "Khóa {$n} khuôn mặt", null, null, ['count' => $n]);
 
         return back()->with('success', "Đã khoá {$n} khuôn mặt.");
     }

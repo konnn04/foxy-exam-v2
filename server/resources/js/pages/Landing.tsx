@@ -2,609 +2,579 @@ import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSite } from '@/hooks/use-site';
 import ZoomableImage from '@/components/common/ZoomableImage';
+import FakeDashboard from '@/components/public/FakeDashboard';
+import TermsModal from '@/components/public/TermsModal';
+import { DEFAULT_TERMS, hashText } from '@/constants/terms';
+import { Mockup, SectionHead, type MockKind } from '@/components/public/blocks';
+import { shieldsEn, shieldsVi } from '@/constants/landingShields';
 import {
-  ShieldCheck,
-  Lock,
-  Cpu,
-  QrCode,
-  FileCheck,
-  Play,
-  ChevronRight,
-  CheckCircle2,
-  Users,
-  Smartphone,
-  Bell,
   ArrowRight,
-  Zap,
+  BadgeCheck,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  FileCheck,
+  Landmark,
+  Play,
+  QrCode,
+  ScanFace,
+  Smartphone,
   Shield,
-  Layers,
-  Radio,
-  Eye,
-  Check,
-  AlertTriangle,
-  Image as ImageIcon,
+  ShieldCheck,
+  Wallet,
+  Users,
+  Zap,
 } from 'lucide-react';
+
+type L<T = string> = { vi: T; en: T };
+
+const PROBLEMS: { icon: typeof Wallet; title: L; desc: L }[] = [
+  {
+    icon: Wallet,
+    title: { vi: 'Chi phí tổ chức thi cao', en: 'High cost of running exams' },
+    desc: {
+      vi: 'In sao đề, thuê phòng máy và thù lao coi thi chiếm phần lớn ngân sách mỗi kỳ.',
+      en: 'Printing, computer-lab rental and invigilator fees take most of every exam budget.',
+    },
+  },
+  {
+    icon: Users,
+    title: { vi: 'Một giám thị khó bao quát', en: 'One proctor cannot see everything' },
+    desc: {
+      vi: 'Coi thi trực tuyến thủ công dễ bỏ sót hành vi gian lận và gây áp lực lớn cho cán bộ.',
+      en: 'Manual online proctoring misses cheating and puts heavy strain on staff.',
+    },
+  },
+  {
+    icon: Database,
+    title: { vi: 'Lo ngại dữ liệu sinh trắc học', en: 'Biometric data concerns' },
+    desc: {
+      vi: 'Nhiều giải pháp ngoại đẩy toàn bộ video ra nước ngoài, khó đáp ứng quy định bảo vệ dữ liệu.',
+      en: 'Many foreign tools stream all video abroad, which is hard to reconcile with data-protection rules.',
+    },
+  },
+];
+
+const STEPS: { title: L; desc: L; icon: typeof QrCode }[] = [
+  {
+    icon: FileCheck,
+    title: { vi: 'Giảng viên tạo kỳ thi', en: 'Lecturer sets up the exam' },
+    desc: {
+      vi: 'Chọn đề từ ngân hàng câu hỏi, gán lớp, bật các lớp bảo vệ cần thiết và mở phòng thi.',
+      en: 'Pick questions from the bank, assign a class, switch on the safeguards you need and open the room.',
+    },
+  },
+  {
+    icon: QrCode,
+    title: { vi: 'Thí sinh vào phòng', en: 'Candidates join the room' },
+    desc: {
+      vi: 'Đăng nhập, xác thực khuôn mặt, quét mã QR bằng điện thoại và hoàn tất kiểm tra trong khoảng 2 phút.',
+      en: 'Sign in, verify their face, scan the QR with a phone and finish the check in about two minutes.',
+    },
+  },
+  {
+    icon: ShieldCheck,
+    title: { vi: 'Giám sát và đối soát', en: 'Monitor and review' },
+    desc: {
+      vi: 'AI cảnh báo bất thường theo thời gian thực; sau thi, hồ sơ video và biên bản được xuất sẵn.',
+      en: 'AI flags anomalies in real time; after the exam the video evidence and report are ready to export.',
+    },
+  },
+];
+
+const FAQS: { q: L; a: L }[] = [
+  {
+    q: { vi: 'Máy thí sinh cấu hình thấp có chạy được không?', en: 'Will low-spec candidate laptops cope?' },
+    a: {
+      vi: 'Có. Mô hình AI chạy trên CPU, chỉ chiếm khoảng 4–8% tài nguyên, không cần card đồ họa rời.',
+      en: 'Yes. The AI models run on the CPU using roughly 4–8% of it, with no discrete GPU required.',
+    },
+  },
+  {
+    q: { vi: 'Mất mạng giữa chừng thì bài làm có mất không?', en: 'What if the network drops mid-exam?' },
+    a: {
+      vi: 'Không. Bài làm được lưu cục bộ và tự đồng bộ lại ngay khi có kết nối.',
+      en: 'Answers are buffered locally and resynchronise automatically as soon as the connection returns.',
+    },
+  },
+  {
+    q: { vi: 'Dữ liệu khuôn mặt và video được lưu ở đâu?', en: 'Where are face data and video stored?' },
+    a: {
+      vi: 'Lưu trên máy chủ đặt tại Việt Nam, chỉ ghi các đoạn ngắn quanh thời điểm nghi vấn, tuân thủ Nghị định 13/2023/NĐ-CP.',
+      en: 'On servers located in Vietnam. Only short clips around suspected incidents are kept, in line with Decree 13/2023/ND-CP.',
+    },
+  },
+  {
+    q: { vi: 'Nhà trường có thể tự triển khai nội bộ không?', en: 'Can the institution self-host?' },
+    a: {
+      vi: 'Có. Gói cài đặt tại chỗ đưa toàn bộ hệ thống vào máy chủ của trường, kèm tuỳ biến thương hiệu.',
+      en: 'Yes. The on-premise package runs the whole stack on your own servers, with custom branding.',
+    },
+  },
+];
+
+function Bold({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('**').map((chunk, i) =>
+        i % 2 === 1 ? (
+          <strong key={i} className="font-semibold text-slate-900">
+            {chunk}
+          </strong>
+        ) : (
+          chunk
+        ),
+      )}
+    </>
+  );
+}
+
+/** Each protection layer is shown next to the screen that proves it. */
+const PROOF_KINDS: MockKind[] = ['kiosk', 'operator', 'phone', 'report'];
 
 export default function Landing() {
   const { lang, t } = useLanguage();
-  const [activeShield, setActiveShield] = useState<number>(0);
-  const [formName, setFormName] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formOrg, setFormOrg] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [dashboardImgError, setDashboardImgError] = useState(false);
-
-  const shieldsVi = [
-    {
-      id: 0,
-      title: 'Khóa toàn diện máy tính thí sinh',
-      subtitle: 'Ngăn chặn tra cứu tài liệu và chia sẻ màn hình',
-      desc: 'Ứng dụng tự động vô hiệu hóa các **phím tắt hệ thống** (Alt+Tab, Windows), ngăn kết nối **màn hình phụ**, phát hiện môi trường **máy ảo** và chặn hoàn toàn các phần mềm **điều khiển từ xa** như UltraViewer hay AnyDesk.',
-      icon: Lock,
-      badge: 'BẢO VỆ MÁY TÍNH',
-      specs: [
-        'Vô hiệu hóa Alt+Tab, Task Manager và phím tắt',
-        'Chặn mọi ứng dụng điều khiển máy từ xa',
-        'Tự động lưu bài khi rớt mạng Internet',
-      ],
-    },
-    {
-      id: 1,
-      title: 'Trí tuệ nhân tạo phát hiện bất thường',
-      subtitle: 'Tự động nhận diện hành vi gian lận và vật dụng cấm',
-      desc: 'Mô hình học máy chạy trực tiếp trên **vi xử lý của thí sinh** với tốc độ cao mà không tốn chi phí máy chủ đắt đỏ. Tự động nhận diện khi có **người thứ hai xuất hiện**, phát hiện **điện thoại, tài liệu** và lập tức cảnh báo khi thí sinh quay mặt đi.',
-      icon: Cpu,
-      badge: 'TRÍ TUỆ NHÂN TẠO',
-      specs: [
-        'Đối soát khuôn mặt thí sinh liên tục',
-        'Phát hiện điện thoại di động và tài liệu cấm',
-        'Cảnh báo ngay khi thí sinh rời mắt khỏi bài thi',
-      ],
-    },
-    {
-      id: 2,
-      title: 'Camera phụ góc nghiêng toàn cảnh',
-      subtitle: 'Bao quát không gian bàn thi và thao tác tay của thí sinh',
-      desc: 'Thí sinh chỉ cần dùng **điện thoại quét mã QR** để kích hoạt góc quay thứ hai mà **không cần cài đặt thêm ứng dụng**. Hệ thống tự động kiểm tra góc đặt điện thoại đạt chuẩn trước khi phát đề và báo động ngay nếu điện thoại bị tắt hoặc xê dịch.',
-      icon: QrCode,
-      badge: 'CAMERA ĐIỆN THOẠI',
-      specs: [
-        'Kết nối tức thì qua mã QR từ trình duyệt web',
-        'Bao quát trọn vẹn bàn phím, màn hình và tay làm bài',
-        'Báo động lập tức nếu điện thoại bị tắt màn hình',
-      ],
-    },
-    {
-      id: 3,
-      title: 'Bằng chứng vi phạm minh bạch',
-      subtitle: 'Hồ sơ đối soát đa góc phục vụ hội đồng kỷ luật',
-      desc: 'Tự động trích xuất đoạn **video 15–30 giây đồng bộ** từ cả ba góc (camera trước, camera phụ và màn hình) tại đúng thời điểm nghi vấn. Dữ liệu được đính kèm **mã băm toàn vẹn** chống chỉnh sửa và cung cấp liên kết chia sẻ bảo mật cho hội đồng chấm thi.',
-      icon: FileCheck,
-      badge: 'BẰNG CHỨNG ĐỐI SOÁT',
-      specs: [
-        'Ghi nhận đồng bộ cả 3 góc quay tại thời điểm vi phạm',
-        'Mã băm toàn vẹn bảo đảm tính pháp lý trước hội đồng',
-        'Xuất bản liên kết tra cứu biên bản trực tuyến an toàn',
-      ],
-    },
-  ];
-
-  const shieldsEn = [
-    {
-      id: 0,
-      title: 'Candidate computer lockdown',
-      subtitle: 'Block unauthorized browsing and screen sharing',
-      desc: 'Automatically disables **system hotkeys** (Alt+Tab, Win Key), prevents **secondary displays**, detects **virtual machines**, and completely blocks **remote desktop software** like AnyDesk or UltraViewer.',
-      icon: Lock,
-      badge: 'DESKTOP LOCKDOWN',
-      specs: [
-        'Disable Alt+Tab, Task Manager, and shortcuts',
-        'Block all remote desktop and capture software',
-        'Local encrypted buffer during network dropouts',
-      ],
-    },
-    {
-      id: 1,
-      title: 'On-device AI anomaly detection',
-      subtitle: 'Autonomous detection of physical cheating and prohibited items',
-      desc: 'Lightweight neural networks run directly on the **candidate CPU** with low overhead. Instantly flags **secondary faces**, **mobile devices, notes**, and alerts proctors when candidates look away.',
-      icon: Cpu,
-      badge: 'EDGE ARTIFICIAL INTELLIGENCE',
-      specs: [
-        'Continuous biometric identity verification',
-        'Detect cell phones, notes, and bluetooth earphones',
-        'Immediate alert upon gaze aversion or disappearance',
-      ],
-    },
-    {
-      id: 2,
-      title: 'Secondary 360° pan-tilt phone camera',
-      subtitle: 'Overviews desk workspace, keyboard, and physical surroundings',
-      desc: 'Students simply scan an on-screen **QR code using their smartphone** to establish a zero-install WebRTC feed. Precheck ensures proper 45-degree angle before the exam unlocks.',
-      icon: QrCode,
-      badge: 'MOBILE WEBRTC CAMERA',
-      specs: [
-        'Instant pairing via QR code on mobile browser',
-        'Full coverage of desk, hands, keyboard, and screen',
-        'Instant alert if phone screen locks or turns away',
-      ],
-    },
-    {
-      id: 3,
-      title: 'Verifiable digital violation evidence',
-      subtitle: 'Synchronous 3-angle audit clips for dispute resolution',
-      desc: 'Automatically extracts a **15–30s synchronized video clip** from webcam, phone camera, and screen recording at the exact moment of anomaly, verified by **SHA-256 integrity hash**.',
-      icon: FileCheck,
-      badge: 'INTEGRITY EVIDENCE',
-      specs: [
-        'Synchronous 3-angle capture at the moment of incident',
-        'SHA-256 hash chains ensure legal non-repudiation',
-        'Secure shareable public links for faculty committees',
-      ],
-    },
-  ];
+  const site = useSite();
+  const pick = <T,>(v: L<T>): T => v[lang];
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [form, setForm] = useState({ name: '', email: '', phone: '', org: '' });
+  const [submitted, setSubmitted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [honeypot, setHoneypot] = useState('');
+  const [dashFailed, setDashFailed] = useState(false);
 
   const shields = lang === 'en' ? shieldsEn : shieldsVi;
+  const dashboard = site.get('media.dashboard');
+  const videoUrl = site.get('media.video_url');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const heroTitle = site.text('hero.title', t.landing.heroTitle);
+  const heroHighlight = site.text('hero.highlight', t.landing.heroTitleHighlight);
+  const heroDesc = site.text('hero.description', t.landing.heroDesc);
+  const heroBadge = site.text('hero.badge', t.landing.badge);
+
+  const metrics = [
+    { value: t.landing.metrics.latencyNum, label: t.landing.metrics.latencyLabel },
+    { value: t.landing.metrics.ratioNum, label: t.landing.metrics.ratioLabel },
+    { value: t.landing.metrics.costNum, label: t.landing.metrics.costLabel },
+    { value: t.landing.metrics.dataNum, label: t.landing.metrics.dataLabel },
+  ].map((m, i) => ({
+    value: site.get(`metrics.${i + 1}.value`, m.value),
+    label: site.text(`metrics.${i + 1}.label`, m.label),
+  }));
+
+  const trust = [
+    { icon: Landmark, text: lang === 'vi' ? 'Phát triển tại Trường ĐH Mở TP.HCM' : 'Built at HCMC Open University' },
+    { icon: Database, text: lang === 'vi' ? 'Dữ liệu lưu trữ tại Việt Nam' : 'Data stored in Vietnam' },
+    { icon: BadgeCheck, text: lang === 'vi' ? 'Tuân thủ NĐ 13/2023/NĐ-CP' : 'Decree 13/2023 compliant' },
+    { icon: ScanFace, text: lang === 'vi' ? 'AI chạy trên máy thí sinh' : 'On-device AI inference' },
+  ];
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formEmail.trim()) return;
-    setIsSubmitted(true);
+    if (!form.name.trim() || !form.email.trim()) return;
+    setTermsOpen(true);
   };
+
+  /** Runs only after the visitor accepted the terms: stores the request with the proof of consent. */
+  const sendRequest = async () => {
+    setSending(true);
+    setSendError(null);
+    try {
+      const termsText = site.text('legal.terms', DEFAULT_TERMS[lang]);
+      const xsrf = decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? '');
+      const res = await fetch('/pilot-requests', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': xsrf, 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ ...form, website: honeypot, locale: lang, terms_accepted: true, terms_hash: await hashText(termsText) }),
+      });
+      if (res.status === 429) throw new Error(lang === 'vi' ? 'Bạn gửi quá nhanh, vui lòng thử lại sau ít phút.' : 'Too many attempts, please try again in a few minutes.');
+      if (!res.ok) throw new Error(lang === 'vi' ? 'Không gửi được, vui lòng kiểm tra thông tin và thử lại.' : 'Could not send, please check your details and try again.');
+      setTermsOpen(false);
+      setSubmitted(true);
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const input =
+    'w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none transition focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/15';
 
   return (
     <PublicLayout>
       <Head>
         <title>{t.landing.metaTitle}</title>
-        <meta name="description" content={t.landing.heroDesc} />
+        <meta name="description" content={heroDesc} />
       </Head>
 
-      {/* =========================================================================
-          HERO SECTION
-      ========================================================================= */}
-      <section className="pt-10 sm:pt-16 pb-16 sm:pb-20 bg-gradient-to-b from-blue-50/60 via-white to-slate-50/50 border-b border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[12px] font-bold mb-5 shadow-2xs">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>{t.landing.badge}</span>
+      {/* HERO */}
+      <section className="relative overflow-hidden bg-slate-950 text-white">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.09]"
+          style={{
+            backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+            backgroundSize: '48px 48px',
+            maskImage: 'radial-gradient(ellipse 80% 90% at 70% 40%, #000 25%, transparent 75%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 80% 90% at 70% 40%, #000 25%, transparent 75%)',
+          }}
+        />
+        <div className="pointer-events-none absolute -left-40 top-0 h-[520px] w-[620px] rounded-full bg-blue-600/25 blur-[130px]" />
+        <div className="pointer-events-none absolute -right-32 bottom-0 h-[460px] w-[560px] rounded-full bg-indigo-500/25 blur-[130px]" />
+
+        <div className="relative mx-auto grid max-w-[1280px] items-center gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.02fr_1fr] lg:gap-10 lg:px-8 lg:py-24">
+          {/* Message */}
+          <div className="text-center lg:text-left">
+            <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-blue-400/30 bg-blue-500/10 py-1.5 pl-2 pr-4 text-[12px] font-semibold tracking-wide text-blue-100">
+              <span className="relative flex size-5 items-center justify-center rounded-full bg-blue-500/30">
+                <span className="absolute size-2 animate-ping rounded-full bg-blue-300/70" />
+                <ShieldCheck className="relative size-3 text-blue-100" />
+              </span>
+              {heroBadge}
+            </div>
+
+            <h1 className="text-[34px] font-extrabold leading-[1.12] tracking-tight sm:text-5xl lg:text-[52px]">
+              {heroTitle}
+              <span className="mt-3 block bg-gradient-to-r from-blue-300 via-sky-200 to-indigo-300 bg-clip-text text-transparent">{heroHighlight}</span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-[620px] text-[15.5px] leading-relaxed text-slate-300 sm:text-[17px] lg:mx-0">{heroDesc}</p>
+
+            <div className="mt-9 flex flex-col items-center gap-3.5 sm:flex-row lg:justify-start sm:justify-center">
+              <a
+                href="#tu-van"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-[14.5px] font-bold text-white shadow-lg shadow-blue-600/30 ring-1 ring-white/10 transition hover:bg-blue-500 sm:w-auto"
+              >
+                {t.landing.registerPilotCta}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <Link
+                href="/download"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-[14.5px] font-bold text-white backdrop-blur transition hover:bg-white/10 sm:w-auto"
+              >
+                <svg className="size-4 fill-current" viewBox="0 0 88 88">
+                  <path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L0 75.48v-29.35zm4.326-39.043L87.314 0v41.527l-47.318.376zm47.329 44.912l-.011 41.535-47.318-6.678-.041-35.195z" />
+                </svg>
+                {t.landing.downloadWinCta}
+              </Link>
+            </div>
+
+            <ul className="mt-9 flex flex-col items-center gap-x-6 gap-y-2.5 text-[13px] font-medium text-slate-300 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-start">
+              {(lang === 'vi'
+                ? ['Không cần GPU, chạy trên máy sẵn có', 'Camera phụ qua mã QR', 'Dữ liệu lưu tại Việt Nam']
+                : ['No GPU, runs on existing laptops', 'Secondary camera via QR', 'Data stored in Vietnam']
+              ).map((x) => (
+                <li key={x} className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  {x}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Heading */}
-          <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-black tracking-tight text-slate-900 leading-[1.18] max-w-[980px] mx-auto">
-            {t.landing.heroTitle}
-            <span className="block text-blue-600 mt-2 font-extrabold">{t.landing.heroTitleHighlight}</span>
-          </h1>
+          {/* Product + live proof */}
+          <div className="relative mx-auto w-full max-w-[640px] lg:max-w-none">
+            <div className="pointer-events-none absolute -inset-6 rounded-[32px] bg-gradient-to-br from-blue-500/25 via-transparent to-indigo-500/25 blur-2xl" />
 
-          {/* Subtitle */}
-          <p className="mt-4 sm:mt-5 text-[15.5px] sm:text-[17px] text-slate-600 max-w-[800px] mx-auto leading-relaxed">
-            {t.landing.heroDesc}
-          </p>
-
-          {/* Call To Actions */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md sm:max-w-none mx-auto">
-            <a
-              href="#tu-van"
-              className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 text-white text-[14.5px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 group cursor-pointer"
-            >
-              <span>{t.landing.registerPilotCta}</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-            <Link
-              href="/download"
-              className="w-full sm:w-auto px-6 py-3.5 bg-white border border-slate-300 text-slate-800 text-[14.5px] font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-2xs flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4 fill-blue-600" viewBox="0 0 88 88">
-                <path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L0 75.48v-29.35zm4.326-39.043L87.314 0v41.527l-47.318.376zm47.329 44.912l-.011 41.535-47.318-6.678-.041-35.195z"/>
-              </svg>
-              <span>{t.landing.downloadWinCta}</span>
-            </Link>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="mt-12 pt-7 border-t border-slate-200/90 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-[980px] mx-auto">
-            <div className="p-2">
-              <div className="text-3xl sm:text-4xl font-black text-blue-600 font-mono">{t.landing.metrics.latencyNum}</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.latencyLabel}</div>
-            </div>
-            <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">{t.landing.metrics.ratioNum}</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.ratioLabel}</div>
-            </div>
-            <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">{t.landing.metrics.costNum}</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.costLabel}</div>
-            </div>
-            <div className="p-2 md:border-l border-slate-200">
-              <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">{t.landing.metrics.dataNum}</div>
-              <div className="text-[13px] font-medium text-slate-600 mt-1">{t.landing.metrics.dataLabel}</div>
-            </div>
-          </div>
-
-          {/* =========================================================================
-              MOCKUP KHUNG HÌNH BẢNG ĐIỀU KHIỂN GIÁM THỊ
-          ========================================================================= */}
-          <div className="mt-12 max-w-[1060px] mx-auto bg-slate-950 text-slate-100 rounded-2xl shadow-2xl border border-slate-800 text-left overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/90 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="text-slate-400 font-mono text-[11px] ml-2 hidden sm:inline">
-                  examguard.edu.vn/live/session-it2026
+            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-[0_40px_100px_-30px_rgba(37,99,235,0.6)] ring-1 ring-black/40 lg:[transform:perspective(1800px)_rotateY(-7deg)_rotateX(2deg)]">
+              <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/95 px-4 py-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="size-3 rounded-full bg-red-500/80" />
+                  <span className="size-3 rounded-full bg-amber-500/80" />
+                  <span className="size-3 rounded-full bg-emerald-500/80" />
+                  <span className="ml-2 hidden font-mono text-[11px] text-slate-400 sm:inline">examguard.edu.vn/live/session-it2026</span>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-400">
+                  <span className="size-2 animate-pulse rounded-full bg-emerald-400" />
+                  {t.landing.mockup.liveBadge}
                 </span>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-bold text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                {t.landing.mockup.liveBadge}
-              </span>
-            </div>
-
-            {!dashboardImgError ? (
               <div className="relative">
-                <ZoomableImage
-                  src="/images/mockups/dashboard-proctor.png"
-                  alt="Giao diện giám sát phòng thi trực tiếp"
-                  hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
-                  onError={() => setDashboardImgError(true)}
-                  className="w-full h-auto block"
-                />
+                {dashboard && !dashFailed ? (
+                  <ZoomableImage
+                    key={dashboard}
+                    src={dashboard}
+                    alt={t.landing.mockup.autoLogTitle}
+                    hintText={lang === 'vi' ? 'Xem ảnh lớn' : 'Click to zoom'}
+                    onError={() => setDashFailed(true)}
+                    className="block h-auto w-full"
+                    containerClassName="!rounded-none"
+                  />
+                ) : (
+                  <FakeDashboard compact />
+                )}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-transparent via-blue-400/10 to-transparent motion-safe:animate-[heroSweep_5s_linear_infinite]" />
               </div>
-            ) : null}
+            </div>
 
-            {dashboardImgError && (
-              <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Ô thí sinh 1: Bình thường */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 flex flex-col justify-between">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="font-bold text-white">Lê Minh Khoa</span>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-1.5 py-0.5 rounded">
-                      {t.landing.mockup.faceMatch}
-                    </span>
-                  </div>
-                  <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center relative">
-                    <Users className="w-8 h-8 text-slate-700" />
-                    <span className="absolute bottom-1.5 right-1.5 text-[9.5px] font-mono text-emerald-400 bg-black/70 px-1 rounded">
-                      {t.landing.mockup.secondCamOk}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
-                    <span>{t.landing.mockup.kioskLocked}</span>
-                    <span className="text-emerald-400">{t.landing.mockup.normalStatus}</span>
-                  </div>
-                </div>
-
-                {/* Ô thí sinh 2: Báo động vật cấm */}
-                <div className="rounded-xl border-2 border-red-500 bg-red-950/20 p-3 flex flex-col justify-between">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="font-bold text-white flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                      Trần Thị Mai
-                    </span>
-                    <span className="text-[10px] text-red-400 font-bold bg-red-950/80 border border-red-800 px-1.5 py-0.5 rounded">
-                      {t.landing.mockup.bannedObject}
-                    </span>
-                  </div>
-                  <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center relative border border-red-500/40">
-                    <Users className="w-8 h-8 text-slate-700" />
-                    <div className="absolute bottom-2 left-2 border-2 border-red-500 bg-red-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold text-white flex items-center gap-1">
-                      <Smartphone className="w-3 h-3 text-red-400" /> {t.landing.mockup.phoneDetected}
-                    </div>
-                    <span className="absolute top-1.5 right-1.5 text-[9px] font-mono text-white bg-red-600 px-1 rounded font-bold">
-                      {t.landing.mockup.videoReady}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[11px] flex justify-between items-center text-red-300 font-medium">
-                    <span>{t.landing.mockup.phoneDetected}</span>
-                    <span className="text-blue-400 font-bold underline cursor-pointer">{t.landing.mockup.viewAngles}</span>
-                  </div>
-                </div>
-
-                {/* Nhật ký sự kiện */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-3.5 flex flex-col justify-between text-xs font-mono">
-                  <div>
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2 text-slate-300 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <Bell className="w-3.5 h-3.5 text-blue-400" /> {t.landing.mockup.autoLogTitle}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{t.landing.mockup.realtimeBadge}</span>
-                    </div>
-                    <div className="space-y-2 text-[10.5px]">
-                      <div className="p-2 bg-red-950/40 border border-red-900/50 rounded text-slate-200">
-                        {t.landing.mockup.log1}
-                      </div>
-                      <div className="p-2 bg-slate-800/60 border border-slate-700/60 rounded text-slate-300">
-                        {t.landing.mockup.log2}
-                      </div>
-                      <div className="p-2 bg-slate-800/60 border border-slate-700/60 rounded text-slate-300">
-                        {t.landing.mockup.log3}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800 text-[10.5px] text-slate-400 flex items-center justify-between">
-                    <span>{t.landing.mockup.roomStatusLabel}</span>
-                    <span className="text-emerald-400 font-bold">{t.landing.mockup.roomStatusGood}</span>
-                  </div>
+            {/* floating evidence cards */}
+            <div className="absolute -left-4 top-[22%] hidden w-[230px] rounded-xl border border-red-400/40 bg-slate-900/95 p-3 shadow-2xl shadow-black/40 backdrop-blur motion-safe:animate-[heroFloat_6s_ease-in-out_infinite] sm:block lg:-left-10">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-red-500/15 text-red-300">
+                  <Smartphone className="size-[18px]" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-bold text-white">{t.landing.mockup.phoneDetected}</div>
+                  <div className="text-[11px] text-red-300/90">{t.landing.mockup.videoReady}</div>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="absolute -right-3 top-[8%] hidden rounded-xl border border-emerald-400/30 bg-slate-900/95 p-3 shadow-2xl shadow-black/40 backdrop-blur motion-safe:animate-[heroFloat_7s_ease-in-out_-2s_infinite] sm:block lg:-right-6">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                  <ScanFace className="size-[18px]" />
+                </span>
+                <div>
+                  <div className="text-[12.5px] font-bold text-white">{t.landing.mockup.faceMatch}</div>
+                  <div className="text-[11px] text-emerald-300/90">{t.landing.mockup.secondCamOk}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -bottom-5 right-6 hidden items-center gap-3 rounded-xl border border-blue-400/30 bg-slate-900/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur motion-safe:animate-[heroFloat_8s_ease-in-out_-4s_infinite] sm:flex">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300">
+                <Zap className="size-[18px]" />
+              </span>
+              <div>
+                <div className="font-mono text-[15px] font-extrabold text-white">{metrics[0].value}</div>
+                <div className="text-[11px] text-blue-200/90">{metrics[0].label}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+      </section>
+
+      {/* KEY METRICS */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-[1100px] px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm md:grid-cols-4">
+            {metrics.map((m, i) => (
+              <div key={i} className="bg-white px-4 py-7 text-center">
+                <div className={`font-mono text-[28px] font-extrabold sm:text-[34px] ${i === 0 ? 'text-blue-600' : i === 3 ? 'text-emerald-600' : 'text-slate-900'}`}>{m.value}</div>
+                <div className="mx-auto mt-1.5 max-w-[190px] text-[13px] font-medium leading-snug text-slate-600">{m.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+            {trust.map((x, i) => (
+              <div key={i} className="flex items-center justify-center gap-2.5 text-center text-[13px] font-semibold text-slate-600">
+                <x.icon className="size-[18px] shrink-0 text-blue-600" />
+                <span>{x.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* =========================================================================
-          SƠ ĐỒ 4 TẦNG KHIÊN BẢO VỆ
-      ========================================================================= */}
-      <section className="py-16 sm:py-24 bg-white border-b border-slate-200">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-3">
-              <Layers className="w-3.5 h-3.5" />
-              {t.landing.shieldsSection.badge}
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              {t.landing.shieldsSection.title}
-            </h2>
-            <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
-              {t.landing.shieldsSection.desc}
-            </p>
+      {/* WHY */}
+      <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
+          <SectionHead
+            eyebrow={lang === 'vi' ? 'Bài toán của nhà trường' : 'The institution’s challenge'}
+            title={lang === 'vi' ? 'Khảo thí số cần công bằng, gọn nhẹ và hợp pháp' : 'Digital assessment must be fair, light and lawful'}
+            desc={
+              lang === 'vi'
+                ? 'Exam Guard giải quyết ba nút thắt lớn nhất khi chuyển kỳ thi sang môi trường trực tuyến.'
+                : 'Exam Guard tackles the three biggest bottlenecks of moving exams online.'
+            }
+          />
+          <div className="grid gap-6 md:grid-cols-3">
+            {PROBLEMS.map((p, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-7 shadow-xs">
+                <div className="mb-5 flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <p.icon className="size-6" />
+                </div>
+                <h3 className="text-[17px] font-bold text-slate-900">{pick(p.title)}</h3>
+                <p className="mt-2.5 text-[14.5px] leading-relaxed text-slate-600">{pick(p.desc)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4 LAYERS, each next to its proof */}
+      <section className="bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
+          <SectionHead eyebrow={t.landing.shieldsSection.badge} title={t.landing.shieldsSection.title} desc={t.landing.shieldsSection.desc} />
+
+          <div className="divide-y divide-slate-200">
+            {shields.map((sh, i) => {
+              const Icon = sh.icon;
+              const flip = i % 2 === 1;
+              return (
+                <div key={sh.id} className="grid items-center gap-8 py-12 first:pt-0 last:pb-0 lg:grid-cols-2 lg:gap-16 lg:py-16">
+                  <div className={flip ? 'lg:order-2' : ''}>
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex size-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25">
+                        <Icon className="size-5" />
+                      </div>
+                      <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">{sh.badge}</span>
+                      <span className="ml-auto font-mono text-sm font-bold text-slate-300">0{i + 1}</span>
+                    </div>
+                    <h3 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[28px]">{sh.title}</h3>
+                    <p className="mt-2 text-[15px] font-medium text-blue-700">{sh.subtitle}</p>
+                    <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+                      <Bold text={sh.desc} />
+                    </p>
+                    <ul className="mt-6 space-y-2.5">
+                      {sh.specs.map((item) => (
+                        <li key={item} className="flex items-start gap-2.5 text-[14.5px] text-slate-700">
+                          <CheckCircle2 className="mt-0.5 size-[18px] shrink-0 text-emerald-600" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <Mockup kind={PROOF_KINDS[i]} className={flip ? 'lg:order-1' : ''} />
+                </div>
+              );
+            })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Cột chọn tầng khiên */}
-            <div className="lg:col-span-5 space-y-3">
-              {shields.map((s, idx) => {
-                const Icon = s.icon;
-                const isSelected = activeShield === idx;
-                return (
+          <div className="mt-12 text-center">
+            <Link href="/features" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-800">
+              {t.landing.shieldsSection.viewMoreFeatures} <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-[1100px] px-4 sm:px-6 lg:px-8">
+          <SectionHead
+            eyebrow={lang === 'vi' ? 'Quy trình' : 'How it works'}
+            title={lang === 'vi' ? 'Ba bước cho một kỳ thi trực tuyến' : 'Three steps to an online exam'}
+          />
+          <div className="relative grid gap-10 md:grid-cols-3 md:gap-8">
+            <div className="absolute left-[16%] right-[16%] top-7 hidden border-t-2 border-dashed border-slate-200 md:block" />
+            {STEPS.map((s, i) => (
+              <div key={i} className="relative text-center">
+                <div className="relative mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-700 shadow-xs">
+                  <s.icon className="size-6" />
+                  <span className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">{i + 1}</span>
+                </div>
+                <h3 className="text-[17px] font-bold text-slate-900">{pick(s.title)}</h3>
+                <p className="mx-auto mt-2 max-w-[300px] text-[14.5px] leading-relaxed text-slate-600">{pick(s.desc)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* VIDEO */}
+      {videoUrl && (
+        <section className="bg-white py-16 sm:py-20">
+          <div className="mx-auto max-w-[1060px] px-4 sm:px-6 lg:px-8">
+            <SectionHead eyebrow={t.landing.videoSection.badge} title={t.landing.videoSection.title} desc={t.landing.videoSection.desc} />
+            <div className="mx-auto aspect-video max-w-4xl overflow-hidden rounded-2xl border border-slate-300 bg-black shadow-xl">
+              <iframe src={videoUrl} className="h-full w-full border-0" allow="autoplay; encrypted-media; fullscreen" allowFullScreen title="Demo video" />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* FAQ */}
+      <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-[820px] px-4 sm:px-6 lg:px-8">
+          <SectionHead eyebrow="FAQ" title={lang === 'vi' ? 'Câu hỏi thường gặp' : 'Frequently asked questions'} />
+          <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-xs">
+            {FAQS.map((f, i) => {
+              const open = openFaq === i;
+              return (
+                <div key={i}>
                   <button
-                    key={s.id}
                     type="button"
-                    onClick={() => setActiveShield(idx)}
-                    className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex items-start gap-4 cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20 ring-2 ring-blue-600/30'
-                        : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50/80'
-                    }`}
+                    onClick={() => setOpenFaq(open ? null : i)}
+                    aria-expanded={open}
+                    className="flex w-full cursor-pointer items-center justify-between gap-4 px-6 py-5 text-left"
                   >
-                    <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded ${
-                            isSelected
-                              ? 'bg-white/20 text-blue-100'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {s.badge}
-                        </span>
-                        {isSelected && (
-                          <span className="text-xs font-semibold text-blue-100 flex items-center gap-1">
-                            {t.landing.shieldsSection.viewing} <ArrowRight className="w-3.5 h-3.5" />
-                          </span>
-                        )}
-                      </div>
-                      <h3
-                        className={`text-base font-bold mt-2 truncate ${
-                          isSelected ? 'text-white' : 'text-slate-900'
-                        }`}
-                      >
-                        {s.title}
-                      </h3>
-                      <p
-                        className={`text-xs mt-1 line-clamp-1 ${
-                          isSelected ? 'text-blue-100' : 'text-slate-500'
-                        }`}
-                      >
-                        {s.subtitle}
-                      </p>
-                    </div>
+                    <span className="text-[15.5px] font-semibold text-slate-900">{pick(f.q)}</span>
+                    <ChevronDown className={`size-5 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Chi tiết tầng khiên */}
-            <div className="lg:col-span-7 bg-slate-900 text-white rounded-3xl p-6 sm:p-9 border border-slate-800 shadow-xl relative overflow-hidden min-h-[380px] flex flex-col justify-between">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 text-xs font-bold font-mono tracking-wider text-blue-400 uppercase mb-3">
-                  <Shield className="w-4 h-4" />
-                  <span>{shields[activeShield].badge}</span>
+                  {open && <p className="px-6 pb-5 text-[14.5px] leading-relaxed text-slate-600">{pick(f.a)}</p>}
                 </div>
-
-                <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-2">
-                  {shields[activeShield].title}
-                </h3>
-                <p className="text-sm text-blue-200 font-medium mb-5">
-                  {shields[activeShield].subtitle}
-                </p>
-
-                <div className="text-sm sm:text-[15px] text-slate-300 leading-relaxed mb-6">
-                  {shields[activeShield].desc.split('**').map((chunk, cIdx) =>
-                    cIdx % 2 === 1 ? (
-                      <strong key={cIdx} className="text-white font-semibold">
-                        {chunk}
-                      </strong>
-                    ) : (
-                      chunk
-                    )
-                  )}
-                </div>
-
-                <div className="space-y-2.5 pt-5 border-t border-slate-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    {t.landing.shieldsSection.benefitsLabel}
-                  </div>
-                  {shields[activeShield].specs.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-200">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-8 pt-5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 relative z-10">
-                <span>{t.landing.shieldsSection.footerNote}</span>
-                <Link
-                  href="/features"
-                  className="text-blue-400 hover:text-blue-300 font-bold inline-flex items-center gap-1.5"
-                >
-                  {t.landing.shieldsSection.viewMoreFeatures} <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
+              );
+            })}
           </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          VIDEO DEMO
-      ========================================================================= */}
-      <section className="py-16 sm:py-20 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1060px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-3">
-            <Play className="w-3.5 h-3.5 fill-blue-700" />
-            {t.landing.videoSection.badge}
-          </div>
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {t.landing.videoSection.title}
-          </h2>
-          <p className="mt-3 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-            {t.landing.videoSection.desc}
+          <p className="mt-5 text-center text-sm text-slate-500">
+            <Link href="/about" className="font-semibold text-blue-700 hover:underline">
+              <span className="inline-flex items-center gap-1.5">
+                {lang === 'vi' ? 'Xem thêm câu hỏi' : 'More questions'}
+                <ArrowRight className="size-3.5" />
+              </span>
+            </Link>
           </p>
-
-          <div className="mt-8 rounded-2xl overflow-hidden border border-slate-300 shadow-xl bg-black aspect-video max-w-4xl mx-auto">
-            <iframe
-              src="https://drive.google.com/file/d/1U-k20_mAvNmi8x24-qqgtex1-4MBj2zJ/preview"
-              className="w-full h-full border-0"
-              allow="autoplay; encrypted-media; fullscreen"
-              allowFullScreen
-              title="Exam Guard System Demo Video"
-            />
-          </div>
         </div>
       </section>
 
-      {/* =========================================================================
-          LIÊN HỆ & ĐĂNG KÝ THÍ ĐIỂM (#tu-van)
-      ========================================================================= */}
-      <section id="tu-van" className="py-16 sm:py-24 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-950 text-white">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+      {/* PILOT FORM */}
+      <section id="tu-van" className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-950 py-16 text-white sm:py-24">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
-              <div className="inline-block px-3 py-1 bg-blue-500/30 border border-blue-400/40 rounded-full text-xs font-bold uppercase tracking-wider text-blue-100 mb-3">
+              <div className="mb-3 inline-block rounded-full border border-blue-400/40 bg-blue-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-100">
                 {t.landing.pilotForm.badge}
               </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                {t.landing.pilotForm.title}
-              </h2>
-              <p className="mt-4 text-[15.5px] text-blue-100 leading-relaxed">
-                {t.landing.pilotForm.desc}
-              </p>
-
+              <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl">{t.landing.pilotForm.title}</h2>
+              <p className="mt-4 text-[15.5px] leading-relaxed text-blue-100">{t.landing.pilotForm.desc}</p>
               <div className="mt-6 space-y-3 text-sm text-blue-100">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{t.landing.pilotForm.bullet1}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{t.landing.pilotForm.bullet2}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{t.landing.pilotForm.bullet3}</span>
-                </div>
+                {[t.landing.pilotForm.bullet1, t.landing.pilotForm.bullet2, t.landing.pilotForm.bullet3].map((b) => (
+                  <div key={b} className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+                    <span>{b}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-[13px] text-blue-100">
+                <Zap className="size-4 text-amber-300" />
+                {lang === 'vi' ? 'Phản hồi trong 24 giờ làm việc' : 'We reply within one working day'}
               </div>
             </div>
 
-            {/* Form */}
-            <div className="bg-white text-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl">
-              {isSubmitted ? (
-                <div className="py-8 text-center space-y-3">
-                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-8 h-8" />
+            <div className="rounded-2xl bg-white p-6 text-slate-900 shadow-2xl sm:p-8">
+              {submitted ? (
+                <div className="space-y-3 py-8 text-center">
+                  <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <CheckCircle2 className="size-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">{t.landing.pilotForm.successTitle}</h3>
+                  <h3 className="text-xl font-bold">{lang === 'vi' ? 'Đã tiếp nhận thông tin' : 'Request received'}</h3>
                   <p className="text-sm text-slate-600">
-                    {t.landing.pilotForm.successDesc}
+                    {lang === 'vi' ? 'Ban dự án sẽ liên hệ với bạn trong 24 giờ làm việc.' : 'Our team will get back to you within one working day.'}
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-3.5">
-                  <h3 className="text-xl font-bold text-slate-900">{t.landing.pilotForm.formTitle}</h3>
+                <form onSubmit={submit} className="space-y-4">
+                  <h3 className="text-xl font-bold">{t.landing.pilotForm.formTitle}</h3>
+                  <input tabIndex={-1} autoComplete="off" aria-hidden="true" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} className="absolute -left-[9999px] h-0 w-0 opacity-0" />
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                      {t.landing.pilotForm.nameLabel}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={lang === 'vi' ? 'ThS. Nguyễn Văn A' : 'Dr. John Doe'}
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      required
-                      className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600"
-                    />
+                    <label className="mb-1 block text-xs font-semibold uppercase text-slate-700">{t.landing.pilotForm.nameLabel}</label>
+                    <input className={input} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={lang === 'vi' ? 'ThS. Nguyễn Văn A' : 'Dr. John Doe'} />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                        {t.landing.pilotForm.emailLabel}
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="canbo@ou.edu.vn"
-                        value={formEmail}
-                        onChange={(e) => setFormEmail(e.target.value)}
-                        required
-                        className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600"
-                      />
+                      <label className="mb-1 block text-xs font-semibold uppercase text-slate-700">{t.landing.pilotForm.emailLabel}</label>
+                      <input className={input} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="canbo@ou.edu.vn" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                        {t.landing.pilotForm.phoneLabel}
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="09xx xxx xxx"
-                        value={formPhone}
-                        onChange={(e) => setFormPhone(e.target.value)}
-                        required
-                        className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600"
-                      />
+                      <label className="mb-1 block text-xs font-semibold uppercase text-slate-700">{t.landing.pilotForm.phoneLabel}</label>
+                      <input className={input} type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="09xx xxx xxx" />
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                      {t.landing.pilotForm.orgLabel}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={lang === 'vi' ? 'Trường Đại học / Cao đẳng / Khoa' : 'University / College / Faculty'}
-                      value={formOrg}
-                      onChange={(e) => setFormOrg(e.target.value)}
-                      className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600"
-                    />
+                    <label className="mb-1 block text-xs font-semibold uppercase text-slate-700">{t.landing.pilotForm.orgLabel}</label>
+                    <input className={input} value={form.org} onChange={(e) => setForm({ ...form, org: e.target.value })} placeholder={lang === 'vi' ? 'Trường Đại học / Cao đẳng / Khoa' : 'University / College / Faculty'} />
                   </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm cursor-pointer mt-2"
-                  >
+                  <button type="submit" className="mt-1 w-full cursor-pointer rounded-lg bg-blue-600 py-3 font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
                     {t.landing.pilotForm.submitBtn}
                   </button>
                 </form>
@@ -613,6 +583,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} onAccept={sendRequest} busy={sending} error={sendError} />
     </PublicLayout>
   );
 }

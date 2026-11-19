@@ -21,6 +21,13 @@ class EnforceContextScope
     private const RULES = [
         'organizations' => 'organizations',
         'plans' => 'managePlans',
+        'platform' => 'managePlans',              // platform overview and health
+        'leads' => 'managePlans',
+        'announcements' => 'managePlans',         // broadcast to schools (platform only)
+        'import' => 'orgSettings',                // bulk student import (school admin)
+        'analytics' => 'orgSettings',             // reports by department / semester (school admin)                 // pilot requests from the public site
+        'audit-log' => 'users',                   // platform: everything; school admin: own organization
+        'site' => 'managePlans',                  // white-label public website (platform only)
         'invoices' => 'billing',
         'billing' => 'billing',
         'users' => 'users',

@@ -26,7 +26,18 @@ final class MonitoringConfig
         'banned_apps' => ['nullable', 'array', 'max:50'],
         'banned_apps.*' => ['string', 'max:60', 'regex:/^[A-Za-z0-9._*-]+$/'],
         'lock_device' => ['nullable', 'boolean'],
+        'offline_minutes' => ['nullable', 'integer', 'min:0', 'max:60'],
     ];
+
+    /** Minutes without a sign of life before an attempt is closed as absent; 0 = never. */
+    public const OFFLINE_MINUTES_DEFAULT = 5;
+
+    public static function offlineMinutes(?array $config): int
+    {
+        $v = $config['offline_minutes'] ?? null;
+
+        return $v === null ? self::OFFLINE_MINUTES_DEFAULT : max(0, min(60, (int) $v));
+    }
 
     /** Copies the AI / extra-camera / banned_apps / lock_device options of a validated request into the config and applies the dependencies. */
     public static function fromRequest(array $config, array $validated): array
@@ -35,6 +46,9 @@ final class MonitoringConfig
             $config[$k] = (bool) ($validated[$k] ?? false);
         }
 
+        if (array_key_exists('offline_minutes', $validated) && $validated['offline_minutes'] !== null) {
+            $config['offline_minutes'] = (int) $validated['offline_minutes'];
+        }
         $config['prohibited_labels'] = (array) ($validated['prohibited_labels'] ?? []);
         $config['banned_apps'] = array_values(array_unique(array_filter(array_map(
             fn ($v) => strtolower(trim(preg_replace('/\.exe$/i', '', (string) $v))),
@@ -59,6 +73,7 @@ final class MonitoringConfig
         $c['prohibited_labels'] = $c['ai_objects'] || $c['extra_camera_objects'] ? ProhibitedObjects::clean($c['prohibited_labels'] ?? []) : [];
         $c['violation_clips'] = ($camera || !empty($c['require_screen'])) && !empty($c['violation_clips']);
         $c['lock_device'] = !empty($c['lock_device']);
+        $c['offline_minutes'] = self::offlineMinutes($c);
         $c['banned_apps'] = array_values(array_unique(array_filter(array_map(
             fn ($v) => strtolower(trim(preg_replace('/\.exe$/i', '', (string) $v))),
             (array) ($c['banned_apps'] ?? [])

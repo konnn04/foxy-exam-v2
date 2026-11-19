@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ResolveTenantContext::class,
             \App\Http\Middleware\EnforceContextScope::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
+            \App\Http\Middleware\AuditAdminWrites::class,
         ]);
         $middleware->alias(['biometric' => \App\Http\Middleware\RequireBiometricConsent::class]);
         $middleware->validateCsrfTokens(except: [

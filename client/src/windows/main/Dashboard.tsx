@@ -3,8 +3,10 @@ import { Button, Card, CardHeader, Empty, cx } from "../../components/ui";
 import { useState } from "react";
 import { ReviewDialog } from "../../components/ReviewDialog";
 import { examState, fmtDate, fmtScore, fmtTime, fromNow, KIND_LABEL, KindIcon, type PageProps } from "./shared";
+import { useI18n } from "../../lib/i18n";
 
 export default function Dashboard({ data, loading, startingId, onStart, onNavigate, device }: PageProps) {
+  const { t } = useI18n();
   const [review, setReview] = useState<{ examId: number; attemptId: number; title: string } | null>(null);
   const name = data.me?.name ?? "";
   const stats = data.dashboard?.statistics;
@@ -21,17 +23,20 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
       {inProgress && (
         <div className="overflow-hidden rounded-xl border border-danger/40">
           <div className="flex items-center gap-2 bg-danger px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-white live-dot" /> Phiên thi đang diễn ra
+            <span className="h-1.5 w-1.5 rounded-full bg-white live-dot" /> {t("main.dashboard.inProgressBadge")}
           </div>
           <div className="flex items-center gap-4 bg-danger-soft px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-danger">{inProgress.title}</p>
               <p className="text-xs text-muted">
-                {inProgress.course.name} · bắt đầu lúc {fmtTime(inProgress.latest_attempt?.started_at ?? null)} · thời gian vẫn đang được tính
+                {t("main.dashboard.inProgressSubtitle", {
+                  course: inProgress.course.name,
+                  time: fmtTime(inProgress.latest_attempt?.started_at ?? null),
+                })}
               </p>
             </div>
             <Button variant="danger" icon={<Play size={13} />} loading={startingId === inProgress.id} onClick={() => onStart(inProgress)}>
-              Tiếp tục làm bài
+              {t("main.dashboard.continueExam")}
             </Button>
           </div>
         </div>
@@ -39,36 +44,42 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
 
       <div>
         <h2 className="text-xl font-semibold text-fg">
-          Xin chào{name && ", "}
-          <span className="text-accent">{name}</span>
+          {name ? (
+            <>
+              {t("main.dashboard.greetingSimple")},{" "}
+              <span className="text-accent">{name}</span>
+            </>
+          ) : (
+            t("main.dashboard.greetingSimple")
+          )}
         </h2>
         <p className="mt-0.5 text-xs text-muted">
           {openCount > 0
-            ? `Bạn có ${openCount} bài thi đang mở. Kiểm tra thiết bị trước khi vào phòng thi.`
-            : "Hiện chưa có bài thi nào đang mở."}
+            ? t("main.dashboard.openExamsHint", { count: openCount })
+            : t("main.dashboard.noOpenExams")}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat icon={<BookOpen size={15} />} value={stats?.total_courses} label="Khoá học" hint="Đang ghi danh" />
-        <Stat icon={<FileText size={15} />} value={stats?.total_exams} label="Tổng bài thi" hint={`${openCount} bài đang mở`} />
-        <Stat icon={<Timer size={15} />} value={stats?.in_progress_attempts} label="Đang làm dở" hint="Lượt thi chưa nộp" />
-        <Stat icon={<CheckCircle2 size={15} />} value={stats?.completed_attempts} label="Đã nộp" hint="Lượt thi đã hoàn thành" />
+        <Stat icon={<BookOpen size={15} />} value={stats?.total_courses} label={t("main.dashboard.statCourses")} hint={t("main.dashboard.statCoursesHint")} />
+        <Stat icon={<FileText size={15} />} value={stats?.total_exams} label={t("main.dashboard.statTotalExams")} hint={t("main.dashboard.statTotalExamsHint", { count: openCount })} />
+        <Stat icon={<Timer size={15} />} value={stats?.in_progress_attempts} label={t("main.dashboard.statInProgress")} hint={t("main.dashboard.statInProgressHint")} />
+        <Stat icon={<CheckCircle2 size={15} />} value={stats?.completed_attempts} label={t("main.dashboard.statCompleted")} hint={t("main.dashboard.statCompletedHint")} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <Card>
           <CardHeader
             icon={<CalendarDays size={15} />}
-            title="Bài thi sắp tới"
+            title={t("main.dashboard.upcomingExams")}
             right={
               <button type="button" onClick={() => onNavigate("exams")} className="flex items-center gap-0.5 text-xs text-muted hover:text-fg">
-                Xem tất cả <ChevronRight size={13} />
+                {t("main.dashboard.viewAll")} <ChevronRight size={13} />
               </button>
             }
           />
           {upcoming.length === 0 ? (
-            <Empty icon={<CalendarDays size={18} />} text={loading ? "Đang tải…" : "Chưa có bài thi sắp tới."} />
+            <Empty icon={<CalendarDays size={18} />} text={loading ? t("common.loading") : t("main.dashboard.noUpcomingExams")} />
           ) : (
             <ul>
               {upcoming.map((e) => {
@@ -86,7 +97,7 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
                           <BookOpen size={11} /> {e.course.code}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock size={11} /> {e.duration_minutes} phút
+                          <Clock size={11} /> {t("main.dashboard.minutes", { duration: e.duration_minutes })}
                         </span>
                         <span className="flex items-center gap-1">
                           <KindIcon kind={e.type} size={11} /> {KIND_LABEL[e.type]}
@@ -95,7 +106,7 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
                     </div>
                     {state === "open" ? (
                       <Button size="sm" variant="primary" loading={startingId === e.id} disabled={startingId !== null} onClick={() => onStart(e)}>
-                        Vào thi
+                        {t("main.dashboard.enterExam")}
                       </Button>
                     ) : (
                       <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-muted">{fromNow(e.start_time)}</span>
@@ -108,9 +119,9 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
         </Card>
 
         <Card className="flex flex-col">
-          <CardHeader icon={<Activity size={15} />} title="Hoạt động gần đây" />
+          <CardHeader icon={<Activity size={15} />} title={t("main.dashboard.recentActivity")} />
           {!data.dashboard || data.dashboard.recent_attempts.length === 0 ? (
-            <Empty icon={<Activity size={18} />} text={loading ? "Đang tải…" : "Chưa có hoạt động."} />
+            <Empty icon={<Activity size={18} />} text={loading ? t("common.loading") : t("main.dashboard.noActivity")} />
           ) : (
             <ul className="flex-1 space-y-1 p-3">
               {data.dashboard.recent_attempts.map((a) => {
@@ -127,17 +138,17 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-[13px] text-fg">
-                        {done ? "Đã nộp" : "Đang làm"} {a.exam_title}
+                        {done ? t("main.dashboard.submitted") : t("main.dashboard.doing")} {a.exam_title}
                       </p>
                       <p className="text-[11px] text-muted">
                         {fromNow(a.submitted_at ?? a.started_at)} · {a.course_name}
-                        {a.score != null && ` · ${fmtScore(a.score)} điểm`}
-                        {a.score_hidden && " · điểm chưa công bố"}
+                        {a.score != null && ` · ${t("main.dashboard.scorePoints", { score: fmtScore(a.score) })}`}
+                        {a.score_hidden && ` · ${t("main.dashboard.scoreUnpublished")}`}
                       </p>
                     </div>
                     {a.can_review && (
                       <button type="button" onClick={() => setReview({ examId: a.exam_id, attemptId: a.id, title: a.exam_title })} className="ml-auto shrink-0 text-[11px] text-accent hover:underline">
-                        Xem lại
+                        {t("main.dashboard.review")}
                       </button>
                     )}
                   </li>
@@ -147,7 +158,7 @@ export default function Dashboard({ data, loading, startingId, onStart, onNaviga
           )}
           {device.displays > 1 && (
             <div className="m-3 flex items-center gap-2 rounded-lg border border-dashed border-warning/50 bg-warning-soft px-3 py-2 text-xs text-warning">
-              <Monitor size={14} /> Phát hiện {device.displays} màn hình. Hãy ngắt màn hình phụ trước khi vào phòng thi.
+              <Monitor size={14} /> {t("main.dashboard.multiDisplayWarning", { count: device.displays })}
             </div>
           )}
         </Card>

@@ -35,9 +35,8 @@ class ExamController extends Controller
         ])->first();
 
         // Calculate remaining seconds
-        $elapsedSeconds = now()->diffInSeconds($attempt->started_at);
-        $totalSeconds = $exam->duration_minutes * 60;
-        $remainingSeconds = max(0, $totalSeconds - $elapsedSeconds);
+        $attempt->setRelation('exam', $exam);
+        $remainingSeconds = $attempt->secondsLeft();
 
         return response()->json([
             'success' => true,
@@ -93,9 +92,7 @@ class ExamController extends Controller
 
         $attempt->touch(); // Update updated_at timestamp
 
-        $exam = $attempt->exam;
-        $elapsed = now()->diffInSeconds($attempt->started_at);
-        $remaining = max(0, ($exam->duration_minutes * 60) - $elapsed);
+        $remaining = $attempt->secondsLeft();
 
         return response()->json([
             'success' => true,

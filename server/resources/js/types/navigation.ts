@@ -15,6 +15,14 @@ export type NavTab =
   | 'saas-plans'
   | 'billing'
   | 'settings'
+  | 'site'
+  | 'platform'
+  | 'leads'
+  | 'health'
+  | 'audit'
+  | 'announcements'
+  | 'analytics'
+  | 'import'
   | 'faces'
   | 'live';
 

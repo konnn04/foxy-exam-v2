@@ -42,7 +42,8 @@ Config: `client/.env.example`. Verification of the batching client against a rea
 ## Giám sát, khoá thi và chạy code (cập nhật)
 
 - Mọi request của cửa sổ thi gửi `X-Foxy-Attempt`; server chọn đúng lượt thi nên thi lại không ghi đè lượt cũ.
-- Rời phòng/mất kết nối quá 5 phút: client coi là vắng, server (`attempts:expire-offline`) đóng lượt thi với `ended_reason=ABSENT`.
+- Rời phòng/mất kết nối quá 5 phút: client coi là vắng, server (`attempts:sweep`, chạy mỗi phút qua Laravel Scheduler) đóng lượt thi với `ended_reason=ABSENT`. Ngưỡng mặc định 5 phút, chỉnh theo kỳ thi hoặc theo trường (`offline_minutes`, 0 = không tự đóng).
+- Hết thời lượng: máy chủ là đồng hồ chuẩn. Quá hạn 60 giây thì `save-answer` trả 409 `TIME_UP` và bài được nộp với các câu đã lưu (`ended_reason=TIME_UP`); lượt nào không gửi nộp bài cũng được `attempts:sweep` thu. `end_time` của kỳ thi chỉ chặn lượt mới, không cắt giờ người đang làm.
 - Đóng cửa sổ thi/Alt+F4 chỉ phát `exam://close-requested`; UI hiện hộp xác nhận, nút thoát mở sau 5 giây. Thoát thật gọi `runtime.end()` (tắt camera, guard, realtime).
 - Mất camera hoặc dừng chia sẻ màn hình (khi kỳ thi yêu cầu) sẽ che bài thi và cho nút bật lại.
 - `allowed_apps` (mặc định `devenv`, `code`) chỉ áp dụng cho kỳ thi lập trình: các app này không bị ép on-top/đổi cửa sổ; app khác vẫn ghi nhận.
