@@ -40,18 +40,54 @@ async function playerFor(stream: MediaStream): Promise<HTMLVideoElement | null> 
   return v.videoWidth > 0 ? v : null;
 }
 
-/** JPEG of the current frame of the screen share or the camera; null when that source is not running. */
-export async function captureFrame(source: "screen" | "camera" | "phone"): Promise<Blob | null> {
+type Source = "screen" | "camera" | "phone";
+
+// Latest good frame per source. When the window is hidden (Alt+Tab, minimised) the live frame can not be drawn, but the
+// violation still needs a picture: the most recent cached one (at most STALE_MS old) stands in for it.
+const STALE_MS = 15_000;
+const CACHE_EVERY_MS = 3000;
+const cache = new Map<Source, { blob: Blob; at: number }>();
+let cacheTimer: number | undefined;
+
+async function grabLive(source: Source): Promise<Blob | null> {
   const stream = getLobbyMedia()[source];
-  if (!stream?.active) return null;
+  if (!stream?.active) {
+    console.warn(`[evidence] ${source}: no active stream`);
+    return null;
+  }
   const v = await playerFor(stream);
-  if (!v) return null;
+  if (!v) {
+    console.warn(`[evidence] ${source}: video has no frame yet`);
+    return null;
+  }
   const scale = Math.min(1, MAX_WIDTH / v.videoWidth);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(v.videoWidth * scale);
   canvas.height = Math.round(v.videoHeight * scale);
   canvas.getContext("2d")?.drawImage(v, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", QUALITY));
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", QUALITY));
+  if (blob?.size) cache.set(source, { blob, at: Date.now() });
+  return blob;
+}
+
+/** Keeps the cache warm while the exam runs (3 sources, one small JPEG each, every few seconds). */
+export function startFrameCache() {
+  window.clearInterval(cacheTimer);
+  cacheTimer = window.setInterval(() => {
+    for (const s of ["screen", "camera", "phone"] as const) if (getLobbyMedia()[s]?.active) void grabLive(s).catch(() => undefined);
+  }, CACHE_EVERY_MS);
+}
+
+/** JPEG of the current frame of the screen share or the camera (or a recent cached one); null when that source is not running. */
+export async function captureFrame(source: Source): Promise<Blob | null> {
+  const live = await grabLive(source).catch(() => null);
+  if (live?.size) return live;
+  const c = cache.get(source);
+  if (c && Date.now() - c.at <= STALE_MS) {
+    console.warn(`[evidence] ${source}: live capture failed, using cached frame (${Math.round((Date.now() - c.at) / 1000)}s old)`);
+    return c.blob;
+  }
+  return null;
 }
 
 /** Rate limit per violation type so a burst of identical events does not fill the evidence quota. */
@@ -63,6 +99,8 @@ export function evidenceDue(type: ViolationType): boolean {
 }
 
 export function releaseEvidence() {
+  window.clearInterval(cacheTimer);
+  cache.clear();
   players.forEach((v) => {
     v.pause();
     v.srcObject = null;
@@ -107,17 +145,27 @@ const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
  */
 export async function shootClip(rt: RealtimeClient, type: ViolationType, at: number): Promise<void> {
   const clip = await captureClip();
-  if (!clip) return;
+  if (!clip) {
+    console.warn(`[evidence] clip ${type}: none taken (recorder young, gap <15s, or no source running)`);
+    return;
+  }
   const [camera, screen] = await Promise.all([clip.camera ? rt.uploadEvidence(clip.camera) : null, clip.screen ? rt.uploadEvidence(clip.screen) : null]);
   const clips = { ...(camera ? { camera } : {}), ...(screen ? { screen } : {}) };
-  if (!camera && !screen) return;
+  if (!camera && !screen) {
+    console.warn(`[evidence] clip ${type}: recorded but upload failed`);
+    return;
+  }
   for (let i = 0; i < 4; i++) {
     try {
       await attachViolationClip({ type, at_ms: at, clips, from_ms: clip.fromMs, to_ms: clip.toMs });
       return;
     } catch (e) {
-      if (!(e instanceof ApiError) || e.status !== 404) return;
+      if (!(e instanceof ApiError) || e.status !== 404) {
+        console.warn(`[evidence] clip ${type}: attach failed`, e);
+        return;
+      }
       await sleep(3000);
     }
   }
+  console.warn(`[evidence] clip ${type}: violation not found after retries`);
 }

@@ -521,16 +521,12 @@ export function SessionMedia({
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
             <div className="lg:col-span-9">
               {(() => {
-                const mainTile = tiles.find((t) => t.key === activePrimary) ?? { key: 'screen' as const, label: 'Màn hình', icon: Monitor };
-                return <LiveStreamTile track={live.tracks[mainTile.key]} label={mainTile.label} icon={mainTile.icon} isPrimary />;
+                const mainTile = tiles.find((t) => t.key === activePrimary) ?? tiles[0];
+                return mainTile ? <LiveStreamTile track={live.tracks[mainTile.key]} label={mainTile.label} icon={mainTile.icon} isPrimary /> : null;
               })()}
             </div>
             <div className="flex flex-col gap-3 lg:col-span-3">
-              {([
-                { key: 'camera' as const, label: 'Camera chính', icon: Video },
-                { key: 'screen' as const, label: 'Màn hình', icon: Monitor },
-                { key: 'camera2' as const, label: 'Camera phụ (ĐT)', icon: Smartphone },
-              ])
+              {tiles
                 .filter((t) => t.key !== activePrimary)
                 .map((t) => (
                   <LiveStreamTile
@@ -545,9 +541,15 @@ export function SessionMedia({
           </div>
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
-            <LiveStreamTile track={live.tracks.camera} label="Camera chính" icon={Video} onSelectPrimary={() => { setPrimaryKey('camera'); setLayoutMode('pip'); }} />
-            <LiveStreamTile track={live.tracks.screen} label="Màn hình bài làm" icon={Monitor} onSelectPrimary={() => { setPrimaryKey('screen'); setLayoutMode('pip'); }} />
-            <LiveStreamTile track={live.tracks.camera2} label="Camera phụ (Điện thoại)" icon={Smartphone} onSelectPrimary={() => { setPrimaryKey('camera2'); setLayoutMode('pip'); }} />
+            {tiles.map((t) => (
+              <LiveStreamTile
+                key={t.key}
+                track={live.tracks[t.key]}
+                label={t.key === 'screen' ? 'Màn hình bài làm' : t.label}
+                icon={t.icon}
+                onSelectPrimary={() => { setPrimaryKey(t.key); setLayoutMode('pip'); }}
+              />
+            ))}
           </div>
         )
       ) : (

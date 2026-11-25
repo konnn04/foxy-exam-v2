@@ -11,7 +11,7 @@ import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, savePendingExam, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, failureText, getPreferredCamera, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
-import { releaseEvidence, shootClip } from "./evidence";
+import { releaseEvidence, shootClip, startFrameCache } from "./evidence";
 import { clipRecorderActive, startClipRecorder, stopClipRecorder } from "./clipRecorder";
 import { systemLoad } from "./sysinfo";
 import { FaceMonitor, type VisionSample } from "./vision";
@@ -388,7 +388,14 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       const sample = () => void systemLoad().then((l) => client.setState({ cpu: l.cpu, ram: l.ram })).catch(() => undefined);
       sample();
       loadTimer.current = window.setInterval(sample, 5000);
-      if (cfgRef.current?.violation_clips && live) startClipRecorder({ camera: !!media.camera && !!cfgRef.current.ai_face_check, screen: !!media.screen });
+      if (cfgRef.current?.violation_clips && live) {
+        // clips only serve AI violations, so the camera is buffered only when the AI face check is on
+        startClipRecorder({ camera: !!media.camera && !!cfgRef.current.ai_face_check, screen: !!media.screen });
+        diag(`clips: recorder camera=${!!media.camera} screen=${!!media.screen}`);
+      } else {
+        diag(`clips: recorder off (violation_clips=${!!cfgRef.current?.violation_clips} realtime=${live})`);
+      }
+      startFrameCache();
 
       const lk = live ? client.livekit : null;
       diag(`livekit: realtime=${live ? "up" : "down(REST fallback)"} credentials=${lk ? "yes" : "no"} camera=${!!media.camera} screen=${!!media.screen}`);

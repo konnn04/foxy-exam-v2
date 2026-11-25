@@ -166,13 +166,21 @@ export class RealtimeClient {
         headers: { ...auth, "Content-Type": "application/json" },
         body: JSON.stringify({ content_type: blob.type }),
       });
-      if (!pre.ok) return null;
+      if (!pre.ok) {
+        console.warn(`[evidence] presign ${pre.status} (${blob.type}, ${blob.size}B)`);
+        return null;
+      }
       const meta = (await pre.json()) as { evidence_id: string; content_url: string };
       const put = await fetch(base + meta.content_url, { method: "PUT", headers: { ...auth, "Content-Type": blob.type }, body: blob });
-      if (!put.ok) return null;
+      if (!put.ok) {
+        console.warn(`[evidence] upload ${put.status} (${blob.type}, ${blob.size}B)`);
+        return null;
+      }
       const commit = await fetch(s.evidence.commit_url.replace("{id}", meta.evidence_id), { method: "POST", headers: auth });
+      if (!commit.ok) console.warn(`[evidence] commit ${commit.status}`);
       return commit.ok ? meta.evidence_id : null;
-    } catch {
+    } catch (e) {
+      console.warn("[evidence] upload error", e);
       return null;
     }
   }

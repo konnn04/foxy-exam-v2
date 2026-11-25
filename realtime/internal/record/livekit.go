@@ -44,12 +44,7 @@ type EgressInfo struct {
 	RoomName    string `json:"roomName"`
 	Status      string `json:"status"` // EGRESS_STARTING | EGRESS_ACTIVE | EGRESS_ENDING | EGRESS_COMPLETE | EGRESS_FAILED | EGRESS_ABORTED | EGRESS_LIMIT_REACHED
 	Error       string `json:"error"`
-	FileResults []struct {
-		Filename string  `json:"filename"`
-		Location string  `json:"location"`
-		Size     flexInt `json:"size"`
-		Duration flexInt `json:"duration"` // nanoseconds
-	} `json:"fileResults"`
+	FileResults []fileResult `json:"fileResults"`
 	// Track egress reports its single file here (older servers fill only this one).
 	File *struct {
 		Filename string  `json:"filename"`
@@ -57,6 +52,42 @@ type EgressInfo struct {
 		Size     flexInt `json:"size"`
 		Duration flexInt `json:"duration"` // nanoseconds
 	} `json:"file"`
+}
+
+// UnmarshalJSON accepts both spellings: webhooks are camelCase (protojson) but Twirp responses use the proto field
+// names (egress_id, file_results), so StartTrackEgress used to come back with an empty id although the egress ran.
+func (i *EgressInfo) UnmarshalJSON(b []byte) error {
+	type plain EgressInfo // no methods: avoids recursion
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	var snake struct {
+		EgressID    string       `json:"egress_id"`
+		RoomName    string       `json:"room_name"`
+		FileResults []fileResult `json:"file_results"`
+	}
+	if err := json.Unmarshal(b, &snake); err != nil {
+		return err
+	}
+	if p.EgressID == "" {
+		p.EgressID = snake.EgressID
+	}
+	if p.RoomName == "" {
+		p.RoomName = snake.RoomName
+	}
+	if len(p.FileResults) == 0 {
+		p.FileResults = snake.FileResults
+	}
+	*i = EgressInfo(p)
+	return nil
+}
+
+type fileResult = struct {
+	Filename string  `json:"filename"`
+	Location string  `json:"location"`
+	Size     flexInt `json:"size"`
+	Duration flexInt `json:"duration"` // nanoseconds
 }
 
 // Result returns size (bytes) and duration (ms) of the recorded file, whichever field the server filled.

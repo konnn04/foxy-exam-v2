@@ -127,7 +127,8 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
           void collectEvidence(rt, type, extraCamera.current)
             .then((set) => send(set), () => send())
         } else send();
-        if (severity !== "LOW" && clipRecorderActive()) void shootClip(rt, type, at).catch(() => undefined);
+        // clips are only for what the AI sees (face / gaze / people); other violations keep their pictures only
+        if (severity !== "LOW" && EVIDENCE_SOURCE[type] === "camera" && clipRecorderActive()) void shootClip(rt, type, at).catch(() => undefined);
       } else {
         void reportViolation({ type, severity, details: { message, ...details } }).catch((err) =>
           console.error("[guard] Báo vi phạm lỗi:", err),
