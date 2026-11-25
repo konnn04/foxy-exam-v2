@@ -130,6 +130,11 @@ services:
       RECORD_DB_DRIVER: pgx
       RECORD_DB_DSN: postgres://${DB_USERNAME:-foxy}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/foxy_record?sslmode=disable
       RECORD_RETENTION_DAYS: ${RECORD_RETENTION_DAYS:-0}
+      # Encrypt an attempt's recordings/evidence after the exam (exam option). base64 of 32 bytes; empty = off.
+      # BACK IT UP: without it, sealed files can never be read again.
+      RECORD_SEAL_KEY: ${RECORD_SEAL_KEY:-}
+      # sealed files are played through this service, decrypted on the fly
+      RECORD_PUBLIC_URL: https://${SERVICE_FQDN_GATEWAY}/rt/record
       S3_ENDPOINT: s3:9000
       S3_PUBLIC_ENDPOINT: ${SERVICE_FQDN_S3}
       S3_PUBLIC_SSL: "true"

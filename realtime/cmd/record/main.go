@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"os"
 	"time"
 
@@ -45,6 +46,17 @@ func main() {
 		ForcePathStyle: true,
 	})
 
+	// RECORD_SEAL_KEY: base64 of 32 random bytes (openssl rand -base64 32). Empty = no sealing after exams.
+	var sealKey []byte
+	if raw := config.Str("RECORD_SEAL_KEY", ""); raw != "" {
+		k, err := base64.StdEncoding.DecodeString(raw)
+		if err != nil || len(k) != 32 {
+			log.Error("RECORD_SEAL_KEY must be base64 of exactly 32 bytes")
+			os.Exit(1)
+		}
+		sealKey = k
+	}
+
 	m := obs.NewMetrics()
 	s := record.New(record.Config{
 		JWTSecret:      []byte(config.Must("RT_JWT_SECRET")),
@@ -52,7 +64,28 @@ func main() {
 		LiveKitKey:     lkKey, LiveKitSecret: lkSecret,
 		Retention: time.Duration(config.Int("RECORD_RETENTION_DAYS", 0)) * 24 * time.Hour,
 		Cutter:    record.FFmpegCutter(config.Str("FFMPEG_PATH", "ffmpeg")),
+		SealKey:   sealKey,
+		PublicURL: config.Str("RECORD_PUBLIC_URL", ""),
 	}, db, store, eg, log, m)
+
+	if len(sealKey) > 0 {
+		go func() {
+			t := time.NewTicker(time.Minute)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					if n, err := s.SealSweep(context.Background()); err != nil {
+						log.Warn("seal sweep failed", "err", err)
+					} else if n > 0 {
+						log.Info("sealed files", "count", n)
+					}
+				}
+			}
+		}()
+	}
 
 	go func() {
 		t := time.NewTicker(time.Hour)

@@ -30,6 +30,10 @@ type Storage interface {
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Stat(ctx context.Context, key string) (size int64, err error)
 	Delete(ctx context.Context, key string) error
+	// OpenAt gives random access to an object (sealed files are decrypted chunk by chunk for HTTP Range requests).
+	OpenAt(ctx context.Context, key string) (io.ReaderAt, int64, io.Closer, error)
+	// DeletePrefix removes every object under a prefix (e.g. the cached clips of a recording).
+	DeletePrefix(ctx context.Context, prefix string) error
 }
 
 // S3Storage implements Storage with minio-go. Presigned URLs are signed for the PUBLIC endpoint (what a
@@ -99,6 +103,31 @@ func (s *S3Storage) Delete(ctx context.Context, key string) error {
 	return s.internal.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
 }
 
+func (s *S3Storage) OpenAt(ctx context.Context, key string) (io.ReaderAt, int64, io.Closer, error) {
+	obj, err := s.internal.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	info, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		return nil, 0, nil, err
+	}
+	return obj, info.Size, obj, nil
+}
+
+func (s *S3Storage) DeletePrefix(ctx context.Context, prefix string) error {
+	for o := range s.internal.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true}) {
+		if o.Err != nil {
+			return o.Err
+		}
+		if err := s.internal.RemoveObject(ctx, s.bucket, o.Key, minio.RemoveObjectOptions{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------- server
 
 type Config struct {
@@ -112,6 +141,13 @@ type Config struct {
 	MaxEvidence    int           // per attempt
 	Cutter         Cutter        // nil = clips disabled
 	Now            func() time.Time
+	// SealKey (32 bytes, RECORD_SEAL_KEY) enables encrypting an attempt's files after the exam; nil = off.
+	SealKey []byte
+	// PublicURL is this service as a browser reaches it (e.g. https://gateway/rt/record): sealed files are played
+	// through it, decrypted on the fly, since object storage only holds ciphertext.
+	PublicURL string
+	// SealGrace keeps an attempt's seal request open this long after the exam, for recordings still being finalized.
+	SealGrace time.Duration
 }
 
 func (c *Config) defaults() {
@@ -126,6 +162,9 @@ func (c *Config) defaults() {
 	}
 	if c.Now == nil {
 		c.Now = time.Now
+	}
+	if c.SealGrace == 0 {
+		c.SealGrace = 30 * time.Minute
 	}
 }
 
@@ -164,6 +203,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /internal/v1/recordings/{id}/stop", s.handleStop)
 	mux.HandleFunc("DELETE /internal/v1/recordings/{id}", s.handleDelete)
 	mux.HandleFunc("POST /internal/v1/exams/{eid}/purge", s.handlePurge)
+	mux.HandleFunc("POST /internal/v1/attempts/{aid}/seal", s.handleSealRequest)
+	mux.HandleFunc("GET /v1/sealed", s.handleSealed)
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.db.PingContext(r.Context()); err != nil {
@@ -542,7 +583,7 @@ func (s *Server) withURLs(ctx context.Context, list []Recording, want bool) []Re
 	}
 	for i := range list {
 		if list[i].Status == StatusReady && list[i].ObjectKey != "" {
-			if u, err := s.st.PresignGet(ctx, list[i].ObjectKey, s.cfg.PresignTTL); err == nil {
+			if u, err := s.playURL(ctx, list[i].ObjectKey, list[i].ExamID, list[i].Mime, list[i].Sealed); err == nil {
 				list[i].URL = u
 			}
 		}
@@ -598,7 +639,7 @@ func (s *Server) handleURL(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 409, map[string]any{"ok": false, "error": "not_ready", "status": rec.Status})
 		return
 	}
-	u, err := s.st.PresignGet(r.Context(), rec.ObjectKey, s.cfg.PresignTTL)
+	u, err := s.playURL(r.Context(), rec.ObjectKey, rec.ExamID, rec.Mime, rec.Sealed)
 	if err != nil {
 		writeJSON(w, 503, map[string]any{"ok": false})
 		return

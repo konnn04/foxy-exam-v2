@@ -65,6 +65,9 @@ func (s *Server) handleClip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := clipKey(rec.ID, from, to)
+	if rec.Sealed {
+		key += sealedSuffix // a clip of a sealed recording is stored sealed too
+	}
 	cached := true
 	if _, err := s.st.Stat(r.Context(), key); err != nil {
 		cached = false
@@ -84,7 +87,7 @@ func (s *Server) handleClip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	u, err := s.st.PresignGet(r.Context(), key, s.cfg.PresignTTL)
+	u, err := s.playURL(r.Context(), key, rec.ExamID, "video/mp4", rec.Sealed)
 	if err != nil {
 		writeJSON(w, 503, map[string]any{"ok": false})
 		return
@@ -102,7 +105,7 @@ func (s *Server) makeClip(ctx context.Context, rec Recording, key string, from, 
 	defer os.RemoveAll(dir)
 
 	src := filepath.Join(dir, "src")
-	body, err := s.st.Get(ctx, rec.ObjectKey)
+	body, err := s.plainObject(ctx, rec)
 	if err != nil {
 		return err
 	}
@@ -132,6 +135,9 @@ func (s *Server) makeClip(ctx context.Context, rec Recording, key string, from, 
 	st, err := out.Stat()
 	if err != nil {
 		return err
+	}
+	if rec.Sealed {
+		return s.putSealed(ctx, rec.ExamID, key, out)
 	}
 	return s.st.Put(ctx, key, "video/mp4", out, st.Size())
 }

@@ -47,6 +47,9 @@ type Recording struct {
 	EndedAt    int64  `json:"ended_at,omitempty"`
 	CreatedAt  int64  `json:"created_at"`
 	URL        string `json:"url,omitempty"` // presigned, filled on read
+	// Sealed: the object is encrypted (see seal.go); it is played through /v1/sealed, never presigned.
+	Sealed    bool  `json:"sealed"`
+	PlainSize int64 `json:"-"`
 }
 
 const schema = `
@@ -70,7 +73,23 @@ CREATE TABLE IF NOT EXISTS recordings (
 CREATE INDEX IF NOT EXISTS idx_recordings_exam ON recordings (exam_id, attempt_id);
 CREATE INDEX IF NOT EXISTS idx_recordings_egress ON recordings (egress_id);
 CREATE INDEX IF NOT EXISTS idx_recordings_created ON recordings (created_at);
+CREATE TABLE IF NOT EXISTS seal_keys (
+  exam_id BIGINT PRIMARY KEY,
+  wrapped TEXT NOT NULL,
+  created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS seal_requests (
+  attempt_id BIGINT PRIMARY KEY,
+  exam_id BIGINT NOT NULL,
+  requested_at BIGINT NOT NULL
+);
 `
+
+// columns added after the first release: ALTER is tried each start, "already there" is fine
+var addedColumns = []string{
+	"ALTER TABLE recordings ADD COLUMN sealed INTEGER NOT NULL DEFAULT 0",
+	"ALTER TABLE recordings ADD COLUMN plain_size BIGINT NOT NULL DEFAULT 0",
+}
 
 // DB wraps database/sql for both SQLite (dev/tests) and Postgres (production).
 type DB struct {
@@ -134,6 +153,11 @@ func Open(driver, dsn string) (*DB, error) {
 			return nil, fmt.Errorf("migrate: %w", err)
 		}
 	}
+	for _, stmt := range addedColumns {
+		if _, err := d.Exec(stmt); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") && !strings.Contains(strings.ToLower(err.Error()), "already exists") {
+			return nil, fmt.Errorf("migrate: %w", err)
+		}
+	}
 	return db, nil
 }
 
@@ -155,17 +179,76 @@ func (d *DB) rebind(q string) string {
 	return b.String()
 }
 
-const cols = "id, exam_id, attempt_id, org_id, kind, egress_id, object_key, status, mime, size_bytes, duration_ms, error, started_at, ended_at, created_at"
+const cols = "id, exam_id, attempt_id, org_id, kind, egress_id, object_key, status, mime, size_bytes, duration_ms, error, started_at, ended_at, created_at, sealed, plain_size"
 
 func scan(r interface{ Scan(...any) error }) (Recording, error) {
 	var x Recording
-	err := r.Scan(&x.ID, &x.ExamID, &x.AttemptID, &x.OrgID, &x.Kind, &x.EgressID, &x.ObjectKey, &x.Status, &x.Mime, &x.SizeBytes, &x.DurationMS, &x.Error, &x.StartedAt, &x.EndedAt, &x.CreatedAt)
+	var sealed int64
+	err := r.Scan(&x.ID, &x.ExamID, &x.AttemptID, &x.OrgID, &x.Kind, &x.EgressID, &x.ObjectKey, &x.Status, &x.Mime, &x.SizeBytes, &x.DurationMS, &x.Error, &x.StartedAt, &x.EndedAt, &x.CreatedAt, &sealed, &x.PlainSize)
+	x.Sealed = sealed != 0
 	return x, err
 }
 
 func (d *DB) Insert(ctx context.Context, r Recording) error {
-	_, err := d.ExecContext(ctx, d.rebind("INSERT INTO recordings ("+cols+") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
-		r.ID, r.ExamID, r.AttemptID, r.OrgID, r.Kind, r.EgressID, r.ObjectKey, r.Status, r.Mime, r.SizeBytes, r.DurationMS, r.Error, r.StartedAt, r.EndedAt, r.CreatedAt)
+	sealed := 0
+	if r.Sealed {
+		sealed = 1
+	}
+	_, err := d.ExecContext(ctx, d.rebind("INSERT INTO recordings ("+cols+") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"),
+		r.ID, r.ExamID, r.AttemptID, r.OrgID, r.Kind, r.EgressID, r.ObjectKey, r.Status, r.Mime, r.SizeBytes, r.DurationMS, r.Error, r.StartedAt, r.EndedAt, r.CreatedAt, sealed, r.PlainSize)
+	return err
+}
+
+// MarkSealed points a recording at its encrypted object.
+func (d *DB) MarkSealed(ctx context.Context, id, key string, sealedSize, plainSize int64) error {
+	_, err := d.ExecContext(ctx, d.rebind("UPDATE recordings SET sealed = 1, object_key = ?, size_bytes = ?, plain_size = ? WHERE id = ?"), key, sealedSize, plainSize, id)
+	return err
+}
+
+// SealKey returns the wrapped data key of an exam ("" when it has none yet).
+func (d *DB) SealKey(ctx context.Context, examID int64) (string, error) {
+	var w string
+	err := d.QueryRowContext(ctx, d.rebind("SELECT wrapped FROM seal_keys WHERE exam_id = ?"), examID).Scan(&w)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return w, err
+}
+
+// PutSealKey stores an exam's wrapped key unless one exists (a concurrent writer wins; the caller re-reads).
+func (d *DB) PutSealKey(ctx context.Context, examID int64, wrapped string, now int64) error {
+	_, err := d.ExecContext(ctx, d.rebind("INSERT INTO seal_keys (exam_id, wrapped, created_at) VALUES (?,?,?) ON CONFLICT (exam_id) DO NOTHING"), examID, wrapped, now)
+	return err
+}
+
+type SealRequest struct {
+	AttemptID, ExamID, RequestedAt int64
+}
+
+func (d *DB) RequestSeal(ctx context.Context, attemptID, examID, now int64) error {
+	_, err := d.ExecContext(ctx, d.rebind("INSERT INTO seal_requests (attempt_id, exam_id, requested_at) VALUES (?,?,?) ON CONFLICT (attempt_id) DO NOTHING"), attemptID, examID, now)
+	return err
+}
+
+func (d *DB) SealRequests(ctx context.Context, limit int) ([]SealRequest, error) {
+	rows, err := d.QueryContext(ctx, d.rebind("SELECT attempt_id, exam_id, requested_at FROM seal_requests ORDER BY requested_at LIMIT ?"), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SealRequest
+	for rows.Next() {
+		var x SealRequest
+		if err := rows.Scan(&x.AttemptID, &x.ExamID, &x.RequestedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, x)
+	}
+	return out, rows.Err()
+}
+
+func (d *DB) DoneSeal(ctx context.Context, attemptID int64) error {
+	_, err := d.ExecContext(ctx, d.rebind("DELETE FROM seal_requests WHERE attempt_id = ?"), attemptID)
 	return err
 }
 

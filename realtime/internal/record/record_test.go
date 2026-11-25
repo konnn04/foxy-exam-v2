@@ -33,7 +33,38 @@ var (
 type fakeStore struct {
 	mu      sync.Mutex
 	objects map[string]int64
+	data    map[string][]byte // bytes written through Put (objects added by size only read as "video-bytes")
 	deleted []string
+}
+
+func (f *fakeStore) bytesOf(key string) []byte {
+	if b, ok := f.data[key]; ok {
+		return b
+	}
+	return []byte("video-bytes")
+}
+
+func (f *fakeStore) OpenAt(_ context.Context, key string) (io.ReaderAt, int64, io.Closer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.objects[key]; !ok {
+		return nil, 0, nil, errors.New("not found")
+	}
+	b := f.bytesOf(key)
+	return bytes.NewReader(b), int64(len(b)), io.NopCloser(nil), nil
+}
+
+func (f *fakeStore) DeletePrefix(_ context.Context, prefix string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k := range f.objects {
+		if strings.HasPrefix(k, prefix) {
+			delete(f.objects, k)
+			delete(f.data, k)
+			f.deleted = append(f.deleted, k)
+		}
+	}
+	return nil
 }
 
 func (f *fakeStore) PresignPut(_ context.Context, key, _ string, _ time.Duration) (string, error) {
@@ -47,6 +78,10 @@ func (f *fakeStore) Put(_ context.Context, key, _ string, body io.Reader, _ int6
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.objects[key] = int64(len(b))
+	if f.data == nil {
+		f.data = map[string][]byte{}
+	}
+	f.data[key] = b
 	return nil
 }
 func (f *fakeStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
@@ -58,7 +93,7 @@ func (f *fakeStore) Get(_ context.Context, key string) (io.ReadCloser, error) {
 	if _, ok := f.objects[key]; !ok {
 		return nil, errors.New("not found")
 	}
-	return io.NopCloser(strings.NewReader("video-bytes")), nil
+	return io.NopCloser(bytes.NewReader(f.bytesOf(key))), nil
 }
 func (f *fakeStore) Stat(_ context.Context, key string) (int64, error) {
 	f.mu.Lock()
@@ -73,6 +108,7 @@ func (f *fakeStore) Delete(_ context.Context, key string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.objects, key)
+	delete(f.data, key)
 	f.deleted = append(f.deleted, key)
 	return nil
 }
