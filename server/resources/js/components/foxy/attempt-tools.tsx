@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { BellRing, Camera, Cpu, Download, FileText, Flag, MessageSquare, PauseCircle, PlayCircle, Power, RefreshCw, Search, Send, ShieldCheck, Skull } from 'lucide-react';
+import { BellRing, Camera, ChevronDown, Cpu, Download, FileText, Flag, MessageSquare, PauseCircle, PlayCircle, Power, RefreshCw, Search, Send, ShieldCheck, Skull } from 'lucide-react';
 import { useDialog } from './dialogs';
 import { Field, FxButton, FxInput, FxSelect, FxTextarea, Modal, Panel, Pill } from './ui';
 import { AttemptChat } from './attempt-chat';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const SYSTEM_PROCESS_NAMES = new Set([
   'system',
@@ -227,17 +228,18 @@ export function AttemptTools({
   };
 
   return (
-    <Panel className="flex flex-col gap-3 p-4">
+    <Panel className="flex flex-col gap-4 p-4">
+      {/* 1. Act on the candidate now (only while the exam is running) */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-2 font-semibold">
           <MessageSquare className="size-4" />
-          Điều khiển giám thị &amp; Trao đổi
+          Điều khiển giám thị
         </span>
         <div className="flex-1" />
-        {running && (
+        {running ? (
           <>
             <FxButton size="sm" icon={BellRing} onClick={() => setWarnOpen(true)}>
-              Nhắc nhở trực tiếp
+              Nhắc nhở
             </FxButton>
             <FxButton
               size="sm"
@@ -245,13 +247,19 @@ export function AttemptTools({
               disabled={cmdBusy}
               onClick={() => sendCommand({ type: isPausedByProctor ? 'RESUME' : 'PAUSE' })}
             >
-              {isPausedByProctor ? 'Cho tiếp tục thi' : 'Tạm dừng bài thi'}
+              {isPausedByProctor ? 'Cho tiếp tục' : 'Tạm dừng'}
             </FxButton>
             <FxButton size="sm" variant="danger" icon={Power} onClick={handleForceEnd}>
               Đình chỉ thi
             </FxButton>
           </>
+        ) : (
+          <span className="text-xs text-muted-foreground">Phiên thi đã kết thúc: không còn thao tác trực tiếp.</span>
         )}
+      </div>
+
+      {/* 2. Review tools, reports and downloads */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <FxButton
           size="sm"
           icon={Cpu}
@@ -263,40 +271,43 @@ export function AttemptTools({
           Tiến trình máy ({processes.length})
         </FxButton>
         <FxButton size="sm" icon={Flag} onClick={openManualModal}>
-          Ghi vi phạm thủ công
+          Ghi vi phạm
         </FxButton>
         <FxButton size="sm" icon={ShieldCheck} onClick={verify}>
           Kiểm tra toàn vẹn
         </FxButton>
+        <div className="flex-1" />
         <a href={`/admin/attempts/${attemptId}/report`} target="_blank" rel="noreferrer">
           <FxButton size="sm" icon={FileText}>
-            Xuất biên bản
+            Xem biên bản
           </FxButton>
         </a>
         <FxButton size="sm" icon={Send} onClick={() => setReportOpen(true)}>
-          Gửi biên bản cho thí sinh
+          Gửi cho thí sinh
         </FxButton>
-        <a href={`/admin/attempts/${attemptId}/export/violations.csv`}>
-          <FxButton size="sm" icon={Download}>
-            CSV vi phạm
-          </FxButton>
-        </a>
-        <a href={`/admin/attempts/${attemptId}/export/oplog.csv`}>
-          <FxButton size="sm" icon={Download}>
-            Xuất CSV quá trình gõ
-          </FxButton>
-        </a>
-        <a href={`/admin/attempts/${attemptId}/export/tracking.txt`}>
-          <FxButton size="sm" icon={Download}>
-            TRACKING.txt
-          </FxButton>
-        </a>
-        <a href={`/admin/attempts/${attemptId}/export/chat.csv`}>
-          <FxButton size="sm" icon={Download}>
-            CSV chat
-          </FxButton>
-        </a>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <FxButton size="sm" icon={Download}>
+              Tải dữ liệu <ChevronDown className="ml-0.5 size-3.5" />
+            </FxButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-52">
+            {[
+              ['violations.csv', 'Danh sách vi phạm (CSV)'],
+              ['oplog.csv', 'Quá trình gõ code (CSV)'],
+              ['tracking.txt', 'Nhật ký theo dõi (TXT)'],
+              ['chat.csv', 'Tin nhắn trao đổi (CSV)'],
+            ].map(([file, label]) => (
+              <DropdownMenuItem key={file} asChild>
+                <a href={`/admin/attempts/${attemptId}/export/${file}`} className="cursor-pointer">
+                  {label}
+                </a>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
       <AttemptChat attemptId={attemptId} signal={chatSeq} canSend={running} />
 
       <Modal

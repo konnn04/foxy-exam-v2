@@ -319,7 +319,13 @@ export function SessionMedia({
     { key: 'camera' as const, label: 'Camera chính', icon: Video },
     { key: 'screen' as const, label: 'Màn hình', icon: Monitor },
     { key: 'camera2' as const, label: 'Camera phụ (Điện thoại)', icon: Smartphone },
-  ]).filter((t) => state !== 'loading' && (byKind[t.key].length > 0 || (config ? asked[t.key] : t.key !== 'camera2') || (sourceMode === 'live' && live.tracks[t.key])));
+  ]).filter(
+    (t) =>
+      state !== 'loading' &&
+      // only a stream the exam asked for, or one that really exists (a finished/ready recording, or a live track):
+      // a record that is merely "starting" or "failed" must not create an empty tile
+      ((config ? asked[t.key] : t.key !== 'camera2') || byKind[t.key].some((r) => r.status === 'ready') || (sourceMode === 'live' && !!live.tracks[t.key])),
+  );
 
   const shown = tiles.map((t) => ({ ...t, rec: pick(byKind[t.key], clock.t ?? atMs) }));
   const spans = shown
