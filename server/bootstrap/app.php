@@ -14,7 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // behind Coolify/Traefik and the nginx gateway: trust X-Forwarded-* so URLs and secure cookies are https
-        $middleware->trustProxies(at: '*');
+        // Only the gateway / platform proxy may set X-Forwarded-For: with '*' any client could pick its own IP (and dodge
+        // per-IP limits). Default = private ranges, where the gateway and Coolify's proxy live inside Docker.
+        $middleware->trustProxies(at: array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', '127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16'))))));
         $middleware->prepend(\App\Http\Middleware\PortalAlias::class);
         $middleware->web(append: [
             \App\Http\Middleware\PortalRole::class,
