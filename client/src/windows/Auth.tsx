@@ -20,7 +20,7 @@ import {
 import TitleBar from "../components/TitleBar";
 import { ConsentGate } from "../components/ConsentGate";
 import { LangSwitch } from "../components/LangSwitch";
-import { Badge, BrandMark, Button, CodeTile, Empty, Input, cx } from "../components/ui";
+import { BrandMark, Button, CodeTile, Empty, Input, cx } from "../components/ui";
 import { LoginSlideshow, type Slide } from "../components/LoginSlideshow";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
@@ -265,35 +265,25 @@ export default function Auth() {
       />
 
       <div className="flex min-h-0 flex-1">
-        {/* Cột trái: thương hiệu + thông tin kết nối */}
-        <aside className="flex w-[44%] flex-col border-r border-line bg-surface-2 p-7">
+        {/* Cột trái: thương hiệu + giới thiệu (chỉ để trang trí, không chứa thao tác) */}
+        <aside className="flex w-[42%] flex-col border-r border-line bg-surface-2 p-8">
           <BrandMark />
           <div className="flex flex-1 items-center">
             <LoginSlideshow slides={LOGIN_SLIDES} label="login.slides.label" />
           </div>
-          {step === 1 ? (
-            <div>
-              <p className="text-sm font-semibold text-fg">{t("auth.asideTitle")}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">
-                {t("auth.asideDesc")}
-              </p>
-            </div>
-          ) : (
-            <ul className="space-y-1.5 text-xs text-muted">
-              <li className="flex items-center gap-2">
-                <ShieldCheck size={14} /> {t("auth.deviceBound")}
-              </li>
-              <ConnectionRow latency={latency} t={t} />
-            </ul>
-          )}
-          <p className="mt-4 font-mono text-[10px] text-subtle">
-            {version && `v${version} · `}Windows x64 · Tauri 2
-          </p>
-          <LangSwitch className="mt-2" />
+          <p className="font-mono text-[10px] text-subtle">{version && `v${version}`}</p>
         </aside>
 
         {/* Cột phải */}
-        <main className="flex min-w-0 flex-1 flex-col px-10 py-7">
+        <main className="flex min-w-0 flex-1 flex-col px-10 py-6">
+          <div className="flex h-8 shrink-0 items-center justify-between gap-3">
+            {phase === "form" ? <Stepper step={step} onBack={() => setStep(1)} t={t} /> : <span />}
+            <div className="flex items-center gap-3">
+              <ConnectionChip latency={latency} t={t} />
+              <LangSwitch />
+            </div>
+          </div>
+
           {phase === "resuming" && (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-xs text-muted">
               <RefreshCw size={18} className="animate-spin" />
@@ -321,10 +311,8 @@ export default function Auth() {
 
           {phase === "form" && (
             <>
-              <Stepper step={step} onBack={() => setStep(1)} t={t} />
-
               {step === 1 ? (
-                <div className="mt-5 flex min-h-0 flex-1 flex-col">
+                <div className="mt-6 flex min-h-0 flex-1 flex-col">
                   <h1 className="text-xl font-semibold text-fg">{t("auth.step1Title")}</h1>
                   <p className="mt-0.5 text-xs text-muted">
                     {t("auth.step1Desc")}
@@ -451,7 +439,7 @@ export default function Auth() {
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleLogin} className="mt-5 flex flex-1 flex-col">
+                <form onSubmit={handleLogin} className="mt-6 flex flex-1 flex-col">
                   <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 px-3 py-2.5">
                     <CodeTile code={org?.code ?? "?"} />
                     <div className="min-w-0 flex-1">
@@ -525,6 +513,9 @@ export default function Auth() {
                     <TriangleAlert size={14} className="mt-px shrink-0" />
                     {t("auth.proctorNotice")}
                   </div>
+                  <p className="mt-3 flex items-center gap-2 text-[11px] text-subtle">
+                    <ShieldCheck size={13} /> {t("auth.deviceBound")}
+                  </p>
                 </form>
               )}
             </>
@@ -572,17 +563,14 @@ function Stepper({ step, onBack, t }: { step: Step; onBack: () => void; t: (k: s
   );
 }
 
-function ConnectionRow({ latency, t }: { latency: number | null | "offline"; t: (k: string) => string }) {
-  if (latency === "offline")
-    return (
-      <li className="flex items-center gap-2 text-danger">
-        <WifiOff size={14} /> {t("auth.serverOffline")}
-      </li>
-    );
+function ConnectionChip({ latency, t }: { latency: number | null | "offline"; t: (k: string) => string }) {
+  if (latency === null) return null;
+  const offline = latency === "offline";
   return (
-    <li className="flex items-center gap-2">
-      <Wifi size={14} /> {t("auth.serverConnected")}{latency !== null && <Badge className="ml-1">{latency} ms</Badge>}
-    </li>
+    <span className={cx("flex items-center gap-1.5 text-[11px]", offline ? "text-danger" : "text-muted")} title={offline ? t("auth.serverOffline") : t("auth.serverConnected")}>
+      {offline ? <WifiOff size={13} /> : <Wifi size={13} />}
+      {offline ? t("auth.serverOffline") : <span className="font-mono">{latency} ms</span>}
+    </span>
   );
 }
 

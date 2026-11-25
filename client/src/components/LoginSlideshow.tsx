@@ -82,7 +82,7 @@ export function LoginSlideshow({
       </div>
 
       {/* Caption: stacked the same way so it fades together with the picture. Fixed height: the layout never jumps. */}
-      <div className="relative mt-3 h-[3.6rem]" aria-live={paused ? "polite" : "off"}>
+      <div className="relative mt-5 h-[3.6rem] text-center" aria-live={paused ? "polite" : "off"}>
         {slides.map((s, i) => (
           <div
             key={s.id}
@@ -101,7 +101,7 @@ export function LoginSlideshow({
         ))}
       </div>
 
-      <div className="mt-1 flex items-center gap-1.5" role="group">
+      <div className="mt-2 flex items-center justify-center gap-1.5" role="group">
         {slides.map((s, i) => (
           <button
             key={s.id}
