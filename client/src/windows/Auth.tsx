@@ -20,12 +20,21 @@ import {
 import TitleBar from "../components/TitleBar";
 import { ConsentGate } from "../components/ConsentGate";
 import { LangSwitch } from "../components/LangSwitch";
-import { Badge, BrandMark, Button, CodeTile, Empty, Input, Placeholder, cx } from "../components/ui";
+import { Badge, BrandMark, Button, CodeTile, Empty, Input, cx } from "../components/ui";
+import { LoginSlideshow, type Slide } from "../components/LoginSlideshow";
 import { AppWindow, onWindowShown, switchWindow } from "../lib/windowNav";
 import { setAuthenticated } from "../lib/auth";
 import { ApiError, getBiometricStatus, getHealth, getMe, getPublicOrganizations, login, type PublicOrganization } from "../lib/api";
 import { clearAuth, getAuth, getRecentOrgs, pushRecentOrg, saveAuth, type RecentOrg } from "../lib/authStore";
 import { useI18n } from "../lib/i18n";
+
+/** Pictures live in /public; captions come from the dictionaries (login.slides.<n>.title / .desc). */
+const LOGIN_SLIDES: Slide[] = [1, 2, 3, 4, 5].map((n) => ({
+  id: `slide-${n}`,
+  src: `/slide-${n}.png`,
+  titleKey: `login.slides.${n}.title`,
+  descKey: `login.slides.${n}.desc`,
+}));
 
 type Phase = "form" | "resuming" | "resume-error" | "consent";
 type Step = 1 | 2;
@@ -260,7 +269,7 @@ export default function Auth() {
         <aside className="flex w-[44%] flex-col border-r border-line bg-surface-2 p-7">
           <BrandMark />
           <div className="flex flex-1 items-center">
-            <Placeholder label="login illustration" className="aspect-[4/3] w-full" />
+            <LoginSlideshow slides={LOGIN_SLIDES} label="login.slides.label" />
           </div>
           {step === 1 ? (
             <div>
