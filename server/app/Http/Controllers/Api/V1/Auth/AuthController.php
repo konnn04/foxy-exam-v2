@@ -40,12 +40,24 @@ class AuthController extends Controller
               ->orWhere('username', $loginIdentifier);
         })->first();
 
+        if ($user && \App\Support\LoginGuard::locked($user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản tạm khóa đăng nhập do nhập sai mật khẩu nhiều lần. Vui lòng thử lại sau ít phút.',
+            ], 429)->header('Retry-After', (string) \App\Support\LoginGuard::retryAfter($user));
+        }
+
         if (!$user || !Hash::check($password, $user->password)) {
+            if ($user) {
+                \App\Support\LoginGuard::failed($user);
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Tên đăng nhập hoặc mật khẩu không chính xác.',
             ], 401);
         }
+        \App\Support\LoginGuard::succeeded($user);
 
         if ($user->role !== 'STUDENT') {
             return response()->json([
