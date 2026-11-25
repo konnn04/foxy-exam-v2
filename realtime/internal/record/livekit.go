@@ -184,8 +184,37 @@ func (e *HTTPEgress) call(ctx context.Context, method string, in any, out any) e
 	return nil
 }
 
+// encoding is how a stored recording is compressed. H.264 (AVC, "Main" profile) on purpose: every browser and phone plays
+// it without extra software, which matters because proctors watch these files in the web page. H.265/HEVC would be
+// ~40% smaller but is not played by most browsers and LiveKit's MP4 egress does not produce it.
+//
+// Bitrates are kept low: a candidate camera or a mostly static screen at 15 fps stays readable at a fraction of the
+// default 720p30 stream, which is what decides the storage bill over thousands of attempts.
+type encoding struct {
+	Width, Height, FPS, VideoKbps, AudioKbps int
+}
+
+var (
+	cameraEncoding = encoding{Width: 960, Height: 540, FPS: 15, VideoKbps: 600, AudioKbps: 64}
+	screenEncoding = encoding{Width: 1280, Height: 720, FPS: 10, VideoKbps: 900, AudioKbps: 64}
+)
+
+func (en encoding) advanced() map[string]any {
+	return map[string]any{
+		"width": en.Width, "height": en.Height, "framerate": en.FPS,
+		"video_codec": "H264_MAIN", "video_bitrate": en.VideoKbps,
+		"audio_codec": "AAC", "audio_bitrate": en.AudioKbps,
+		"key_frame_interval": 2.0, // a keyframe every 2s: a proctor can jump to a violation without waiting for a seek
+	}
+}
+
 func (e *HTTPEgress) StartParticipant(ctx context.Context, room, identity string, screenShare bool, filepath string) (string, error) {
+	enc := cameraEncoding
+	if screenShare {
+		enc = screenEncoding
+	}
 	req := map[string]any{
+		"advanced":     enc.advanced(),
 		"room_name":    room,
 		"identity":     identity,
 		"screen_share": screenShare,
