@@ -1,5 +1,6 @@
 import { Check, ChevronsUpDown, Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 export interface ComboItem {
@@ -32,6 +33,10 @@ export function Combobox({
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  // The list is drawn in <body> at the button's position: a parent with overflow-hidden (cards, panels, modals) would
+  // otherwise cut it off. It opens upward when there is more room above.
+  const [box, setBox] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(null);
   const selected = items.find((i) => i.value === value);
 
   const shown = useMemo(() => {
@@ -41,9 +46,31 @@ export function Combobox({
   }, [items, q]);
 
   useEffect(() => setActive(0), [q, open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = root.current?.getBoundingClientRect();
+      if (!r) return;
+      const below = window.innerHeight - r.bottom;
+      const up = below < 320 && r.top > below;
+      setBox({ left: r.left, width: r.width, ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const away = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!root.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
+    };
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
@@ -89,8 +116,12 @@ export function Combobox({
         </span>
         <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
       </button>
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+      {open && box && createPortal(
+        <div
+          ref={pop}
+          style={{ position: 'fixed', left: box.left, width: box.width, top: box.top, bottom: box.bottom }}
+          className="z-[200] overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+        >
           <div className="flex items-center gap-2 border-b border-border px-3">
             <Search className="size-3.5 opacity-60" />
             <input
@@ -119,7 +150,8 @@ export function Combobox({
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
