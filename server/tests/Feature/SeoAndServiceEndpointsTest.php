@@ -46,6 +46,9 @@ class SeoAndServiceEndpointsTest extends TestCase
         $errors = ServiceEndpoints::save(['ai_face' => 'javascript:alert(1)', 'livekit' => 'wss://live.example.edu.vn']);
 
         $this->assertArrayHasKey('ai_face', $errors);
+        $this->assertArrayHasKey('ai_face', ServiceEndpoints::save(['ai_face' => 'http://169.254.169.254/latest']));
+        $this->assertNotContains('rt_ingest_internal', array_column(ServiceEndpoints::forEditor(), 'key'));
+        $this->assertNotContains('rt_record_internal', array_column(ServiceEndpoints::forEditor(), 'key'));
         $this->assertArrayNotHasKey('livekit', $errors);
     }
 }

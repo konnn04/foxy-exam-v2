@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Schema;
  * The .env value is the default; a Root Admin can override it from the UI without redeploying, so a new AI box or
  * domain is a form edit. Only the ADDRESS is editable here. Secrets (AI_TOKEN, RT_*_SECRET, LIVEKIT_API_*) stay in
  * the environment on purpose: a database dump must never contain them.
+ *
+ * The addresses the core calls with a secret attached (RT_INGEST_INTERNAL_URL, RT_RECORD_INTERNAL_URL) are NOT
+ * editable here: pointing them elsewhere would hand the signing secret to another host. They stay in the environment.
+ * The AI services do receive AI_TOKEN, so their addresses refuse link-local / cloud-metadata targets and the change is
+ * written to the audit log with the old and new host.
  */
 final class ServiceEndpoints
 {
@@ -25,10 +30,8 @@ final class ServiceEndpoints
             'ai_objects' => ['services.ai_objects.url', 'AI phát hiện vật thể cấm', 'http', 'Dịch vụ nhận diện điện thoại, tài liệu… trong khung hình.'],
             'ai_agent' => ['services.ai_agent.url', 'AI giám sát tự động (agent)', 'http', 'Dịch vụ theo dõi camera trong phòng thi theo thời gian thực.'],
             'rt_ingest_public' => ['services.realtime.ingest_url', 'Realtime – địa chỉ cho ứng dụng thí sinh', 'http', 'Địa chỉ mà ứng dụng FoxyClient trên máy thí sinh kết nối tới.'],
-            'rt_ingest_internal' => ['services.realtime.ingest_internal_url', 'Realtime – địa chỉ nội bộ', 'http', 'Địa chỉ máy chủ này dùng để gọi dịch vụ realtime (thường là tên container).'],
             'rt_hub' => ['services.realtime.hub_url', 'Realtime – màn hình giám thị', 'ws', 'Địa chỉ WebSocket mà trang theo dõi giờ thi kết nối tới.'],
             'rt_record_public' => ['services.realtime.record_url', 'Ghi hình – địa chỉ công khai', 'http', 'Địa chỉ tải video bằng chứng về trình duyệt.'],
-            'rt_record_internal' => ['services.realtime.record_internal_url', 'Ghi hình – địa chỉ nội bộ', 'http', 'Địa chỉ máy chủ này dùng để gọi dịch vụ ghi hình.'],
             'livekit' => ['services.realtime.livekit.url', 'LiveKit (camera/màn hình)', 'ws', 'Địa chỉ wss:// mà trình duyệt và ứng dụng thí sinh kết nối tới.'],
         ];
     }
@@ -99,6 +102,11 @@ final class ServiceEndpoints
 
                 continue;
             }
+            if ($value !== '' && self::isForbiddenHost((string) parse_url($value, PHP_URL_HOST))) {
+                $errors[$key] = 'Địa chỉ này không được phép (địa chỉ nội bộ của nhà cung cấp đám mây).';
+
+                continue;
+            }
             if ($value === '') {
                 DB::table('system_settings')->where('key', "service.{$key}")->delete();
             } else {
@@ -116,5 +124,25 @@ final class ServiceEndpoints
         }
 
         return $errors;
+    }
+
+    /** Link-local (169.254.0.0/16, fe80::/10) and cloud metadata names: never a legitimate AI or realtime service. */
+    private static function isForbiddenHost(string $host): bool
+    {
+        $host = strtolower(trim($host, '[]'));
+        if (in_array($host, ['metadata.google.internal', 'metadata', 'instance-data'], true)) {
+            return true;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return str_starts_with($host, '169.254.') || str_starts_with($host, 'fe80:');
+        }
+
+        return false;
+    }
+
+    /** key => host, for the audit trail (never the full URL: it may carry a path or port the log does not need). */
+    public static function hosts(): array
+    {
+        return collect(self::stored())->map(fn ($v) => (string) parse_url($v, PHP_URL_HOST))->all();
     }
 }

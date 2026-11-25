@@ -93,11 +93,12 @@ class PlatformController extends Controller
     {
         $this->authorizePlatform();
         $data = $request->validate(['values' => ['required', 'array']]);
+        $before = \App\Support\ServiceEndpoints::hosts();
         $errors = \App\Support\ServiceEndpoints::save($data['values']);
         if ($errors) {
             return response()->json(['errors' => $errors], 422);
         }
-        \App\Support\Audit::record('platform.services', 'Cập nhật địa chỉ dịch vụ hệ thống', null, null, ['keys' => array_keys($data['values'])]);
+        \App\Support\Audit::record('platform.services', 'Cập nhật địa chỉ dịch vụ hệ thống', null, null, ['hosts_before' => $before, 'hosts_after' => \App\Support\ServiceEndpoints::hosts()]);
 
         return response()->json(['services' => \App\Support\ServiceEndpoints::forEditor()]);
     }
