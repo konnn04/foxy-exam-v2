@@ -233,10 +233,12 @@ func (e *HTTPEgress) videoTrackSID(ctx context.Context, room, identity string, s
 			return t.Sid, nil
 		}
 	}
-	// a phone publishes from a mobile browser: its only video track counts as the camera whatever its source says
-	if !screenShare {
+	// only the phone (its own private room, identity "phone") may have a video track without a CAMERA source (some
+	// mobile browsers leave it unknown). A candidate's camera slot must never be filled with a screen share or any
+	// other stream: then the recording fails visibly instead.
+	if !screenShare && identity == "phone" {
 		for _, t := range p.Tracks {
-			if t.Type == "VIDEO" {
+			if t.Type == "VIDEO" && t.Source != "SCREEN_SHARE" {
 				return t.Sid, nil
 			}
 		}

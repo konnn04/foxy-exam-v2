@@ -70,3 +70,19 @@ func tokenClaims(t *testing.T, auth string) map[string]any {
 	_ = json.Unmarshal(raw, &c)
 	return c
 }
+
+// A candidate without a camera track must not get its screen share recorded as "camera".
+func TestHTTPEgressCameraNeverFallsBackToScreen(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/twirp/livekit.RoomService/GetParticipant" {
+			_, _ = w.Write([]byte(`{"tracks":[{"sid":"TR_scr","type":"VIDEO","source":"SCREEN_SHARE"},{"sid":"TR_x","type":"VIDEO","source":"UNKNOWN"}]}`))
+			return
+		}
+		t.Errorf("no egress may start, got %s", r.URL.Path)
+	}))
+	defer srv.Close()
+	e := NewHTTPEgress(srv.URL, "key", "secret", S3Output{})
+	if _, err := e.StartTrack(context.Background(), "exam-7", "attempt-3", false, "x.webm"); err == nil {
+		t.Fatal("camera recording of a candidate without a camera track must fail")
+	}
+}
