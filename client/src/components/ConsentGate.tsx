@@ -4,7 +4,6 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { acceptBiometric, getBiometricPolicy, type BiometricPolicy } from "../lib/api";
 import { Button } from "./ui";
 import { useI18n, BIOMETRIC_SECTIONS_VI, BIOMETRIC_SECTIONS_EN } from "../lib/i18n";
-import { LangSwitch } from "./LangSwitch";
 
 /**
  * Agreement to biometric processing. Shown after EVERY login (the server ties the consent to the login token and refuses
@@ -51,7 +50,6 @@ export function ConsentGate({ onAccepted, onDeclined }: { onAccepted: () => void
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2">
-        <LangSwitch className="order-last ml-auto" />
         <ShieldCheck size={18} className="text-accent" />
         <h1 className="text-lg font-semibold text-fg">{t("consent.title")}</h1>
       </div>
