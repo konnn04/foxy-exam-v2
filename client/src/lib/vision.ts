@@ -1,3 +1,4 @@
+import { diag } from "./diag";
 import { AttentionTracker, EMPTY_READING, attention, eyeGaze, eyesClosed, faceRatio, headPose, type FrameReading, type VisionEvent } from "./vision-core";
 
 /** Which MediaPipe delegate to use. "auto" tries the GPU and quietly falls back to the CPU. */
@@ -38,16 +39,47 @@ const MODEL = "/mediapipe/face_landmarker.task";
 // the GPU delegate can afford 15 readings a second (catches quick glances); the CPU path stays at 5
 const FRAME_MS = { GPU: 1000 / 15, CPU: 1000 / 5 } as const;
 
+/** A step that never finishes must not freeze the screen: fail it after `ms` so the caller can move on. */
+function within<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error(`${what} timed out after ${ms / 1000}s`)), ms);
+    p.then(
+      (v) => {
+        window.clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        window.clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** MediaPipe draws through WebGL2 even on the CPU path; without it nothing can run. */
+function hasWebGL2(): boolean {
+  try {
+    return !!document.createElement("canvas").getContext("webgl2");
+  } catch {
+    return false;
+  }
+}
+
 async function createLandmarker(delegate: "GPU" | "CPU"): Promise<Landmarker> {
-  const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
-  const fileset = await FilesetResolver.forVisionTasks(WASM);
-  return (await FaceLandmarker.createFromOptions(fileset, {
+  if (!hasWebGL2()) throw new Error("WebGL2 is not available in this webview");
+  diag(`vision: loading MediaPipe (${delegate})`);
+  const { FaceLandmarker, FilesetResolver } = await within(import("@mediapipe/tasks-vision"), 15_000, "loading the MediaPipe library");
+  const fileset = await within(FilesetResolver.forVisionTasks(WASM), 15_000, "loading the MediaPipe runtime");
+  diag("vision: runtime ready, loading the face model");
+  const landmarker = await within(FaceLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: MODEL, delegate },
     runningMode: "VIDEO",
     numFaces: 3,
     outputFaceBlendshapes: true,
     outputFacialTransformationMatrixes: true,
-  })) as unknown as Landmarker;
+  }), 25_000, "creating the face model");
+  diag(`vision: model ready (${delegate})`);
+  return landmarker as unknown as Landmarker;
 }
 
 /**
@@ -61,6 +93,10 @@ export class FaceMonitor {
   private tracker = new AttentionTracker();
   private last = -1;
   delegate: "GPU" | "CPU" = "CPU";
+  /** Called once when detection keeps failing (the analysis cannot run on this machine). */
+  onFailure?: (err: unknown) => void;
+  private fails = 0;
+  private failed = false;
 
   constructor(
     private onSample: (s: VisionSample) => void,
@@ -78,6 +114,7 @@ export class FaceMonitor {
         break;
       } catch (e) {
         lastErr = e;
+        diag(`vision: ${d} delegate failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
     if (!this.lm) throw lastErr ?? new Error("MediaPipe unavailable");
@@ -115,8 +152,16 @@ export class FaceMonitor {
           r.eyesClosed = eyesClosed(named);
         }
       }
-    } catch {
-      return; // a bad frame is skipped
+      this.fails = 0;
+    } catch (e) {
+      // one bad frame is skipped; a stream of them means detection cannot work here
+      this.fails += 1;
+      if (this.fails === 1) diag(`vision: detect error: ${e instanceof Error ? e.message : String(e)}`);
+      if (this.fails >= 8 && !this.failed) {
+        this.failed = true;
+        this.onFailure?.(e);
+      }
+      return;
     }
     this.onSample({ ...r, attention: attention(r), delegate: this.delegate });
     for (const e of this.tracker.update(r, (performance.now() - t0) / 1000)) this.onEvent(e);

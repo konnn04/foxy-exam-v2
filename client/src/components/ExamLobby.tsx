@@ -101,8 +101,21 @@ export default function ExamLobby({
       let seen = 0;
       let missed = 0;
       let ok = false;
+      let gotSample = false;
+      let gaveUp = false;
+      // the analysis cannot run on this machine: do not lock the candidate out, the proctor still sees the camera
+      const giveUp = (why: string) => {
+        if (gaveUp) return;
+        gaveUp = true;
+        diag(`lobby: face analysis skipped (${why})`);
+        face.current?.stop();
+        face.current = null;
+        liveFeed.current = null;
+        set("face", { level: "warn", detail: t("lobby.face.skip"), required: false });
+      };
       const m = new FaceMonitor(
         (s) => {
+          gotSample = true;
           liveFeed.current?.(s);
           if (isFrontal(s)) {
             seen += 1;
@@ -122,12 +135,18 @@ export default function ExamLobby({
         () => {},
       );
       try {
+        m.onFailure = (err) => giveUp(`detection kept failing: ${err instanceof Error ? err.message : String(err)}`);
         await m.start(stream);
         face.current = m;
+        // no reading at all after a while: it is stuck, not slow
+        window.setTimeout(() => {
+          if (!gotSample && face.current === m) giveUp("no reading after 12s");
+        }, 12_000);
       } catch (e) {
         // the analysis itself cannot run on this machine: do not lock the candidate out, the proctor still sees the camera
         m.stop();
-        console.error("[lobby] MediaPipe không chạy:", e);
+        console.error("[lobby] MediaPipe failed to start:", e);
+        diag(`lobby: face analysis could not start (${e instanceof Error ? e.message : String(e)})`);
         set("face", { level: "warn", detail: t("lobby.face.skip"), required: false });
       }
     },
