@@ -90,7 +90,7 @@ type fakeEgress struct {
 	fail    error
 }
 
-func (f *fakeEgress) StartParticipant(_ context.Context, room, identity string, screen bool, path string) (string, error) {
+func (f *fakeEgress) StartTrack(_ context.Context, room, identity string, screen bool, path string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.fail != nil {

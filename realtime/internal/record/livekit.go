@@ -50,6 +50,24 @@ type EgressInfo struct {
 		Size     flexInt `json:"size"`
 		Duration flexInt `json:"duration"` // nanoseconds
 	} `json:"fileResults"`
+	// Track egress reports its single file here (older servers fill only this one).
+	File *struct {
+		Filename string  `json:"filename"`
+		Location string  `json:"location"`
+		Size     flexInt `json:"size"`
+		Duration flexInt `json:"duration"` // nanoseconds
+	} `json:"file"`
+}
+
+// Result returns size (bytes) and duration (ms) of the recorded file, whichever field the server filled.
+func (i EgressInfo) Result() (size, durationMs int64) {
+	if len(i.FileResults) > 0 {
+		return int64(i.FileResults[0].Size), int64(i.FileResults[0].Duration) / 1_000_000
+	}
+	if i.File != nil {
+		return int64(i.File.Size), int64(i.File.Duration) / 1_000_000
+	}
+	return 0, 0
 }
 
 // flexInt accepts a JSON number or a quoted number (protojson renders int64 as a string).
@@ -128,8 +146,9 @@ func SignWebhook(apiKey, apiSecret string, body []byte, now time.Time) string {
 
 // Egress starts and stops LiveKit egress jobs.
 type Egress interface {
-	// StartParticipant records the camera (screenShare=false) or screen (true) of a participant into an S3 file.
-	StartParticipant(ctx context.Context, room, identity string, screenShare bool, filepath string) (egressID string, err error)
+	// StartTrack records the camera (screenShare=false) or screen (true) video track of a participant into an S3 file,
+	// as is: the encoded stream is copied, never decoded or re-encoded.
+	StartTrack(ctx context.Context, room, identity string, screenShare bool, filepath string) (egressID string, err error)
 	Stop(ctx context.Context, egressID string) error
 }
 
@@ -151,10 +170,15 @@ func NewHTTPEgress(host, key, secret string, s3 S3Output) *HTTPEgress {
 	return &HTTPEgress{Host: strings.TrimRight(host, "/"), APIKey: key, APISecret: secret, S3: s3, HTTP: &http.Client{Timeout: 10 * time.Second}}
 }
 
-// serverToken is a short-lived admin token with the egress ("roomRecord") grant.
-func (e *HTTPEgress) serverToken(now time.Time) string {
+// serverToken is a short-lived admin token: egress ("roomRecord") and, for one room, reading its participants.
+func (e *HTTPEgress) serverToken(now time.Time, room string) string {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
-	claims, _ := json.Marshal(map[string]any{"iss": e.APIKey, "nbf": now.Unix() - 1, "exp": now.Add(time.Minute).Unix(), "video": map[string]any{"roomRecord": true, "roomList": true}})
+	video := map[string]any{"roomRecord": true, "roomList": true}
+	if room != "" {
+		video["roomAdmin"] = true
+		video["room"] = room
+	}
+	claims, _ := json.Marshal(map[string]any{"iss": e.APIKey, "nbf": now.Unix() - 1, "exp": now.Add(time.Minute).Unix(), "video": video})
 	in := header + "." + base64.RawURLEncoding.EncodeToString(claims)
 	mac := hmac.New(sha256.New, []byte(e.APISecret))
 	mac.Write([]byte(in))
@@ -162,13 +186,17 @@ func (e *HTTPEgress) serverToken(now time.Time) string {
 }
 
 func (e *HTTPEgress) call(ctx context.Context, method string, in any, out any) error {
+	return e.twirp(ctx, "livekit.Egress", method, "", in, out)
+}
+
+func (e *HTTPEgress) twirp(ctx context.Context, service, method, room string, in any, out any) error {
 	body, _ := json.Marshal(in)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.Host+"/twirp/livekit.Egress/"+method, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.Host+"/twirp/"+service+"/"+method, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+e.serverToken(time.Now()))
+	req.Header.Set("Authorization", "Bearer "+e.serverToken(time.Now(), room))
 	resp, err := e.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -184,51 +212,59 @@ func (e *HTTPEgress) call(ctx context.Context, method string, in any, out any) e
 	return nil
 }
 
-// encoding is how a stored recording is compressed. H.264 (AVC, "Main" profile) on purpose: every browser and phone plays
-// it without extra software, which matters because proctors watch these files in the web page. H.265/HEVC would be
-// ~40% smaller but is not played by most browsers and LiveKit's MP4 egress does not produce it.
-//
-// Bitrates are kept low: a candidate camera or a mostly static screen at 15 fps stays readable at a fraction of the
-// default 720p30 stream, which is what decides the storage bill over thousands of attempts.
-type encoding struct {
-	Width, Height, FPS, VideoKbps, AudioKbps int
-}
-
-var (
-	cameraEncoding = encoding{Width: 960, Height: 540, FPS: 15, VideoKbps: 600, AudioKbps: 64}
-	screenEncoding = encoding{Width: 1280, Height: 720, FPS: 10, VideoKbps: 900, AudioKbps: 64}
-)
-
-func (en encoding) advanced() map[string]any {
-	return map[string]any{
-		"width": en.Width, "height": en.Height, "framerate": en.FPS,
-		"video_codec": "H264_MAIN", "video_bitrate": en.VideoKbps,
-		"audio_codec": "AAC", "audio_bitrate": en.AudioKbps,
-		"key_frame_interval": 2.0, // a keyframe every 2s: a proctor can jump to a violation without waiting for a seek
+// videoTrackSID finds the published camera (or screen share) video track of a participant.
+func (e *HTTPEgress) videoTrackSID(ctx context.Context, room, identity string, screenShare bool) (string, error) {
+	var p struct {
+		Tracks []struct {
+			Sid    string `json:"sid"`
+			Type   string `json:"type"`   // AUDIO | VIDEO | DATA
+			Source string `json:"source"` // CAMERA | SCREEN_SHARE | ...
+		} `json:"tracks"`
 	}
+	if err := e.twirp(ctx, "livekit.RoomService", "GetParticipant", room, map[string]any{"room": room, "identity": identity}, &p); err != nil {
+		return "", err
+	}
+	want := "CAMERA"
+	if screenShare {
+		want = "SCREEN_SHARE"
+	}
+	for _, t := range p.Tracks {
+		if t.Source == want && (t.Type == "" || t.Type == "VIDEO") {
+			return t.Sid, nil
+		}
+	}
+	// a phone publishes from a mobile browser: its only video track counts as the camera whatever its source says
+	if !screenShare {
+		for _, t := range p.Tracks {
+			if t.Type == "VIDEO" {
+				return t.Sid, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("livekit: %s has no published %s video track in %s", identity, strings.ToLower(want), room)
 }
 
-func (e *HTTPEgress) StartParticipant(ctx context.Context, room, identity string, screenShare bool, filepath string) (string, error) {
-	enc := cameraEncoding
-	if screenShare {
-		enc = screenEncoding
+// StartTrack uses Track Egress: the VP8 stream is written to a WebM file untouched. No decoding, no encoding, so a
+// recording costs almost no CPU (participant / room egress transcode every stream, which a small server cannot do for
+// a whole exam room). Browsers play WebM/VP8 directly; re-encoding to H.264, if wanted, happens after the exam.
+func (e *HTTPEgress) StartTrack(ctx context.Context, room, identity string, screenShare bool, filepath string) (string, error) {
+	sid, err := e.videoTrackSID(ctx, room, identity, screenShare)
+	if err != nil {
+		return "", err
 	}
 	req := map[string]any{
-		"advanced":     enc.advanced(),
-		"room_name":    room,
-		"identity":     identity,
-		"screen_share": screenShare,
-		"file_outputs": []map[string]any{{
-			"file_type": "MP4",
-			"filepath":  filepath,
+		"room_name": room,
+		"track_id":  sid,
+		"file": map[string]any{
+			"filepath": filepath,
 			"s3": map[string]any{
 				"access_key": e.S3.AccessKey, "secret": e.S3.Secret, "region": e.S3.Region,
 				"endpoint": e.S3.Endpoint, "bucket": e.S3.Bucket, "force_path_style": e.S3.ForcePathStyle,
 			},
-		}},
+		},
 	}
 	var info EgressInfo
-	if err := e.call(ctx, "StartParticipantEgress", req, &info); err != nil {
+	if err := e.call(ctx, "StartTrackEgress", req, &info); err != nil {
 		return "", err
 	}
 	if info.EgressID == "" {

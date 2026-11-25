@@ -181,6 +181,11 @@ services:
           address: redis:6379
         health_port: 8080
         log_level: info
+        # Recordings use Track Egress (the encoded stream is copied, not transcoded), which costs almost no CPU.
+        # Egress admits jobs by "cost" against the machine's cores; the default cost per track job would cap a
+        # 4-core box at a handful of streams, so declare the real (tiny) cost.
+        cpu_cost:
+          track_cpu_cost: 0.1
     depends_on:
       - livekit
       - s3

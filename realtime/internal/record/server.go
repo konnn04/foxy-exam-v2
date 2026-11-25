@@ -361,8 +361,8 @@ func (s *Server) startRecordingIn(ctx context.Context, examID, attemptID, orgID 
 	}
 	now := s.cfg.Now()
 	id := newID()
-	key := fmt.Sprintf("recordings/%d/%d/%s-%d.mp4", examID, attemptID, kind, now.Unix())
-	rec := Recording{ID: id, ExamID: examID, AttemptID: attemptID, OrgID: orgID, Kind: kind, ObjectKey: key, Mime: "video/mp4", StartedAt: now.UnixMilli(), CreatedAt: now.UnixMilli()}
+	key := fmt.Sprintf("recordings/%d/%d/%s-%d.webm", examID, attemptID, kind, now.Unix()) // track egress: VP8 copied into WebM
+	rec := Recording{ID: id, ExamID: examID, AttemptID: attemptID, OrgID: orgID, Kind: kind, ObjectKey: key, Mime: "video/webm", StartedAt: now.UnixMilli(), CreatedAt: now.UnixMilli()}
 
 	if room == "" {
 		room = fmt.Sprintf("exam-%d", examID)
@@ -370,7 +370,7 @@ func (s *Server) startRecordingIn(ctx context.Context, examID, attemptID, orgID 
 	if identity == "" {
 		identity = fmt.Sprintf("attempt-%d", attemptID)
 	}
-	egressID, err := s.eg.StartParticipant(ctx, room, identity, kind == KindScreen, key)
+	egressID, err := s.eg.StartTrack(ctx, room, identity, kind == KindScreen, key)
 	if err != nil {
 		rec.Status, rec.Error = StatusFailed, err.Error()
 		_ = s.db.Insert(ctx, rec) // keep a visible trace so the proctor knows the video is missing
@@ -394,10 +394,7 @@ func (s *Server) finishEgress(ctx context.Context, info EgressInfo) {
 	end := s.cfg.Now().UnixMilli()
 	switch info.Status {
 	case "EGRESS_COMPLETE":
-		var size, dur int64
-		if len(info.FileResults) > 0 {
-			size, dur = int64(info.FileResults[0].Size), int64(info.FileResults[0].Duration)/1_000_000
-		}
+		size, dur := info.Result()
 		_ = s.db.Finish(ctx, rec.ID, StatusReady, "", "", size, dur, end)
 		s.m.Inc("record_completed_total")
 	case "EGRESS_FAILED", "EGRESS_ABORTED", "EGRESS_LIMIT_REACHED":
