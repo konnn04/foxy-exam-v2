@@ -23,8 +23,6 @@ final class LoginGuard
     public const MAX_ATTEMPTS = 10;
     /** per account, whatever the caller: only a distributed attack reaches it (it would lock the account; same 401) */
     public const MAX_ACCOUNT_ATTEMPTS = 100;
-    /** attempts every caller keeps even when the account-wide cap is reached */
-    public const FREE_ATTEMPTS = 3;
     public const WINDOW_SECONDS = 300;
     public const ACCOUNT_WINDOW_SECONDS = 900;
 
@@ -49,9 +47,15 @@ final class LoginGuard
         }
         $perAccount = RateLimiter::hit('login-attempts:' . $user->id, self::ACCOUNT_WINDOW_SECONDS);
 
-        // the account-wide cap only stops callers that are themselves guessing: the candidate signing in from the
-        // exam room with its first attempts still gets through while someone else hammers the account
-        return $perAccount <= self::MAX_ACCOUNT_ATTEMPTS || $perCaller <= self::FREE_ATTEMPTS;
+        // a hard cap: switching addresses must never buy more guesses. A candidate caught by a distributed attack is
+        // unlocked by an administrator (php artisan foxy:unlock-login), or waits ACCOUNT_WINDOW_SECONDS.
+        return $perAccount <= self::MAX_ACCOUNT_ATTEMPTS;
+    }
+
+    /** Administrator action: lift the account-wide lock (per-caller counts expire on their own within minutes). */
+    public static function unlock(User $user): void
+    {
+        RateLimiter::clear('login-attempts:' . $user->id);
     }
 
     /** A correct password clears this caller's count; the account-wide count only decays (it is about other callers). */
