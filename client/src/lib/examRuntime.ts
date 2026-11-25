@@ -157,18 +157,32 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       vision.current = null;
       // the config may still be the previous render's: read the latest one. A dev camera bypass only means "not required" - a camera that is open is still analysed
       if (!cfgRef.current?.ai_face_check) return;
+      let gotSample = false;
       const m = new FaceMonitor(
         (s) => {
+          gotSample = true;
           setSample(s);
           client.setState({ attention: s.attention, faces: s.faces });
         },
         (e) => guard.report(e.kind, e.severity, e.message, { seconds: e.seconds }),
       );
       try {
+        // detection that keeps failing, or never produces a single reading, must say so instead of showing "starting…" forever
+        const off = (why: string) => {
+          if (vision.current !== m) return;
+          m.stop();
+          vision.current = null;
+          setSample(null);
+          setVisionError(why);
+        };
+        m.onFailure = (e) => off(e instanceof Error ? e.message : "detection failed");
         const delegate = await m.start(stream);
         console.info(`[vision] MediaPipe chạy bằng ${delegate}`);
         vision.current = m;
         setVisionError(null);
+        window.setTimeout(() => {
+          if (!gotSample) off("no reading after 15s");
+        }, 15_000);
       } catch (err) {
         // the exam goes on; the proctor still sees the camera, only the on-device analysis is off
         m.stop();

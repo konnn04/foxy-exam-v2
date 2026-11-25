@@ -65,8 +65,9 @@ export function ChatPanel({ incoming }: { incoming: { id: string; message: strin
   };
 
   if (!attemptId) return null;
+  // fixed above the status bar, in the side-panel corner: never on top of the question footer buttons
   return (
-    <div className="absolute bottom-3 right-3 z-20 flex flex-col items-end gap-2">
+    <div className="fixed bottom-9 right-3 z-40 flex flex-col items-end gap-2">
       {open && (
         <div className="flex w-80 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
           <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-xs font-semibold">
