@@ -23,6 +23,8 @@ final class LoginGuard
     public const MAX_ATTEMPTS = 10;
     /** per account, whatever the caller: only a distributed attack reaches it (it would lock the account; same 401) */
     public const MAX_ACCOUNT_ATTEMPTS = 100;
+    /** attempts every caller keeps even when the account-wide cap is reached */
+    public const FREE_ATTEMPTS = 3;
     public const WINDOW_SECONDS = 300;
     public const ACCOUNT_WINDOW_SECONDS = 900;
 
@@ -42,9 +44,14 @@ final class LoginGuard
     public static function attempt(User $user, string $ip): bool
     {
         $perCaller = RateLimiter::hit('login-attempts:' . $user->id . '|' . self::caller($ip), self::WINDOW_SECONDS);
+        if ($perCaller > self::MAX_ATTEMPTS) {
+            return false; // a caller over its own limit no longer feeds the account-wide count (one address cannot lock it)
+        }
         $perAccount = RateLimiter::hit('login-attempts:' . $user->id, self::ACCOUNT_WINDOW_SECONDS);
 
-        return $perCaller <= self::MAX_ATTEMPTS && $perAccount <= self::MAX_ACCOUNT_ATTEMPTS;
+        // the account-wide cap only stops callers that are themselves guessing: the candidate signing in from the
+        // exam room with its first attempts still gets through while someone else hammers the account
+        return $perAccount <= self::MAX_ACCOUNT_ATTEMPTS || $perCaller <= self::FREE_ATTEMPTS;
     }
 
     /** A correct password clears this caller's count; the account-wide count only decays (it is about other callers). */
