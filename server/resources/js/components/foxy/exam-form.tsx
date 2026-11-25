@@ -199,6 +199,7 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     extra_camera_objects: pick('extra_camera_objects', false),
     extra_camera_spot_check: pick('extra_camera_spot_check', false),
     violation_clips: pick('violation_clips', false),
+    seal_after_exam: pick('seal_after_exam', false),
     prohibited_labels: pick<string[]>('prohibited_labels', PROHIBITED_DEFAULT),
     banned_apps: pick<string[]>('banned_apps', DEFAULT_BANNED_APPS_LIST),
     lock_device: pick('lock_device', true),
@@ -645,6 +646,13 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                 checked: form.violation_clips,
                 disabled: !form.ai_face_check && !form.require_screen,
                 onChange: (v: boolean) => state.set('violation_clips', v),
+              },
+              {
+                key: 'seal',
+                label: 'Mã hóa video và minh chứng sau khi thi',
+                desc: 'Khi thí sinh nộp bài, video ghi hình và ảnh/clip minh chứng được mã hóa trên máy chủ. Giám thị vẫn xem lại bình thường trong trang quản trị',
+                checked: form.seal_after_exam,
+                onChange: (v: boolean) => state.set('seal_after_exam', v),
               },
             ]}
           />

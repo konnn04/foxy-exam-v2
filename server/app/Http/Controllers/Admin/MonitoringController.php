@@ -213,8 +213,12 @@ class MonitoringController extends Controller
             'status' => 'FORCE_ENDED',
             'submitted_at' => now(),
         ]);
+        $seal = !empty(($exam->monitoring_config ?? [])['seal_after_exam']); // mass update: no model event fires
         foreach ($running as $a) {
             app(Realtime::class)->lifecycle($a, 'force_ended');
+            if ($seal) {
+                app(Realtime::class)->sealAttempt($a);
+            }
         }
         $exam->update(['status' => 'ENDED', 'end_time' => $exam->end_time && $exam->end_time->isPast() ? $exam->end_time : now()]);
 

@@ -43,6 +43,20 @@ class ExamAttempt extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // every way an attempt ends (submit, time out, absent, force end) passes through a status change: when the exam
+        // asks for it, the attempt's recordings and evidence get encrypted from then on
+        static::updated(function (ExamAttempt $a) {
+            if (!$a->wasChanged('status') || $a->getOriginal('status') !== 'IN_PROGRESS' || $a->status === 'IN_PROGRESS') {
+                return;
+            }
+            if (!empty(($a->exam?->monitoring_config ?? [])['seal_after_exam'])) {
+                app(\App\Services\Realtime::class)->sealAttempt($a);
+            }
+        });
+    }
+
     /** When the candidate's time runs out. `end_time` of the exam only closes the door for NEW attempts. */
     public function deadline(): ?\Illuminate\Support\Carbon
     {

@@ -177,6 +177,31 @@ class Realtime
         }
     }
 
+    /**
+     * Ask the record service to encrypt this attempt's recordings and evidence (exam option "seal_after_exam").
+     * Files still being finalized are sealed when they become ready. Never throws.
+     */
+    public function sealAttempt(ExamAttempt $attempt): bool
+    {
+        if (!$this->enabled() || !config('services.realtime.record_internal_url')) {
+            return false;
+        }
+        try {
+            $body = json_encode(['exam_id' => $attempt->exam_id]);
+            [$ts, $sig] = $this->sign($body);
+
+            return Http::withHeaders(['X-Foxy-Timestamp' => $ts, 'X-Foxy-Signature' => $sig])
+                ->withBody($body, 'application/json')
+                ->connectTimeout(1)->timeout(4)
+                ->post(rtrim((string) config('services.realtime.record_internal_url'), '/') . "/internal/v1/attempts/{$attempt->id}/seal")
+                ->successful();
+        } catch (\Throwable $e) {
+            Log::warning('seal request failed', ['attempt' => $attempt->id, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
     /** LiveKit token for a proctor: hidden, subscribe-only, limited to the exam's room. */
     public function proctorLiveKitToken(User $user, \App\Models\Exam $exam, int $ttlSeconds = 3600): ?array
     {
