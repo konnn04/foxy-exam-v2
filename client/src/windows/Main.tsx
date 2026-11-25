@@ -444,6 +444,19 @@ function MenuButton({
 }
 
 function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
+  const { t, lang } = useI18n();
+  const locale = lang === "vi" ? "vi-VN" : "en-US";
+  // The server sends a key + params; the sentence is built here in the chosen language. Old rows and text typed
+  // by staff have no translation and show as stored.
+  const part = (n: StudentNotification, field: "title" | "body"): string | null => {
+    if (n.key) {
+      const id = `notif.${n.key}.${field}`;
+      const text = t(id, n.params as Record<string, string | number> | undefined);
+      if (text !== id) return text;
+    }
+    return n[field];
+  };
+  const titleOf = (n: StudentNotification) => part(n, "title") ?? "";
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StudentNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -508,7 +521,7 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
           setOpen((v) => !v);
           if (!open) void refresh();
         }}
-        title="Thông báo & Biên bản ca thi"
+        title={t("main.notif.tooltip")}
         className="relative flex h-7 w-7 items-center justify-center rounded-lg border border-line text-muted hover:bg-surface-3 hover:text-fg"
       >
         <Bell size={14} />
@@ -522,7 +535,7 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
       {open && (
         <div className="absolute right-0 top-full z-40 mt-1.5 w-[340px] overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
           <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
-            <span className="text-xs font-semibold text-fg">Thông báo ({unread} chưa đọc)</span>
+            <span className="text-xs font-semibold text-fg">{t("main.notif.title", { n: unread })}</span>
             {unread > 0 && (
               <button
                 type="button"
@@ -530,13 +543,13 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
                 className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
               >
                 <CheckCheck size={12} />
-                Đánh dấu đã đọc
+                {t("main.notif.markAllRead")}
               </button>
             )}
           </div>
           <div className="max-h-[320px] divide-y divide-line overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-4 py-6 text-center text-xs text-muted">Chưa có thông báo nào.</p>
+              <p className="px-4 py-6 text-center text-xs text-muted">{t("main.notif.empty")}</p>
             ) : (
               items.map((n) => (
                 <button
@@ -550,14 +563,14 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className={cx("truncate text-xs", !n.read ? "font-semibold text-fg" : "font-medium text-muted")}>
-                      {n.title}
+                      {titleOf(n)}
                     </span>
                     {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
                   </div>
-                  {n.body && <p className="line-clamp-2 whitespace-pre-line text-[11px] text-subtle">{n.body}</p>}
+                  {part(n, "body") && <p className="line-clamp-2 whitespace-pre-line text-[11px] text-subtle">{part(n, "body")}</p>}
                   {n.at && (
                     <span className="font-mono text-[10px] text-subtle">
-                      {new Date(n.at).toLocaleString("vi-VN")}
+                      {new Date(n.at).toLocaleString(locale)}
                     </span>
                   )}
                 </button>
@@ -573,18 +586,18 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="inline-block rounded bg-accent-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-fg">
-                  {selected.type === "violation_report" ? "Biên bản giám sát ca thi" : "Thông báo hệ thống"}
+                  {selected.type === "violation_report" ? t("main.notif.typeReport") : t("main.notif.typeSystem")}
                 </span>
-                <h3 className="mt-1.5 text-sm font-semibold text-fg">{selected.title}</h3>
+                <h3 className="mt-1.5 text-sm font-semibold text-fg">{titleOf(selected)}</h3>
                 {selected.at && (
                   <p className="mt-0.5 font-mono text-[11px] text-subtle">
-                    {new Date(selected.at).toLocaleString("vi-VN")}
+                    {new Date(selected.at).toLocaleString(locale)}
                   </p>
                 )}
               </div>
             </div>
             <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-line bg-surface-2 p-3 text-xs leading-relaxed whitespace-pre-line text-fg">
-              {selected.body || "Không có nội dung chi tiết."}
+              {part(selected, "body") || t("main.notif.noBody")}
             </div>
             <div className="mt-4 flex justify-end gap-2">
               {selected.type === "violation_report" && (
@@ -596,11 +609,11 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
                     onNavigate("history");
                   }}
                 >
-                  Mở lịch sử thi
+                  {t("main.notif.openHistory")}
                 </Button>
               )}
               <Button size="sm" variant="primary" onClick={() => setSelected(null)}>
-                Đóng
+                {t("common.close")}
               </Button>
             </div>
           </div>
@@ -611,12 +624,13 @@ function NotificationBell({ onNavigate }: { onNavigate: (p: Page) => void }) {
 }
 
 function ThemeToggle() {
+  const { t } = useI18n();
   const { resolved, toggle } = useTheme();
   return (
     <button
       type="button"
       onClick={toggle}
-      title={resolved === "dark" ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+      title={resolved === "dark" ? t("main.theme.toLight") : t("main.theme.toDark")}
       className="flex h-7 w-7 items-center justify-center rounded-lg border border-line text-muted hover:bg-surface-3 hover:text-fg"
     >
       {resolved === "dark" ? <Sun size={14} /> : <Moon size={14} />}

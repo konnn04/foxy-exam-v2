@@ -7,7 +7,6 @@
   "main.nav.settings": "Cài đặt",
   "main.nav.logout": "Đăng xuất",
   "main.nav.collapseTip": "Thu gọn / mở rộng menu",
-
   "main.dashboard.greeting": "Xin chào, {name}",
   "main.dashboard.greetingSimple": "Xin chào",
   "main.dashboard.openExamsHint": "Bạn có {count} bài thi đang mở. Kiểm tra thiết bị trước khi vào phòng thi.",
@@ -38,7 +37,6 @@
   "main.dashboard.scoreUnpublished": "điểm chưa công bố",
   "main.dashboard.review": "Xem lại",
   "main.dashboard.multiDisplayWarning": "Phát hiện {count} màn hình. Hãy ngắt màn hình phụ trước khi vào phòng thi.",
-
   "main.readiness.title": "Sẵn sàng thi",
   "main.readiness.checking": "Đang kiểm tra…",
   "main.readiness.cameras": "{count} camera",
@@ -46,7 +44,6 @@
   "main.readiness.mics": "{count} micro",
   "main.readiness.noMic": "Không có micro",
   "main.readiness.displays": "{count} màn hình",
-
   "main.settings.title": "Cài đặt ứng dụng",
   "main.settings.themeTitle": "Giao diện",
   "main.settings.themeLight": "Sáng",
@@ -79,7 +76,6 @@
   "main.settings.processCount": "Đang chạy {count} tiến trình",
   "main.settings.screenCapturePerm": "quyền quay màn hình: {perm}",
   "main.settings.integrated": "Tích hợp",
-
   "main.courses.title": "Khoá học của tôi",
   "main.courses.desc": "Các học phần bạn đang tham gia thi và khảo thí.",
   "main.courses.back": "Khoá học",
@@ -94,7 +90,6 @@
   "main.courses.examsCount": "{count} bài thi",
   "main.courses.noNewExams": "Chưa có bài thi mới",
   "main.courses.nowOpen": "đang mở",
-
   "main.exams.title": "Kì thi",
   "main.exams.desc": "Danh sách các ca thi và trạng thái phòng thi.",
   "main.exams.summary": "{upcoming} bài sắp thi · {inProgress} đang diễn ra · {done} đã hoàn thành",
@@ -136,16 +131,13 @@
   "main.exams.recheckBtn": "Chạy kiểm tra lại",
   "main.exams.checking": "Đang kiểm tra…",
   "main.exams.notChecked": "Chưa kiểm tra",
-
   "main.kind.programming": "Lập trình",
   "main.kind.quiz": "Trắc nghiệm",
   "main.kind.hybrid": "Hỗn hợp",
-
   "main.monitor.face": "Xác thực khuôn mặt (AI)",
   "main.monitor.tabSwitch": "Chặn chuyển cửa sổ",
   "main.monitor.paste": "Chặn dán từ ngoài",
   "main.monitor.keystroke": "Ghi nhận nhịp gõ phím",
-
   "main.history.title": "Lịch sử làm bài",
   "main.history.desc": "Xem lại điểm số, biên bản vi phạm và kết quả các bài thi đã nộp.",
   "main.history.tableExam": "Kì thi",
@@ -156,7 +148,6 @@
   "main.history.tableScore": "Điểm",
   "main.history.empty": "Bạn chưa tham gia kỳ thi nào.",
   "main.history.countParticipated": "{count} kỳ thi đã tham gia",
-
   "main.profile.title": "Hồ sơ thí sinh",
   "main.profile.desc": "Thông tin tài khoản và dữ liệu sinh trắc học đã đăng ký.",
   "main.profile.statusActive": "Đang hoạt động",
@@ -172,5 +163,22 @@
   "main.profile.emailOrg": "Email tổ chức",
   "main.profile.username": "Tên đăng nhập / MSSV",
   "main.profile.dob": "Ngày sinh",
-  "main.profile.address": "Địa chỉ"
+  "main.profile.address": "Địa chỉ",
+  "main.notif.tooltip": "Thông báo & Biên bản ca thi",
+  "main.notif.title": "Thông báo ({n} chưa đọc)",
+  "main.notif.markAllRead": "Đánh dấu đã đọc",
+  "main.notif.empty": "Chưa có thông báo nào.",
+  "main.notif.typeReport": "Biên bản giám sát ca thi",
+  "main.notif.typeSystem": "Thông báo hệ thống",
+  "main.notif.noBody": "Không có nội dung chi tiết.",
+  "main.notif.openHistory": "Mở lịch sử thi",
+  "main.theme.toLight": "Chuyển sang giao diện sáng",
+  "main.theme.toDark": "Chuyển sang giao diện tối",
+  "notif.graded.title": "Bài thi đã được chấm",
+  "notif.graded.body": "{exam}",
+  "notif.face_decision.approved.title": "Yêu cầu đổi khuôn mặt đã được duyệt",
+  "notif.face_decision.approved.body": "Bạn có thể đăng ký lại khuôn mặt trong phòng chờ.",
+  "notif.face_decision.rejected.title": "Yêu cầu đổi khuôn mặt bị từ chối",
+  "notif.violation_report.published.title": "Biên bản xử lý vi phạm đã được ban hành: {exam}",
+  "notif.violation_report.summary.title": "Biên bản giám sát ca thi: {exam}"
 }

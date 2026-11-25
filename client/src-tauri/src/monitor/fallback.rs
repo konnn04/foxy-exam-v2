@@ -1,4 +1,4 @@
-//! macOS / Linux: chưa có triển khai native — trả rỗng để app vẫn chạy được.
+//! macOS (và HĐH khác): chưa có triển khai native — trả rỗng để app vẫn chạy được.
 //! Riêng quyền quay màn hình trên macOS có kiểm tra thật.
 
 use tauri::AppHandle;

@@ -7,7 +7,6 @@
   "main.nav.settings": "Settings",
   "main.nav.logout": "Sign Out",
   "main.nav.collapseTip": "Collapse / expand menu",
-
   "main.dashboard.greeting": "Welcome, {name}",
   "main.dashboard.greetingSimple": "Welcome",
   "main.dashboard.openExamsHint": "You have {count} active exam(s). Please verify your devices before entering.",
@@ -38,7 +37,6 @@
   "main.dashboard.scoreUnpublished": "Score hidden",
   "main.dashboard.review": "Review",
   "main.dashboard.multiDisplayWarning": "Detected {count} displays. Please disconnect external monitors before entering the exam room.",
-
   "main.readiness.title": "Exam Readiness",
   "main.readiness.checking": "Checking…",
   "main.readiness.cameras": "{count} camera(s)",
@@ -46,7 +44,6 @@
   "main.readiness.mics": "{count} mic(s)",
   "main.readiness.noMic": "No microphone detected",
   "main.readiness.displays": "{count} display(s)",
-
   "main.settings.title": "Application Settings",
   "main.settings.themeTitle": "Appearance & Theme",
   "main.settings.themeLight": "Light",
@@ -79,7 +76,6 @@
   "main.settings.processCount": "Running {count} processes",
   "main.settings.screenCapturePerm": "Screen capture: {perm}",
   "main.settings.integrated": "Integrated",
-
   "main.courses.title": "My Courses",
   "main.courses.desc": "Academic courses you are currently enrolled in.",
   "main.courses.back": "Courses",
@@ -94,7 +90,6 @@
   "main.courses.examsCount": "{count} exam(s)",
   "main.courses.noNewExams": "No new exams",
   "main.courses.nowOpen": "open now",
-
   "main.exams.title": "Exams",
   "main.exams.desc": "Upcoming, open, and archived proctored exam sessions.",
   "main.exams.summary": "{upcoming} upcoming · {inProgress} in progress · {done} completed",
@@ -136,16 +131,13 @@
   "main.exams.recheckBtn": "Run device check again",
   "main.exams.checking": "Checking…",
   "main.exams.notChecked": "Not checked",
-
   "main.kind.programming": "Programming",
   "main.kind.quiz": "Quiz",
   "main.kind.hybrid": "Hybrid",
-
   "main.monitor.face": "AI Facial Verification",
   "main.monitor.tabSwitch": "Prevent Tab Switching",
   "main.monitor.paste": "Prevent Clipboard Pasting",
   "main.monitor.keystroke": "Keystroke Dynamics Tracking",
-
   "main.history.title": "Exam History",
   "main.history.desc": "View your past scores, proctoring audit trails, and feedback.",
   "main.history.tableExam": "Exam",
@@ -156,7 +148,6 @@
   "main.history.tableScore": "Score",
   "main.history.empty": "You haven't participated in any exams yet.",
   "main.history.countParticipated": "{count} participated exam(s)",
-
   "main.profile.title": "Candidate Profile",
   "main.profile.desc": "Student account details and registered biometric reference photo.",
   "main.profile.statusActive": "Active",
@@ -172,5 +163,22 @@
   "main.profile.emailOrg": "Institution Email",
   "main.profile.username": "Username / Student ID",
   "main.profile.dob": "Date of Birth",
-  "main.profile.address": "Address"
+  "main.profile.address": "Address",
+  "main.notif.tooltip": "Notifications & exam reports",
+  "main.notif.title": "Notifications ({n} unread)",
+  "main.notif.markAllRead": "Mark all as read",
+  "main.notif.empty": "No notifications yet.",
+  "main.notif.typeReport": "Exam proctoring report",
+  "main.notif.typeSystem": "System notification",
+  "main.notif.noBody": "No further details.",
+  "main.notif.openHistory": "Open exam history",
+  "main.theme.toLight": "Switch to light theme",
+  "main.theme.toDark": "Switch to dark theme",
+  "notif.graded.title": "Your exam has been graded",
+  "notif.graded.body": "{exam}",
+  "notif.face_decision.approved.title": "Your face change request was approved",
+  "notif.face_decision.approved.body": "You can register your face again in the waiting room.",
+  "notif.face_decision.rejected.title": "Your face change request was declined",
+  "notif.violation_report.published.title": "Violation report issued: {exam}",
+  "notif.violation_report.summary.title": "Exam proctoring report: {exam}"
 }

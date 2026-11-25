@@ -25,9 +25,14 @@ mod win;
 #[cfg(windows)]
 use win as platform;
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+use linux as platform;
+
+#[cfg(not(any(windows, target_os = "linux")))]
 mod fallback;
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 use fallback as platform;
 
 mod process_watch;

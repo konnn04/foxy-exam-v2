@@ -794,6 +794,9 @@ export function getRealtimeSession(attemptId?: number): Promise<ApiEnvelope<Real
 export interface StudentNotification {
   id: number;
   type: string;
+  /** i18n key chosen by the server; with `params` it lets the app write the text in the current language */
+  key?: string | null;
+  params?: Record<string, string | number>;
   title: string;
   body: string | null;
   url: string | null;
