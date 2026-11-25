@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { BellRing, Camera, ChevronDown, Cpu, Download, FileText, Flag, MessageSquare, PauseCircle, PlayCircle, Power, RefreshCw, Search, Send, ShieldCheck, Skull } from 'lucide-react';
+import { BellRing, Camera, ChevronDown, Wrench, Cpu, Download, FileText, Flag, MessageSquare, PauseCircle, PlayCircle, Power, RefreshCw, Search, Send, ShieldCheck, Skull } from 'lucide-react';
 import { useDialog } from './dialogs';
 import { Field, FxButton, FxInput, FxSelect, FxTextarea, Modal, Panel, Pill } from './ui';
 import { AttemptChat } from './attempt-chat';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const SYSTEM_PROCESS_NAMES = new Set([
   'system',
@@ -89,6 +90,7 @@ export function AttemptTools({
   deviceInfo?: Record<string, unknown> | null;
 }) {
   const dialog = useDialog();
+  const [chatOpen, setChatOpen] = useState(running);
   const [open, setOpen] = useState(false);
   const [severity, setSeverity] = useState('MEDIUM');
   const [message, setMessage] = useState('');
@@ -228,15 +230,15 @@ export function AttemptTools({
   };
 
   return (
-    <Panel className="flex flex-col gap-4 p-4">
-      {/* 1. Act on the candidate now (only while the exam is running) */}
+    <Panel className="flex flex-col gap-3 p-4">
+      {/* one row: live actions stay visible while the exam runs; everything else is in two menus */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-2 font-semibold">
           <MessageSquare className="size-4" />
-          Điều khiển giám thị
+          Giám thị
         </span>
         <div className="flex-1" />
-        {running ? (
+        {running && (
           <>
             <FxButton size="sm" icon={BellRing} onClick={() => setWarnOpen(true)}>
               Nhắc nhở
@@ -250,48 +252,51 @@ export function AttemptTools({
               {isPausedByProctor ? 'Cho tiếp tục' : 'Tạm dừng'}
             </FxButton>
             <FxButton size="sm" variant="danger" icon={Power} onClick={handleForceEnd}>
-              Đình chỉ thi
+              Đình chỉ
             </FxButton>
           </>
-        ) : (
-          <span className="text-xs text-muted-foreground">Phiên thi đã kết thúc: không còn thao tác trực tiếp.</span>
         )}
-      </div>
-
-      {/* 2. Review tools, reports and downloads */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <FxButton
-          size="sm"
-          icon={Cpu}
-          onClick={() => {
-            setProcOpen(true);
-            if (running && processes.length === 0) requestProcessRefresh();
-          }}
-        >
-          Tiến trình máy ({processes.length})
-        </FxButton>
-        <FxButton size="sm" icon={Flag} onClick={openManualModal}>
-          Ghi vi phạm
-        </FxButton>
-        <FxButton size="sm" icon={ShieldCheck} onClick={verify}>
-          Kiểm tra toàn vẹn
-        </FxButton>
-        <div className="flex-1" />
-        <a href={`/admin/attempts/${attemptId}/report`} target="_blank" rel="noreferrer">
-          <FxButton size="sm" icon={FileText}>
-            Xem biên bản
-          </FxButton>
-        </a>
-        <FxButton size="sm" icon={Send} onClick={() => setReportOpen(true)}>
-          Gửi cho thí sinh
-        </FxButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <FxButton size="sm" icon={Download}>
-              Tải dữ liệu <ChevronDown className="ml-0.5 size-3.5" />
+            <FxButton size="sm" icon={Wrench}>
+              Công cụ <ChevronDown className="ml-0.5 size-3.5" />
             </FxButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-52">
+          <DropdownMenuContent align="end" className="min-w-56">
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => {
+                setProcOpen(true);
+                if (running && processes.length === 0) requestProcessRefresh();
+              }}
+            >
+              <Cpu className="size-4" /> Tiến trình trên máy ({processes.length})
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer gap-2" onClick={openManualModal}>
+              <Flag className="size-4" /> Ghi vi phạm thủ công
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer gap-2" onClick={verify}>
+              <ShieldCheck className="size-4" /> Kiểm tra toàn vẹn nhật ký
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <FxButton size="sm" icon={FileText}>
+              Biên bản &amp; dữ liệu <ChevronDown className="ml-0.5 size-3.5" />
+            </FxButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-56">
+            <DropdownMenuItem asChild>
+              <a href={`/admin/attempts/${attemptId}/report`} target="_blank" rel="noreferrer" className="flex cursor-pointer items-center gap-2">
+                <FileText className="size-4" /> Xem biên bản
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setReportOpen(true)}>
+              <Send className="size-4" /> Gửi biên bản cho thí sinh
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Tải về</DropdownMenuLabel>
             {[
               ['violations.csv', 'Danh sách vi phạm (CSV)'],
               ['oplog.csv', 'Quá trình gõ code (CSV)'],
@@ -299,8 +304,8 @@ export function AttemptTools({
               ['chat.csv', 'Tin nhắn trao đổi (CSV)'],
             ].map(([file, label]) => (
               <DropdownMenuItem key={file} asChild>
-                <a href={`/admin/attempts/${attemptId}/export/${file}`} className="cursor-pointer">
-                  {label}
+                <a href={`/admin/attempts/${attemptId}/export/${file}`} className="flex cursor-pointer items-center gap-2">
+                  <Download className="size-4" /> {label}
                 </a>
               </DropdownMenuItem>
             ))}
@@ -308,7 +313,14 @@ export function AttemptTools({
         </DropdownMenu>
       </div>
 
-      <AttemptChat attemptId={attemptId} signal={chatSeq} canSend={running} />
+      {/* the conversation: open while the exam runs, folded away afterwards (it stays mounted, so messages keep loading) */}
+      <button type="button" onClick={() => setChatOpen((o) => !o)} aria-expanded={chatOpen} className="flex cursor-pointer items-center gap-1.5 border-t border-border pt-3 text-left text-[13px] font-medium">
+        Trao đổi với thí sinh
+        <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', chatOpen && 'rotate-180')} />
+      </button>
+      <div className={chatOpen ? '' : 'hidden'}>
+        <AttemptChat attemptId={attemptId} signal={chatSeq} canSend={running} />
+      </div>
 
       <Modal
         open={open}

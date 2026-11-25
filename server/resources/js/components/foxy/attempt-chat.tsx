@@ -88,7 +88,7 @@ export function AttemptChat({ attemptId, signal, canSend = true, className }: { 
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div ref={box} className="flex h-64 flex-col gap-1.5 overflow-y-auto rounded-lg border border-border bg-surface/40 p-2.5">
+      <div ref={box} className="flex h-48 flex-col gap-1.5 overflow-y-auto rounded-lg border border-border bg-surface/40 p-2.5">
         {messages.length === 0 && <div className="m-auto text-xs text-muted-foreground">Chưa có tin nhắn. Mọi tin nhắn đều được lưu lại làm bằng chứng.</div>}
         {messages.map((m) => (
           <div key={m.id} className={cn('max-w-[85%] rounded-lg px-2.5 py-1.5 text-[13px]', m.role === 'PROCTOR' ? 'self-end bg-primary/15' : 'self-start bg-card ring-1 ring-border')}>

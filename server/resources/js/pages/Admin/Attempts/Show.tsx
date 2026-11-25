@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Ban, BarChart3, Check, CircleCheck, Code, Copy, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Trash2, Undo2, UserCheck, X } from 'lucide-react';
+import { Ban, BarChart3, Check, ChevronDown, CircleCheck, Code, Copy, EllipsisVertical, ExternalLink, FileCheck2, Globe, Link2Off, RotateCcw, Share2, ShieldAlert, ShieldCheck, Trash2, Undo2, UserCheck, X } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
-import { EmptyState, FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
+import { FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
 import {
   ATTEMPT_STATUS,
   clockOffset,
@@ -22,6 +22,7 @@ import { AttemptTools } from '@/components/foxy/attempt-tools';
 import { useLiveRoom } from '@/hooks/use-live-room';
 import { useMore } from '@/hooks/use-more';
 import { useDialog } from '@/components/foxy/dialogs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 export interface AttemptPayload {
@@ -114,6 +115,7 @@ function groupViolations(list: ViolationRow[]): Group[] {
 }
 
 function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; shared: NonNullable<AttemptPayload['shared_device_with']> }) {
+  const [open, setOpen] = useState(false);
   if (!info) return null;
   const rows: [string, unknown][] = [
     ['Tên máy', info.hostname],
@@ -126,17 +128,25 @@ function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; s
   ];
   const shown = rows.filter(([, v]) => v);
   if (shown.length === 0 && shared.length === 0) return null;
+  const summary = [info.hostname, info.os, info.screen].filter(Boolean).map(String).join(' · ');
   return (
     <Panel className="flex flex-col gap-3 p-4">
-      <span className="font-semibold">Thiết bị thí sinh</span>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
-        {shown.map(([k, v]) => (
-          <div key={k} className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">{k}</span>
-            <span className="break-words font-mono text-[13px]">{String(v)}</span>
-          </div>
-        ))}
-      </div>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full cursor-pointer items-center gap-2 text-left">
+        <span className="font-semibold">Thiết bị thí sinh</span>
+        {!open && <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{summary}</span>}
+        <span className="flex-1" />
+        <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+          {shown.map(([k, v]) => (
+            <div key={k} className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{k}</span>
+              <span className="break-words font-mono text-[13px]">{String(v)}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {shared.length > 0 && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-2.5 text-[13px]">
           Cùng một máy với {shared.map((s) => `${s.name ?? s.username} (${s.username})`).join(', ')} trong kỳ thi này.
@@ -394,30 +404,38 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
         }
         actions={
           <>
-            <FxButton icon={UserCheck} onClick={() => setProfileOpen(true)}>
-              Hồ sơ thí sinh
-            </FxButton>
-            <FxButton icon={BarChart3} onClick={() => setMetricsOpen(true)}>
-              Thống kê TP/FP
-            </FxButton>
-            <FxButton variant={voided ? undefined : 'danger'} icon={voided ? Undo2 : Ban} onClick={toggleVoid}>
-              {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
-            </FxButton>
-            <FxButton
-              variant="danger"
-              icon={Trash2}
-              onClick={async () => {
-                const ok = await dialog.confirm({
-                  title: 'Xóa vĩnh viễn phiên thi này?',
-                  text: 'Toàn bộ lịch sử vi phạm, nhật ký gõ phím và bài nộp của phiên thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
-                  tone: 'danger',
-                  confirmLabel: 'Xóa vĩnh viễn',
-                });
-                if (ok) router.post(`/admin/attempts/${attempt.id}/delete`);
-              }}
-            >
-              Xóa phiên
-            </FxButton>
+            {/* the rare / destructive actions live in one menu; only the next step (grading, submissions) stays visible */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <FxButton icon={EllipsisVertical}>Thao tác</FxButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-52">
+                <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setProfileOpen(true)}>
+                  <UserCheck className="size-4" /> Hồ sơ thí sinh
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setMetricsOpen(true)}>
+                  <BarChart3 className="size-4" /> Thống kê độ chính xác (TP/FP)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer gap-2" onClick={toggleVoid}>
+                  {voided ? <Undo2 className="size-4" /> : <Ban className="size-4" />} {voided ? 'Khôi phục phiên' : 'Hủy phiên thi'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2 text-danger-fg"
+                  onClick={async () => {
+                    const ok = await dialog.confirm({
+                      title: 'Xóa vĩnh viễn phiên thi này?',
+                      text: 'Toàn bộ lịch sử vi phạm, nhật ký gõ phím và bài nộp của phiên thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+                      tone: 'danger',
+                      confirmLabel: 'Xóa vĩnh viễn',
+                    });
+                    if (ok) router.post(`/admin/attempts/${attempt.id}/delete`);
+                  }}
+                >
+                  <Trash2 className="size-4" /> Xóa phiên
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {(attempt.pending_grading ?? 0) > 0 && (
               <FxButton variant="primary" onClick={() => router.visit(`/admin/attempts/${attempt.id}/grading`)}>
                 Chấm bài ({attempt.pending_grading})
@@ -603,12 +621,12 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
               </div>
             </Panel>
           ) : violations.length > 0 ? (
-            <Panel>
-              <EmptyState icon={ShieldAlert} title="Chọn một vi phạm để xem chi tiết" desc="Bấm vào vi phạm ở danh sách bên phải hoặc mốc trên dòng thời gian: ảnh minh chứng, clip và thao tác duyệt sẽ hiện ở đây." />
+            <Panel className="px-4 py-3 text-[13px] text-muted-foreground">
+              Chọn một vi phạm ở danh sách bên phải hoặc một mốc trên dòng thời gian để xem ảnh minh chứng, clip và duyệt.
             </Panel>
           ) : (
-            <Panel>
-              <EmptyState icon={ShieldCheck} title="Phiên thi sạch" desc="Không ghi nhận vi phạm nào trong lượt làm bài này." />
+            <Panel className="flex items-center gap-2 px-4 py-3 text-[13px] text-muted-foreground">
+              <ShieldCheck className="size-4 text-success-fg" /> Phiên thi sạch: không ghi nhận vi phạm nào.
             </Panel>
           )}
         </div>
