@@ -4,9 +4,18 @@ import { AttentionTracker, EMPTY_READING, attention, eyeGaze, eyesClosed, faceRa
 export type FaceDelegate = "auto" | "gpu" | "cpu";
 
 const KEY = "foxy:vision-delegate";
+/**
+ * Linux (WebKitGTK): MediaPipe's GPU delegate runs on the webview's WebGL, which on many Linux GPU/driver setups
+ * (notably Wayland, NVIDIA, some Mesa builds) hangs and then takes the whole web process down. A thrown error
+ * could be caught and retried on the CPU, a crashed process cannot — so Linux goes straight to the CPU unless the
+ * user picked a delegate explicitly.
+ */
+const IS_LINUX = typeof navigator !== "undefined" && /Linux|X11/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
+
 export const getFaceDelegate = (): FaceDelegate => {
   const v = localStorage.getItem(KEY);
-  return v === "gpu" || v === "cpu" ? v : "auto";
+  if (v === "gpu" || v === "cpu") return v;
+  return IS_LINUX ? "cpu" : "auto";
 };
 export const setFaceDelegate = (v: FaceDelegate) => localStorage.setItem(KEY, v);
 
