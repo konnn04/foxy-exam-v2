@@ -6,37 +6,34 @@ use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * Wrong passwords counted per RESOLVED account (user id), at the point where the login code has found the user.
- * Nothing the caller sends (organization code, exam code, which name field) changes the key, and a student of another
- * school with the same name is a different id. Only failures count; a correct password clears the counter.
+ * Password attempts counted per resolved account AND per caller IP, at the point where the login code has found the
+ * user:
+ *  - the key is the user id, so changing the organization / exam code or the name field does not reset it, and a
+ *    student of another school with the same name is unaffected;
+ *  - it is also the caller's IP, so somebody elsewhere typing wrong passwords cannot lock the candidate out of the
+ *    exam (the room's shared address is still separate from an attacker's);
+ *  - the attempt is counted BEFORE the password is checked (one atomic increment), so parallel requests cannot all
+ *    slip under the limit; a correct password clears the count;
+ *  - while over the limit the answer is the same 401 as a wrong password: no "this account exists and is locked".
  */
 final class LoginGuard
 {
-    public const MAX_FAILURES = 20;
+    public const MAX_ATTEMPTS = 10;
     public const WINDOW_SECONDS = 300;
 
-    private static function key(User $user): string
+    private static function key(User $user, string $ip): string
     {
-        return 'login-failures:' . $user->id;
+        return 'login-attempts:' . $user->id . '|' . $ip;
     }
 
-    public static function locked(User $user): bool
+    /** Counts this attempt; false when the caller already used up its attempts for this account. */
+    public static function attempt(User $user, string $ip): bool
     {
-        return RateLimiter::tooManyAttempts(self::key($user), self::MAX_FAILURES);
+        return RateLimiter::hit(self::key($user, $ip), self::WINDOW_SECONDS) <= self::MAX_ATTEMPTS;
     }
 
-    public static function retryAfter(User $user): int
+    public static function succeeded(User $user, string $ip): void
     {
-        return RateLimiter::availableIn(self::key($user));
-    }
-
-    public static function failed(User $user): void
-    {
-        RateLimiter::hit(self::key($user), self::WINDOW_SECONDS);
-    }
-
-    public static function succeeded(User $user): void
-    {
-        RateLimiter::clear(self::key($user));
+        RateLimiter::clear(self::key($user, $ip));
     }
 }

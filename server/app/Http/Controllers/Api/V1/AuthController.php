@@ -67,24 +67,15 @@ class AuthController extends Controller
         }
         $user = $userQuery->first();
 
-        if ($user && \App\Support\LoginGuard::locked($user)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tài khoản tạm khóa đăng nhập do nhập sai mật khẩu nhiều lần. Vui lòng thử lại sau ít phút.',
-            ], 429)->header('Retry-After', (string) \App\Support\LoginGuard::retryAfter($user));
-        }
-
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
-            if ($user) {
-                \App\Support\LoginGuard::failed($user);
-            }
-
+        // counted before the password check; over the limit the answer is the plain "wrong credentials" one
+        $allowed = !$user || \App\Support\LoginGuard::attempt($user, (string) $request->ip());
+        if (!$allowed || !$user || !Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tên đăng nhập hoặc mật khẩu sinh viên không chính xác.',
             ], 401);
         }
-        \App\Support\LoginGuard::succeeded($user);
+        \App\Support\LoginGuard::succeeded($user, (string) $request->ip());
 
         // 3. Check SaaS Quota limits
         $quotaCheck = $this->quotaService->canJoinExam($exam);
