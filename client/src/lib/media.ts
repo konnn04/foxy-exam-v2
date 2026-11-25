@@ -5,6 +5,9 @@ import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 
 export type MediaFailure = "denied" | "notfound" | "busy" | "unsupported" | "surface" | "unknown";
 
+/** Sending video to the proctors needs WebRTC. Some webviews (notably WebKitGTK builds on Linux) ship without it. */
+export const hasWebRTC = (): boolean => typeof RTCPeerConnection !== "undefined";
+
 export function explain(err: unknown): MediaFailure {
   if (err instanceof WrongSurfaceError) return "surface";
   const name = (err as { name?: string } | null)?.name;

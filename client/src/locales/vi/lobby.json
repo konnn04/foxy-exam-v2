@@ -152,5 +152,6 @@
   "vision.closer": "Ngồi gần camera hơn",
   "vision.eyes": "Chưa thấy rõ mắt — mở mắt, bỏ kính tối màu hoặc vật che",
   "vision.straight": "Hãy nhìn thẳng vào camera",
-  "vision.straight2": "Hãy nhìn thẳng vào camera, giữ hai mắt hướng về màn hình"
+  "vision.straight2": "Hãy nhìn thẳng vào camera, giữ hai mắt hướng về màn hình",
+  "lobby.cam.noWebrtc": "Máy này không hỗ trợ truyền hình ảnh trực tiếp (WebRTC), nên giám thị sẽ không nhận được camera. Hãy thi trên Windows hoặc bản Linux có hỗ trợ WebRTC."
 }

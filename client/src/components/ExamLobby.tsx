@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { captureFrame } from "../lib/evidence";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
-import { explain, failureText, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
+import { explain, failureText, hasWebRTC, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
 import { clearOverlay, drawFaceOverlay } from "../lib/faceOverlay";
 import { frontalHint, isFrontal, LivenessChallenge, livenessText, type FrameReading } from "../lib/vision-core";
@@ -207,7 +207,13 @@ export default function ExamLobby({
         }
         // labels are readable only after permission: refresh the list now
         void listCameras().then(setCameras).catch(() => {});
-        set("camera", { level: "ok", detail: track?.label || t("lobby.cam.working"), required });
+        if (!hasWebRTC()) {
+          // the picture works here, but it can never reach the proctors: do not let the exam start unmonitored
+          diag("lobby: this webview has no WebRTC, the camera cannot be streamed to proctors");
+          set("camera", { level: required ? "fail" : "warn", detail: t("lobby.cam.noWebrtc"), required });
+        } else {
+          set("camera", { level: "ok", detail: track?.label || t("lobby.cam.working"), required });
+        }
         void watchFace(s, required);
       } catch (e) {
         set("camera", { level: required ? "fail" : "warn", detail: failureText(explain(e)), required });

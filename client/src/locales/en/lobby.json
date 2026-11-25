@@ -152,5 +152,6 @@
   "vision.closer": "Sit closer to the camera",
   "vision.eyes": "Can't see your eyes — open them and remove dark glasses or anything covering them",
   "vision.straight": "Look straight at the camera",
-  "vision.straight2": "Look straight at the camera and keep both eyes toward the screen"
+  "vision.straight2": "Look straight at the camera and keep both eyes toward the screen",
+  "lobby.cam.noWebrtc": "This computer can't stream video live (WebRTC), so proctors would not receive your camera. Use Windows, or a Linux build with WebRTC support."
 }
