@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import threading
 from dataclasses import dataclass
 
@@ -15,14 +16,32 @@ class Face:
     embedding: np.ndarray
 
 
+def _providers() -> list[str]:
+    """ONNX Runtime providers: CUDA when AI_DEVICE allows it and onnxruntime-gpu sees a GPU, else CPU."""
+    want = os.environ.get("AI_DEVICE", "auto").lower()
+    if want == "cpu":
+        return ["CPUExecutionProvider"]
+    try:
+        import onnxruntime as ort
+
+        if "CUDAExecutionProvider" in ort.get_available_providers():
+            return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    except Exception:  # noqa: BLE001 - no runtime at all: let insightface report it on load
+        pass
+    if want == "cuda":
+        raise RuntimeError("AI_DEVICE=cuda but onnxruntime has no CUDAExecutionProvider (install onnxruntime-gpu, expose the GPU)")
+    return ["CPUExecutionProvider"]
+
+
 class FaceEngine:
-    """Detects faces and computes ArcFace embeddings (insightface, CPU). The model loads on first use."""
+    """Detects faces and computes ArcFace embeddings (insightface). GPU (CUDA) when available, else CPU. Loads on first use."""
 
     def __init__(self, model: str = "buffalo_s", det_size: int = 320):
         self.model = model
         self.det_size = det_size
         self._app = None
         self._lock = threading.Lock()
+        self.device = "cpu"
 
     @property
     def ready(self) -> bool:
@@ -33,8 +52,11 @@ class FaceEngine:
             if self._app is None:
                 from insightface.app import FaceAnalysis
 
-                app = FaceAnalysis(name=self.model, providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"])
-                app.prepare(ctx_id=-1, det_size=(self.det_size, self.det_size))
+                providers = _providers()
+                gpu = providers[0] == "CUDAExecutionProvider"
+                app = FaceAnalysis(name=self.model, providers=providers, allowed_modules=["detection", "recognition"])
+                app.prepare(ctx_id=0 if gpu else -1, det_size=(self.det_size, self.det_size))
+                self.device = "cuda" if gpu else "cpu"
                 self._app = app
         return self._app
 

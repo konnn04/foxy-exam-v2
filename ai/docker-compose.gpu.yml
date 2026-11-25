@@ -1,0 +1,21 @@
+# GPU override for a machine with an NVIDIA card (needs the NVIDIA driver + nvidia-container-toolkit on the host):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+# Without this file everything runs on the CPU. Check /health of each service: "device": "cuda".
+services:
+  face-service:
+    build:
+      context: ./face-service
+      args:
+        GPU: "1"
+    environment:
+      AI_DEVICE: ${AI_DEVICE:-auto}
+    gpus: all
+
+  object-service:
+    build:
+      context: ./object-service
+      args:
+        GPU: "1"
+    environment:
+      AI_DEVICE: ${AI_DEVICE:-auto}
+    gpus: all

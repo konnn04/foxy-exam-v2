@@ -22,7 +22,7 @@ def create_app(engine: ObjectEngine | None = None, prohibited: tuple[str, ...] =
 
     @app.get("/health")
     def health():
-        return {"ok": True, "service": "objects", "ready": engine.ready, "prohibited": list(prohibited)}
+        return {"ok": True, "service": "objects", "ready": engine.ready, "device": getattr(engine, "device", "cpu"), "prohibited": list(prohibited)}
 
     @app.post("/v1/detect", dependencies=[Depends(guard)])
     async def detect(frame: UploadFile = File(...), min_score: float = Query(0.5, ge=0.1, le=0.99)):

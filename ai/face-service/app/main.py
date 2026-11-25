@@ -31,7 +31,7 @@ def create_app(engine: FaceEngine | None = None) -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"ok": True, "service": "face", "model": engine.model, "ready": engine.ready}
+        return {"ok": True, "service": "face", "model": engine.model, "ready": engine.ready, "device": getattr(engine, "device", "cpu")}
 
     @app.post("/v1/faces", dependencies=[Depends(guard)])
     async def faces(frame: UploadFile = File(...)):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import threading
 from dataclasses import dataclass
 
@@ -18,10 +19,11 @@ class Detection:
 
 
 class ObjectEngine:
-    """SSDLite320 MobileNetV3 (torchvision, COCO, CPU). The weights download on first use."""
+    """SSDLite320 MobileNetV3 (torchvision, COCO). GPU (CUDA) when available, else CPU. Weights download on first use."""
 
     def __init__(self):
         self._model = None
+        self.device = "cpu"
         self._labels: list[str] = []
         self._lock = threading.Lock()
 
@@ -35,10 +37,15 @@ class ObjectEngine:
                 import torch
                 from torchvision.models.detection import SSDLite320_MobileNet_V3_Large_Weights, ssdlite320_mobilenet_v3_large
 
+                want = os.environ.get("AI_DEVICE", "auto").lower()
+                if want == "cuda" and not torch.cuda.is_available():
+                    raise RuntimeError("AI_DEVICE=cuda but torch sees no GPU (install the CUDA build of torch, expose the GPU)")
+                self.device = "cuda" if want != "cpu" and torch.cuda.is_available() else "cpu"
                 weights = SSDLite320_MobileNet_V3_Large_Weights.DEFAULT
-                torch.set_num_threads(max(1, torch.get_num_threads() // 2))
+                if self.device == "cpu":
+                    torch.set_num_threads(max(1, torch.get_num_threads() // 2))
                 self._labels = list(weights.meta["categories"])
-                self._model = ssdlite320_mobilenet_v3_large(weights=weights, score_thresh=0.2).eval()
+                self._model = ssdlite320_mobilenet_v3_large(weights=weights, score_thresh=0.2).eval().to(self.device)
         return self._model
 
     def detect(self, data: bytes, min_score: float) -> list[Detection]:
@@ -48,7 +55,7 @@ class ObjectEngine:
         model = self._load()
         image = Image.open(io.BytesIO(data)).convert("RGB")
         with torch.no_grad():
-            out = model([to_tensor(image)])[0]
+            out = model([to_tensor(image).to(self.device)])[0]
         found = []
         for box, label, score in zip(out["boxes"], out["labels"], out["scores"]):
             if float(score) >= min_score:

@@ -4,7 +4,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /srv
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# GPU=1 swaps onnxruntime for onnxruntime-gpu (CUDA 12 wheels bring their own CUDA/cuDNN libraries)
+ARG GPU=0
+RUN pip install --no-cache-dir -r requirements.txt \
+    && if [ "$GPU" = "1" ]; then pip uninstall -y onnxruntime && pip install --no-cache-dir "onnxruntime-gpu[cuda,cudnn]>=1.20"; fi
 COPY app app
 EXPOSE 8090
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:8090/health || exit 1
