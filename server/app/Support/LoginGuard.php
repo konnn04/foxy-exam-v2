@@ -12,28 +12,44 @@ use Illuminate\Support\Facades\RateLimiter;
  *    student of another school with the same name is unaffected;
  *  - it is also the caller's IP, so somebody elsewhere typing wrong passwords cannot lock the candidate out of the
  *    exam (the room's shared address is still separate from an attacker's);
+ *  - a much higher account-wide cap (100 per 15 min) stops a distributed guess from many addresses;
  *  - the attempt is counted BEFORE the password is checked (one atomic increment), so parallel requests cannot all
  *    slip under the limit; a correct password clears the count;
  *  - while over the limit the answer is the same 401 as a wrong password: no "this account exists and is locked".
  */
 final class LoginGuard
 {
+    /** per (account, caller): the brute-force brake */
     public const MAX_ATTEMPTS = 10;
+    /** per account, whatever the caller: only a distributed attack reaches it (it would lock the account; same 401) */
+    public const MAX_ACCOUNT_ATTEMPTS = 100;
     public const WINDOW_SECONDS = 300;
+    public const ACCOUNT_WINDOW_SECONDS = 900;
 
-    private static function key(User $user, string $ip): string
+    /** IPv4 as is; IPv6 cut to its /64 (one home / one machine usually owns a whole /64). */
+    public static function caller(string $ip): string
     {
-        return 'login-attempts:' . $user->id . '|' . $ip;
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $bin = inet_pton($ip);
+
+            return $bin === false ? $ip : bin2hex(substr($bin, 0, 8)) . '::/64';
+        }
+
+        return $ip;
     }
 
-    /** Counts this attempt; false when the caller already used up its attempts for this account. */
+    /** Counts this attempt (before the password is checked); false when this caller or the account is over its limit. */
     public static function attempt(User $user, string $ip): bool
     {
-        return RateLimiter::hit(self::key($user, $ip), self::WINDOW_SECONDS) <= self::MAX_ATTEMPTS;
+        $perCaller = RateLimiter::hit('login-attempts:' . $user->id . '|' . self::caller($ip), self::WINDOW_SECONDS);
+        $perAccount = RateLimiter::hit('login-attempts:' . $user->id, self::ACCOUNT_WINDOW_SECONDS);
+
+        return $perCaller <= self::MAX_ATTEMPTS && $perAccount <= self::MAX_ACCOUNT_ATTEMPTS;
     }
 
+    /** A correct password clears this caller's count; the account-wide count only decays (it is about other callers). */
     public static function succeeded(User $user, string $ip): void
     {
-        RateLimiter::clear(self::key($user, $ip));
+        RateLimiter::clear('login-attempts:' . $user->id . '|' . self::caller($ip));
     }
 }
