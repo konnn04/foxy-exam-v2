@@ -134,4 +134,5 @@ jobs:
           exit 1
       - name: Skipped
         if: ${{ env.COOLIFY_DEPLOY_URL == '' }}
-        run: echo "COOLIFY_DEPLOY_URL is not set: Coolify's own auto-deploy (webhook from GitHub) is used instead."
+        run: |
+          echo "COOLIFY_DEPLOY_URL is not set: Coolify's own auto-deploy (webhook from GitHub) is used instead."
