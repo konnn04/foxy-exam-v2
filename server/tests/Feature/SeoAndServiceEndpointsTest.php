@@ -48,6 +48,9 @@ class SeoAndServiceEndpointsTest extends TestCase
         $this->assertArrayHasKey('ai_face', $errors);
         $this->assertArrayHasKey('ai_face', ServiceEndpoints::save(['ai_face' => 'http://169.254.169.254/latest']));
         $this->assertNotContains('rt_ingest_internal', array_column(ServiceEndpoints::forEditor(), 'key'));
+        foreach (['rt_ingest_public', 'rt_hub', 'rt_record_public'] as $gatewayOnly) {
+            $this->assertNotContains($gatewayOnly, array_column(ServiceEndpoints::forEditor(), 'key'));
+        }
         $this->assertNotContains('rt_record_internal', array_column(ServiceEndpoints::forEditor(), 'key'));
         $this->assertArrayNotHasKey('livekit', $errors);
     }

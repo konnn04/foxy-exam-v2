@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Schema;
  * domain is a form edit. Only the ADDRESS is editable here. Secrets (AI_TOKEN, RT_*_SECRET, LIVEKIT_API_*) stay in
  * the environment on purpose: a database dump must never contain them.
  *
+ * Traffic from users (browsers, the candidate app) always enters through the API gateway. The addresses it uses
+ * (RT_INGEST_URL, RT_HUB_URL, RT_RECORD_URL = https://<gateway>/rt/...) are therefore NOT editable here either, so a
+ * form edit can never send users around the gateway. The AI services are called only by the core and by the
+ * supervisor agent, never by a browser or the candidate app; LiveKit is the one public address outside the gateway
+ * (WebRTC media), kept separate by design.
+ *
  * The addresses the core calls with a secret attached (RT_INGEST_INTERNAL_URL, RT_RECORD_INTERNAL_URL) are NOT
  * editable here: pointing them elsewhere would hand the signing secret to another host. They stay in the environment.
  * The AI services do receive AI_TOKEN, so their addresses refuse link-local / cloud-metadata targets and the change is
@@ -29,9 +35,6 @@ final class ServiceEndpoints
             'ai_face' => ['services.ai_face.url', 'AI nhận diện khuôn mặt', 'http', 'Dịch vụ so khớp khuôn mặt thí sinh. Ví dụ: https://ai-face.example.edu.vn'],
             'ai_objects' => ['services.ai_objects.url', 'AI phát hiện vật thể cấm', 'http', 'Dịch vụ nhận diện điện thoại, tài liệu… trong khung hình.'],
             'ai_agent' => ['services.ai_agent.url', 'AI giám sát tự động (agent)', 'http', 'Dịch vụ theo dõi camera trong phòng thi theo thời gian thực.'],
-            'rt_ingest_public' => ['services.realtime.ingest_url', 'Realtime – địa chỉ cho ứng dụng thí sinh', 'http', 'Địa chỉ mà ứng dụng FoxyClient trên máy thí sinh kết nối tới.'],
-            'rt_hub' => ['services.realtime.hub_url', 'Realtime – màn hình giám thị', 'ws', 'Địa chỉ WebSocket mà trang theo dõi giờ thi kết nối tới.'],
-            'rt_record_public' => ['services.realtime.record_url', 'Ghi hình – địa chỉ công khai', 'http', 'Địa chỉ tải video bằng chứng về trình duyệt.'],
             'livekit' => ['services.realtime.livekit.url', 'LiveKit (camera/màn hình)', 'ws', 'Địa chỉ wss:// mà trình duyệt và ứng dụng thí sinh kết nối tới.'],
         ];
     }
