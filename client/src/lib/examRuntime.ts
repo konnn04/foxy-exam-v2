@@ -1,3 +1,4 @@
+import { diag } from "./diag";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import QRCode from "qrcode";
@@ -384,6 +385,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       if (cfgRef.current?.violation_clips && live) startClipRecorder({ camera: !!media.camera && !!cfgRef.current.ai_face_check, screen: !!media.screen });
 
       const lk = live ? client.livekit : null;
+      diag(`livekit: realtime=${live ? "up" : "down(REST fallback)"} credentials=${lk ? "yes" : "no"} camera=${!!media.camera} screen=${!!media.screen}`);
       if (lk && (media.camera || media.screen)) {
         try {
           const pub = new LiveKitPublisher(setMediaState);
@@ -396,6 +398,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           publisher.current = pub;
         } catch (err) {
           console.warn("[runtime] LiveKit publish failed (exam continues, telemetry still flows):", err);
+          diag(`livekit: publish failed (RTCPeerConnection ${typeof RTCPeerConnection === "undefined" ? "MISSING in this webview" : "available"}): ${err instanceof Error ? err.message : String(err)}`);
           setMediaState("disconnected");
         }
       }

@@ -55,6 +55,8 @@ fn allow_media_permissions(app: &tauri::App) {
             if let Some(settings) = WebViewExt::settings(&view) {
                 settings.set_enable_media_stream(true);
                 settings.set_enable_mediasource(true);
+                // sending the camera/screen to the proctors needs WebRTC (RTCPeerConnection) in the webview
+                settings.set_enable_webrtc(true);
             }
             view.connect_permission_request(|_, request| {
                 if request.is::<UserMediaPermissionRequest>() {
