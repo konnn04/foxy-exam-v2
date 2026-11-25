@@ -36,8 +36,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/submit', [\App\Http\Controllers\Api\Public\FaceEnrollPhoneController::class, 'submit']);
     });
 
-    Route::post('/auth/login', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login']);
-    Route::post('/student/login', [AuthController::class, 'studentLogin']);
+    Route::post('/auth/login', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/student/login', [AuthController::class, 'studentLogin'])->middleware('throttle:login');
 
     // 3. Protected Routes (Requires Sanctum Token)
     Route::middleware('auth:sanctum')->group(function () {
