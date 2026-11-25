@@ -53,7 +53,11 @@ export interface CameraInfo {
 /** Cameras the OS exposes. Labels stay empty until the page has been granted camera access once. */
 export async function listCameras(): Promise<CameraInfo[]> {
   const all = await navigator.mediaDevices.enumerateDevices();
-  return all.filter((d) => d.kind === "videoinput").map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+  // WebKit can list the same camera more than once under one id: keep the first, the list is rendered with the id as key
+  const seen = new Set<string>();
+  return all
+    .filter((d) => d.kind === "videoinput" && !seen.has(d.deviceId) && !!seen.add(d.deviceId))
+    .map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }));
 }
 
 /** Opens the chosen camera (the remembered one by default); falls back to any camera if that one is gone. */
