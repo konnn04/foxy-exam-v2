@@ -155,7 +155,7 @@ Route::post('/logout', function (Request $request) {
     return redirect('/login');
 })->name('logout');
 
-Route::post('/oauth/token', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login']);
+Route::post('/oauth/token', [\App\Http\Controllers\Api\V1\Auth\AuthController::class, 'login'])->middleware('throttle:login');
 
 // 4. Admin Portal (/admin - Root Admin & Org Admin)
 Route::middleware(['auth'])->group(function () {
