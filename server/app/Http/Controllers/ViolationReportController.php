@@ -156,6 +156,8 @@ class ViolationReportController extends Controller
             UserNotification::create([
                 'user_id' => $attempt->user_id,
                 'type' => 'violation_report',
+                'key' => 'violation_report.published',
+                'params' => ['exam' => $attempt->exam->title],
                 'title' => "Biên bản xử lý vi phạm đã xuất bản: {$attempt->exam->title}",
                 'body' => $body,
                 'url' => "/violation-report/{$report->slug}",

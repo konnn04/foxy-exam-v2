@@ -42,7 +42,7 @@ const TITLE: Partial<Record<NavTab, string>> = {
   courses: 'Khóa học',
   'problem-banks': 'Ngân hàng đề',
   exams: 'Kỳ thi',
-  'saas-plans': 'Gói cước',
+  'saas-plans': 'Gói dịch vụ',
   settings: 'Cài đặt',
 };
 

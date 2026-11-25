@@ -134,7 +134,7 @@ class FaceManagementController extends Controller
         if ($approve) {
             $row->user->forceFill(['face_locked_at' => null])->save();
         }
-        Notify::to($row->user, 'face_decision', $approve ? 'Yêu cầu đổi khuôn mặt đã được duyệt' : 'Yêu cầu đổi khuôn mặt bị từ chối', $approve ? 'Bạn có thể đăng ký lại khuôn mặt trong phòng chờ.' : ($data['note'] ?? null));
+        Notify::to($row->user, 'face_decision', $approve ? 'Yêu cầu đổi khuôn mặt đã được duyệt' : 'Yêu cầu đổi khuôn mặt bị từ chối', $approve ? 'Bạn có thể đăng ký lại khuôn mặt trong phòng chờ.' : ($data['note'] ?? null), null, $approve ? 'face_decision.approved' : 'face_decision.rejected');
 
         return back()->with('success', $approve ? 'Đã duyệt và mở khoá khuôn mặt.' : 'Đã từ chối yêu cầu.');
     }

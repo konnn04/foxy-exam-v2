@@ -36,7 +36,7 @@ export function ExamsTab({ exams, setCounts }: ExamsTabProps) {
   const remove = async (e: ExamRow) => {
     const ok = await dialog.confirm({
       title: `Xóa kỳ thi “${e.title}”?`,
-      text: 'Bài làm, bài nộp, Op-Log và vi phạm của thí sinh trong kỳ thi cũng bị xóa.',
+      text: 'Bài làm, bài nộp, nhật ký gõ code và vi phạm của thí sinh trong kỳ thi cũng bị xóa.',
       warn: e.attempts_count ? `Đã có ${e.attempts_count} lượt làm bài.` : undefined,
       tone: 'danger',
       requireText: e.attempts_count ? e.code : undefined,

@@ -283,7 +283,7 @@ export function AttemptTools({
         </a>
         <a href={`/admin/attempts/${attemptId}/export/oplog.csv`}>
           <FxButton size="sm" icon={Download}>
-            CSV Op-Log
+            Xuất CSV quá trình gõ
           </FxButton>
         </a>
         <a href={`/admin/attempts/${attemptId}/export/tracking.txt`}>

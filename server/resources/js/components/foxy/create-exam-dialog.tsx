@@ -1,13 +1,24 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
-import { FxButton, Modal, Pill } from './ui';
+import { FxButton, Modal, Pill, Tip } from './ui';
 import { KIND_META, type ExamKind } from './exam-form';
 import { cn } from '@/lib/utils';
 
-const FEATURES: Record<ExamKind, string[]> = {
-  general: ['Trắc nghiệm, đúng/sai, điền khuyết, tự luận', 'Câu hỏi nhóm (bài đọc, bài nghe)', 'Trộn câu & đáp án', 'Chấm tự động + hàng chờ chấm tay'],
-  programming: ['Bài code chạy testcase', 'Chấm tự động AC / WA / TLE', 'Op-Log & phát lại quá trình gõ', 'Phát hiện dán code (BULK_PASTE)'],
+/** Each line may carry a plain-language explanation of its technical term, shown behind a "?". */
+const FEATURES: Record<ExamKind, { text: string; tip?: string }[]> = {
+  general: [
+    { text: 'Trắc nghiệm, đúng/sai, điền khuyết, tự luận' },
+    { text: 'Câu hỏi theo nhóm (đoạn văn, bài nghe)', tip: 'Nhiều câu hỏi cùng dựa trên một đoạn văn hoặc một file âm thanh.' },
+    { text: 'Tự đảo thứ tự câu hỏi và đáp án', tip: 'Mỗi thí sinh nhận một thứ tự khác nhau để hạn chế trao đổi bài.' },
+    { text: 'Tự chấm điểm; phần tự luận chuyển cho giảng viên chấm' },
+  ],
+  programming: [
+    { text: 'Bài làm là mã nguồn, chạy thử với bộ dữ liệu kiểm tra', tip: 'Hệ thống chạy chương trình của thí sinh với các bộ dữ liệu (testcase) do giảng viên chuẩn bị rồi so kết quả.' },
+    { text: 'Tự động chấm đúng/sai và báo lỗi', tip: 'Kết quả hiển thị theo ký hiệu quen thuộc: AC (đúng), WA (sai kết quả), TLE (chạy quá thời gian).' },
+    { text: 'Ghi lại quá trình gõ code để xem lại', tip: 'Hệ thống lưu từng thao tác gõ, xóa, dán của thí sinh để giảng viên xem lại khi cần.' },
+    { text: 'Cảnh báo khi dán một đoạn code dài', tip: 'Hệ thống đánh dấu (BULK_PASTE) khi thí sinh dán cùng lúc nhiều dòng code từ nơi khác.' },
+  ],
 };
 
 /** "Tạo kỳ thi" — pick the kind of exam; each kind has its own create page. */
@@ -27,7 +38,7 @@ export function CreateExamDialog({
     router.visit(`/admin/exams/new/${k}${courseId ? `?course_id=${courseId}` : ''}`);
   };
   return (
-    <Modal open={open} onClose={onClose} width={720} title="Tạo kỳ thi" desc="Chọn loại kỳ thi — mỗi loại có quy trình soạn, chấm và giám sát riêng." footer={<FxButton onClick={onClose}>Hủy</FxButton>}>
+    <Modal open={open} onClose={onClose} width={720} title="Tạo kỳ thi mới" desc="Chọn hình thức thi. Mỗi hình thức có cách ra đề, chấm bài và theo dõi thí sinh riêng." footer={<FxButton onClick={onClose}>Hủy</FxButton>}>
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))' }}>
         {(['general', 'programming'] as ExamKind[]).map((k) => {
           const m = KIND_META[k];
@@ -50,9 +61,12 @@ export function CreateExamDialog({
               </div>
               <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[13px]">
                 {FEATURES[k].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span className="size-1.5 rounded-full bg-primary" />
-                    {f}
+                  <li key={f.text} className="flex items-start gap-2">
+                    <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-primary" />
+                    <span>
+                      {f.text}
+                      {f.tip && <Tip>{f.tip}</Tip>}
+                    </span>
                   </li>
                 ))}
               </ul>

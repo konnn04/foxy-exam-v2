@@ -9,9 +9,9 @@ class UserNotification extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'type', 'title', 'body', 'url', 'read_at'];
+    protected $fillable = ['user_id', 'type', 'key', 'title', 'body', 'params', 'url', 'read_at'];
 
-    protected $casts = ['read_at' => 'datetime', 'created_at' => 'datetime'];
+    protected $casts = ['read_at' => 'datetime', 'created_at' => 'datetime', 'params' => 'array'];
 
     public function user(): BelongsTo
     {
@@ -23,6 +23,8 @@ class UserNotification extends Model
         return [
             'id' => $this->id,
             'type' => $this->type,
+            'key' => $this->key,
+            'params' => $this->params ?? (object) [],
             'title' => $this->title,
             'body' => $this->body,
             'url' => $this->url,

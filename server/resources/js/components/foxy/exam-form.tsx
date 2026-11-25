@@ -96,7 +96,7 @@ export const EXAM_STATUS: Record<string, { label: string; tone: Tone }> = {
 export const KIND_META: Record<ExamKind, { label: string; desc: string; icon: typeof Code; chip: string; tone: Tone; setLabel: string }> = {
   general: {
     label: 'Thi phổ thông',
-    desc: 'Trắc nghiệm, đúng/sai, trả lời ngắn, tự luận, câu hỏi nhóm. Dùng bộ đề phổ thông.',
+    desc: 'Gồm câu trắc nghiệm, đúng/sai, trả lời ngắn và tự luận. Sử dụng một bộ đề phổ thông đã soạn sẵn.',
     icon: ListChecks,
     chip: 'bg-info/25',
     tone: 'info',
@@ -104,7 +104,7 @@ export const KIND_META: Record<ExamKind, { label: string; desc: string; icon: ty
   },
   programming: {
     label: 'Thi lập trình',
-    desc: 'Bài code chạy testcase, chấm tự động, Op-Log & phát hiện dán code. Dùng bộ bài lập trình.',
+    desc: 'Thí sinh viết chương trình và được chấm tự động. Sử dụng một bộ bài lập trình đã soạn sẵn.',
     icon: Code,
     chip: 'bg-primary/25',
     tone: 'brand',
@@ -299,7 +299,7 @@ export function ExamFormShell({
     if (!exam) return;
     const ok = await dialog.confirm({
       title: `Xóa kỳ thi “${exam.title}”?`,
-      text: 'Kỳ thi bị gỡ khỏi lịch. Bài làm, bài nộp, Op-Log và vi phạm của thí sinh cũng bị xóa.',
+      text: 'Kỳ thi bị gỡ khỏi lịch. Bài làm, bài nộp, nhật ký gõ code và vi phạm của thí sinh cũng bị xóa.',
       warn: exam.attempts_count ? `Đã có ${exam.attempts_count} lượt làm bài sẽ bị xóa theo.` : undefined,
       tone: 'danger',
       confirmLabel: 'Xóa kỳ thi',
@@ -580,7 +580,7 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
           onChange={applyLevel}
           options={[
             { value: 'none', label: 'Cơ bản', desc: 'Chỉ theo dõi chuyển tab / cửa sổ.' },
-            { value: 'standard', label: 'Tiêu chuẩn', desc: isCode ? 'Chuyển tab, khuôn mặt, chặn dán, Op-Log.' : 'Chuyển tab, xác thực khuôn mặt.' },
+            { value: 'standard', label: 'Tiêu chuẩn', desc: isCode ? 'Chuyển tab, khuôn mặt, chặn dán, ghi lại quá trình gõ code.' : 'Chuyển tab, xác thực khuôn mặt.' },
             { value: 'strict', label: 'Nghiêm ngặt', desc: 'Bật tất cả tùy chọn giám sát.' },
             { value: 'custom', label: 'Tùy chỉnh', desc: 'Tự chọn các tùy chọn giám sát theo nhu cầu.' },
           ]}
@@ -627,7 +627,7 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               { key: 'paste', label: 'Chặn sao chép / dán', desc: 'Chặn copy, cut, paste, kéo thả văn bản — kể cả 1 ký tự · BULK_PASTE', checked: form.prevent_paste, onChange: (v: boolean) => flipMon('prevent_paste', v) },
               ...(isCode
                 ? [
-                    { key: 'ks', label: 'Ghi Op-Log từng phím', desc: 'Phát lại quá trình gõ', checked: form.track_keystroke, onChange: (v: boolean) => flipMon('track_keystroke', v) },
+                    { key: 'ks', label: 'Ghi lại từng phím gõ', desc: 'Phát lại quá trình gõ', checked: form.track_keystroke, onChange: (v: boolean) => flipMon('track_keystroke', v) },
                   ]
                 : [{ key: 'mic', label: 'Bật micro', desc: 'Phát hiện tiếng nói · bắt buộc cho phần Nói', checked: form.require_mic, onChange: (v: boolean) => flipMon('require_mic', v) }]),
               { key: 'screen', label: 'Bắt buộc chia sẻ màn hình', desc: 'Dừng chia sẻ giữa giờ thi thì bài bị che cho tới khi bật lại', checked: form.require_screen, onChange: (v: boolean) => state.set('require_screen', v) },

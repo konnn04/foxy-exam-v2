@@ -57,6 +57,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/read', [\App\Http\Controllers\NotificationController::class, 'read']);
 });
 
+// SEO: crawlers only see the public marketing pages (public/robots.txt was removed so this route answers)
+Route::get('/robots.txt', [\App\Http\Controllers\SeoController::class, 'robots']);
+Route::get('/sitemap.xml', [\App\Http\Controllers\SeoController::class, 'sitemap']);
+
 // 1. Landing Page & Dedicated Public Pages
 Route::get('/', function () {
     $plans = Plan::where('is_active', true)->get();
@@ -2042,6 +2046,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/platform', [\App\Http\Controllers\Admin\PlatformController::class, 'overview']);
     Route::get('/platform/health', [\App\Http\Controllers\Admin\PlatformController::class, 'health']);
     Route::get('/platform/health.json', [\App\Http\Controllers\Admin\PlatformController::class, 'healthJson']);
+    Route::get('/platform/services', [\App\Http\Controllers\Admin\PlatformController::class, 'services']);
+    Route::post('/platform/services', [\App\Http\Controllers\Admin\PlatformController::class, 'updateServices']);
     Route::get('/leads', [\App\Http\Controllers\Admin\LeadController::class, 'index']);
     Route::post('/leads/{id}', [\App\Http\Controllers\Admin\LeadController::class, 'update'])->whereNumber('id');
     Route::get('/audit-log', [\App\Http\Controllers\Admin\AuditLogController::class, 'index']);

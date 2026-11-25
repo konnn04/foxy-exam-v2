@@ -760,6 +760,8 @@ HTML;
         \App\Models\UserNotification::create([
             'user_id' => $attempt->user_id,
             'type' => 'violation_report',
+            'key' => 'violation_report.summary',
+            'params' => ['exam' => $attempt->exam->title],
             'title' => "Biên bản giám sát ca thi: {$attempt->exam->title}",
             'body' => $body,
             'url' => "/attempts/{$attempt->id}",

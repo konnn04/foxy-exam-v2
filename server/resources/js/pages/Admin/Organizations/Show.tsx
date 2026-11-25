@@ -84,7 +84,7 @@ export default function ShowOrganization({ user, teams, organization: o }: Props
       <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))' }}>
         {[
           ['Tài khoản', o.users_count],
-          ['Org Admin', byRole('ORG_ADMIN')],
+          ['Quản trị đơn vị', byRole('ORG_ADMIN')],
           ['Giảng viên', byRole('TEACHER')],
           ['Sinh viên', byRole('STUDENT')],
           ['Kỳ thi', o.exams_count],

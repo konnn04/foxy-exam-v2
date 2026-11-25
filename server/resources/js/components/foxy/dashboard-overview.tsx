@@ -83,7 +83,7 @@ export function DashboardOverview({
     { label: 'Sinh viên', value: fmt(overview.students), icon: GraduationCap, tone: 'success' as Tone },
     { label: 'Ca thi tháng này', value: fmt(overview.examsThisMonth), delta: `${overview.liveExams.length} đang diễn ra`, icon: ClipboardList, tone: 'brand' as Tone },
     quota && quota.exams_limit > 0
-      ? { label: 'Quota kỳ thi', value: `${Math.round((quota.exams_used / quota.exams_limit) * 100)}%`, delta: `${fmt(quota.exams_used)} / ${fmt(quota.exams_limit)}`, icon: Gauge, tone: 'violet' as Tone, bar: (quota.exams_used / quota.exams_limit) * 100 }
+      ? { label: 'Hạn mức kỳ thi', value: `${Math.round((quota.exams_used / quota.exams_limit) * 100)}%`, delta: `${fmt(quota.exams_used)} / ${fmt(quota.exams_limit)}`, icon: Gauge, tone: 'violet' as Tone, bar: (quota.exams_used / quota.exams_limit) * 100 }
       : { label: 'Vi phạm chờ duyệt', value: fmt(pending), delta: `${highPending} mức cao`, deltaTone: 'down' as const, icon: ShieldAlert, tone: 'danger' as Tone },
   ];
 

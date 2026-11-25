@@ -134,7 +134,7 @@ export function OrganizationsTab({ organizations, plans = [], listMeta }: Organi
           onQuery,
         }}
         filters={[
-          { key: 'plan', label: 'Gói cước', options: planOptions.map((p) => ({ value: p.name.toUpperCase(), label: p.name })) },
+          { key: 'plan', label: 'Gói dịch vụ', options: planOptions.map((p) => ({ value: p.name.toUpperCase(), label: p.name })) },
           { key: 'status', label: 'Trạng thái', options: Object.entries(ORG_STATUS).map(([value, v]) => ({ value, label: v.label })) },
         ]}
         onRowClick={(o) => router.visit(`/admin/organizations/${o.id}`)}
@@ -152,7 +152,7 @@ export function OrganizationsTab({ organizations, plans = [], listMeta }: Organi
           },
           {
             key: 'quota',
-            label: 'Quota kỳ thi / tháng',
+            label: 'Số kỳ thi tối đa mỗi tháng',
             width: 'minmax(160px,1.3fr)',
             render: (o) => (
               <div className="flex flex-col gap-1.5 pr-4">
@@ -222,7 +222,7 @@ export function OrganizationsTab({ organizations, plans = [], listMeta }: Organi
         <Field label="Loại hình" error={errors.type}>
           <Segmented stretch options={ORG_TYPES} value={form.type} onChange={(v) => setForm({ ...form, type: v })} />
         </Field>
-        <Field label="Gói cước" error={errors.plan_name}>
+        <Field label="Gói dịch vụ" error={errors.plan_name}>
           <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
             {planOptions.map((p) => {
               const on = form.plan_name === p.name.toUpperCase();
@@ -245,8 +245,8 @@ export function OrganizationsTab({ organizations, plans = [], listMeta }: Organi
         </Field>
         {editing && (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
-            <Field label="Email Org Admin">
-              <div className="flex h-9 items-center rounded-lg border border-border bg-surface px-2.5 text-sm text-muted-foreground">{editing.admin_email || 'Chưa có Org Admin'}</div>
+            <Field label="Email quản trị đơn vị">
+              <div className="flex h-9 items-center rounded-lg border border-border bg-surface px-2.5 text-sm text-muted-foreground">{editing.admin_email || 'Chưa có Quản trị đơn vị'}</div>
             </Field>
             <Field label="Trạng thái" error={errors.status}>
               <Segmented stretch options={Object.entries(ORG_STATUS).map(([value, v]) => ({ value, label: v.label }))} value={form.status} onChange={(v) => setForm({ ...form, status: v })} />

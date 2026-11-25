@@ -61,6 +61,7 @@ services:
       RT_RECORD_INTERNAL_URL: http://record:8083
       AI_FACE_URL: ${AI_FACE_URL:-}
       AI_OBJECT_URL: ${AI_OBJECT_URL:-}
+      AI_AGENT_URL: ${AI_AGENT_URL:-}
       AI_TOKEN: ${AI_TOKEN:-}
       LIVEKIT_PUBLIC_URL: wss://${SERVICE_FQDN_LIVEKIT}
       LIVEKIT_API_KEY: foxy

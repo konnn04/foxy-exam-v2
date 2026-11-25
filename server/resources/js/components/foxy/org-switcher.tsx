@@ -168,7 +168,7 @@ function Row({ o, active, hi, onPick, onHover, root }: { o: OrgOption; active: b
         {root ? <ShieldCheck className="size-4" /> : o.code.slice(0, 4)}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium">{root ? 'Root Admin' : o.name}</span>
+        <span className="block truncate text-[13px] font-medium">{root ? 'Quản trị nền tảng' : o.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{root ? 'Quản trị nền tảng · tổ chức, gói cước, tài khoản' : o.code}</span>
       </span>
       {!root && o.plan && (

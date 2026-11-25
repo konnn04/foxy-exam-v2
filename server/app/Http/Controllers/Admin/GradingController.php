@@ -85,7 +85,7 @@ class GradingController extends Controller
 
         $total = (float) ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->sum('score') + (float) Submission::where('exam_attempt_id', $attempt->id)->sum('score');
         $attempt->update(['score' => round($total, 2)]);
-        Notify::to($attempt->user_id, 'graded', 'Bài thi đã được chấm', $attempt->exam->title, null);
+        Notify::to($attempt->user_id, 'graded', 'Bài thi đã được chấm', $attempt->exam->title, null, 'graded', ['exam' => $attempt->exam->title]);
 
         return back()->with('success', 'Đã lưu điểm. Tổng điểm: ' . round($total, 2));
     }

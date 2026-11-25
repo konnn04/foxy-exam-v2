@@ -24,8 +24,8 @@ interface UsersTabProps {
 }
 
 export const USER_ROLE: Record<string, { label: string; tone: Tone }> = {
-  SUPER_ADMIN: { label: 'Root Admin', tone: 'violet' },
-  ORG_ADMIN: { label: 'Org Admin', tone: 'info' },
+  SUPER_ADMIN: { label: 'Quản trị nền tảng', tone: 'violet' },
+  ORG_ADMIN: { label: 'Quản trị đơn vị', tone: 'info' },
   TEACHER: { label: 'Giảng viên', tone: 'success' },
   STUDENT: { label: 'Sinh viên', tone: 'neutral' },
 };

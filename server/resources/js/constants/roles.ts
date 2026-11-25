@@ -13,7 +13,7 @@ export const USER_ROLES = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Quản trị Nền tảng (Root)',
-  ORG_ADMIN: 'Quản trị Trường (Org Admin)',
+  ORG_ADMIN: 'Quản trị đơn vị',
   TEACHER: 'Giảng viên',
   STUDENT: 'Thí sinh / Sinh viên',
 };

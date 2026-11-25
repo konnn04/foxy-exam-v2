@@ -208,7 +208,7 @@ export function OrganizationForm({ user, teams, plans = [], organization }: { us
               )}
             </Panel>
             <Panel className="flex flex-col gap-3">
-              <PanelTitle title="Gói cước" desc="Quota kỳ thi mỗi tháng và tính năng giám sát" />
+              <PanelTitle title="Gói dịch vụ" desc="Số kỳ thi tối đa mỗi tháng và tính năng giám sát" />
               <div className="grid gap-2" style={grid(150)}>
                 {plans.map((p) => {
                   const on = form.plan_name === p.name.toUpperCase();
@@ -398,8 +398,8 @@ export interface UserFormData {
 const ROLE_OPTS = [
   { value: 'STUDENT', label: 'Sinh viên', desc: 'Làm bài qua FoxyClient' },
   { value: 'TEACHER', label: 'Giảng viên', desc: 'Soạn đề, tạo kỳ thi, giám sát' },
-  { value: 'ORG_ADMIN', label: 'Org Admin', desc: 'Quản trị toàn bộ tổ chức' },
-  { value: 'SUPER_ADMIN', label: 'Root Admin', desc: 'Quản trị nền tảng' },
+  { value: 'ORG_ADMIN', label: 'Quản trị đơn vị', desc: 'Quản trị toàn bộ tổ chức' },
+  { value: 'SUPER_ADMIN', label: 'Quản trị nền tảng', desc: 'Quản trị nền tảng' },
 ];
 const randomAvatar = () => `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.random().toString(36).slice(2, 9)}`;
 

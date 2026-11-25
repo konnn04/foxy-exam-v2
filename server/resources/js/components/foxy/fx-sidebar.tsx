@@ -55,70 +55,70 @@ interface NavItem {
 
 /**
  * Navigation comes from the SERVER's capabilities for the ACTIVE organization, never from the
- * account's role alone: a Root Admin who switched into a school sees exactly what that school's
- * Org Admin sees, and in the ROOT context only the three platform pages exist.
+ * account's role alone: a Quản trị nền tảng who switched into a school sees exactly what that school's
+ * Quản trị đơn vị sees, and in the ROOT context only the three platform pages exist.
  */
 function navFor(can: Capabilities, isPlatform: boolean, pending: number, newLeads: number): { label: string; items: NavItem[] }[] {
   if (isPlatform) {
     return [
       {
-        label: 'Nền tảng',
+        label: 'Quản trị nền tảng',
         items: [
           { id: 'platform', label: 'Tổng quan', icon: LayoutDashboard, href: '/admin/platform' },
-          { id: 'organizations', label: 'Tổ chức', icon: Building2, href: '/admin/organizations' },
-          { id: 'saas-plans', label: 'Gói cước', icon: Package, href: '/admin/saas-plans' },
-          { id: 'users', label: 'Tài khoản hệ thống', icon: Users, href: '/admin/users' },
+          { id: 'organizations', label: 'Đơn vị sử dụng', icon: Building2, href: '/admin/organizations' },
+          { id: 'saas-plans', label: 'Gói dịch vụ', icon: Package, href: '/admin/saas-plans' },
+          { id: 'users', label: 'Tài khoản quản trị', icon: Users, href: '/admin/users' },
         ],
       },
       {
         label: 'Khách hàng',
         items: [
-          { id: 'leads', label: 'Khách tiềm năng', icon: Inbox, href: '/admin/leads', count: newLeads },
-          { id: 'announcements', label: 'Thông báo hàng loạt', icon: Megaphone, href: '/admin/announcements' },
+          { id: 'leads', label: 'Đơn vị đăng ký dùng thử', icon: Inbox, href: '/admin/leads', count: newLeads },
+          { id: 'announcements', label: 'Thông báo chung', icon: Megaphone, href: '/admin/announcements' },
         ],
       },
       {
-        label: 'Vận hành',
+        label: 'Hệ thống',
         items: [
-          { id: 'health', label: 'Sức khỏe hệ thống', icon: HeartPulse, href: '/admin/platform/health' },
-          { id: 'audit', label: 'Nhật ký hoạt động', icon: ScrollText, href: '/admin/audit-log' },
-          { id: 'site', label: 'Nội dung website', icon: Globe, href: '/admin/site' },
+          { id: 'health', label: 'Tình trạng hệ thống', icon: HeartPulse, href: '/admin/platform/health' },
+          { id: 'audit', label: 'Lịch sử thao tác', icon: ScrollText, href: '/admin/audit-log' },
+          { id: 'site', label: 'Nội dung trang web', icon: Globe, href: '/admin/site' },
         ],
       },
     ];
   }
 
   const org: NavItem[] = [{ id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, href: '/admin' }];
-  if (can.users) org.push({ id: 'users', label: 'Giảng viên & Sinh viên', icon: Users, href: '/admin/users' });
+  if (can.users) org.push({ id: 'users', label: 'Người dùng', icon: Users, href: '/admin/users' });
   org.push({ id: 'courses', label: 'Khóa học', icon: GraduationCap, href: '/admin/courses' });
-  if (can.orgSettings) org.push({ id: 'import', label: 'Nhập sinh viên (Excel)', icon: FileSpreadsheet, href: '/admin/import/students' });
-  if (can.quota) org.push({ id: 'saas-plans', label: 'Quota & Gói cước', icon: Gauge, href: '/admin/saas-plans' });
+  if (can.orgSettings) org.push({ id: 'import', label: 'Nhập danh sách từ Excel', icon: FileSpreadsheet, href: '/admin/import/students' });
+  if (can.quota) org.push({ id: 'saas-plans', label: 'Gói dịch vụ & hạn mức', icon: Gauge, href: '/admin/saas-plans' });
 
   const groups = [
-    { label: 'Tổ chức', items: org },
+    { label: 'Quản lý', items: org },
     {
       label: 'Kỳ thi',
       items: [
         { id: 'exams' as NavTab, label: 'Kỳ thi', icon: ClipboardList, href: '/admin/exams' },
-        { id: 'problem-banks' as NavTab, label: 'Ngân hàng đề', icon: Library, href: '/admin/problem-banks' },
-        { id: 'live' as NavTab, label: 'Giám sát kỳ thi', icon: Eye, href: '/admin/live', count: pending },
-        { id: 'faces' as NavTab, label: 'Khuôn mặt', icon: ScanFace, href: '/admin/faces' },
+        { id: 'problem-banks' as NavTab, label: 'Kho đề thi', icon: Library, href: '/admin/problem-banks' },
+        { id: 'live' as NavTab, label: 'Theo dõi giờ thi', icon: Eye, href: '/admin/live', count: pending },
+        { id: 'faces' as NavTab, label: 'Xác minh khuôn mặt', icon: ScanFace, href: '/admin/faces' },
       ],
     },
   ];
   const config: NavItem[] = [];
-  if (can.orgSettings) config.push({ id: 'analytics', label: 'Báo cáo theo khoa & học kỳ', icon: BarChart3, href: '/admin/analytics' });
-  if (can.orgSettings) config.push({ id: 'settings', label: 'Cài đặt tổ chức', icon: SlidersHorizontal, href: '/admin/settings' });
-  if (can.users) config.push({ id: 'audit', label: 'Nhật ký hoạt động', icon: ScrollText, href: '/admin/audit-log' });
-  if (config.length) groups.push({ label: 'Cấu hình', items: config });
+  if (can.orgSettings) config.push({ id: 'analytics', label: 'Báo cáo thống kê', icon: BarChart3, href: '/admin/analytics' });
+  if (can.orgSettings) config.push({ id: 'settings', label: 'Cài đặt đơn vị', icon: SlidersHorizontal, href: '/admin/settings' });
+  if (can.users) config.push({ id: 'audit', label: 'Lịch sử thao tác', icon: ScrollText, href: '/admin/audit-log' });
+  if (config.length) groups.push({ label: 'Thiết lập', items: config });
   return groups;
 }
 
 function roleChip(role: string, isPlatform: boolean, activeCode: string) {
-  if (isPlatform) return { text: 'Root Admin', hint: false };
-  if (role === 'SUPER_ADMIN') return { text: `Root Admin · đang xem ${activeCode}`, hint: true };
+  if (isPlatform) return { text: 'Quản trị nền tảng', hint: false };
+  if (role === 'SUPER_ADMIN') return { text: `Quản trị nền tảng · đang xem ${activeCode}`, hint: true };
   if (role === 'TEACHER') return { text: 'Giảng viên', hint: false };
-  return { text: 'Org Admin', hint: false };
+  return { text: 'Quản trị đơn vị', hint: false };
 }
 
 export interface FxSidebarUser {

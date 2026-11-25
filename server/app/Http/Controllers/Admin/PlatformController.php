@@ -80,6 +80,28 @@ class PlatformController extends Controller
     }
 
     /** Same checks as JSON, so the page can refresh itself without a full reload. */
+    /** GET /admin/platform/services — current addresses of the AI / realtime services (Root Admin). */
+    public function services()
+    {
+        $this->authorizePlatform();
+
+        return response()->json(['services' => \App\Support\ServiceEndpoints::forEditor()]);
+    }
+
+    /** POST /admin/platform/services — save the addresses; an empty value goes back to the .env default. */
+    public function updateServices(\Illuminate\Http\Request $request)
+    {
+        $this->authorizePlatform();
+        $data = $request->validate(['values' => ['required', 'array']]);
+        $errors = \App\Support\ServiceEndpoints::save($data['values']);
+        if ($errors) {
+            return response()->json(['errors' => $errors], 422);
+        }
+        \App\Support\Audit::record('platform.services', 'Cập nhật địa chỉ dịch vụ hệ thống', null, null, ['keys' => array_keys($data['values'])]);
+
+        return response()->json(['services' => \App\Support\ServiceEndpoints::forEditor()]);
+    }
+
     public function healthJson()
     {
         $this->authorizePlatform();

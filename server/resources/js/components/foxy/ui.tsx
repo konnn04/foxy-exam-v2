@@ -4,7 +4,8 @@
  * identical to the Claude Design source ("FoxyExam Screens v2.dc.html").
  */
 import * as React from 'react';
-import { ArrowLeft, ArrowRight, Check, X, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CircleHelp, X, type LucideIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'info' | 'danger' | 'violet' | 'outline';
@@ -691,5 +692,25 @@ export function Modal({
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border bg-card px-5 py-3.5 [&>*]:max-sm:flex-1">{footer}</div>}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * A small "?" that explains a technical term in plain words on hover / focus. Use it instead of putting jargon in the
+ * main text: the sentence stays simple for teachers, the detail is one hover away.
+ */
+export function Tip({ children, label = 'Giải thích' }: { children: React.ReactNode; label?: string }) {
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" aria-label={label} className="ml-1 inline-flex cursor-help align-middle text-muted-foreground hover:text-foreground focus-visible:text-foreground">
+            <CircleHelp className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs leading-relaxed">{children}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

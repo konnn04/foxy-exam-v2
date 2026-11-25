@@ -61,7 +61,7 @@ export default function ShowExam({ user, teams, exam }: Props) {
   const removeExam = async () => {
     const ok = await dialog.confirm({
       title: `Xóa kỳ thi “${exam.title}”?`,
-      text: 'Bài làm, bài nộp, Op-Log và vi phạm của thí sinh trong kỳ thi cũng bị xóa.',
+      text: 'Bài làm, bài nộp, nhật ký gõ code và vi phạm của thí sinh trong kỳ thi cũng bị xóa.',
       warn: exam.attempts.length ? `Đã có ${exam.attempts.length} lượt làm bài.` : undefined,
       tone: 'danger',
       requireText: exam.attempts.length ? exam.code : undefined,
@@ -89,7 +89,7 @@ export default function ShowExam({ user, teams, exam }: Props) {
     ...(isCode
       ? ([
           [`Chặn dán code (> ${cfg.max_paste_chars ?? 80} ký tự)`, !!cfg.prevent_paste],
-          ['Ghi Op-Log từng phím', !!cfg.track_keystroke_dynamics],
+          ['Ghi lại từng phím gõ', !!cfg.track_keystroke_dynamics],
         ] as [string, boolean][])
       : ([
           ['Trộn câu hỏi', !!cfg.is_shuffle_questions],

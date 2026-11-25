@@ -90,7 +90,7 @@ function PlatformPlans({ plans, invoices = [], isSuperAdmin }: SaasPlansTabProps
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Gói cước"
+        title="Gói dịch vụ"
         desc="Cấu hình gói SaaS cho các tổ chức thuê nền tảng và theo dõi hóa đơn."
         actions={
           <>
@@ -98,7 +98,7 @@ function PlatformPlans({ plans, invoices = [], isSuperAdmin }: SaasPlansTabProps
               value={view}
               onChange={setView}
               options={[
-                { value: 'plans', label: `Gói cước (${plans.length})` },
+                { value: 'plans', label: `Gói dịch vụ (${plans.length})` },
                 { value: 'invoices', label: `Hóa đơn (${invoices.length})` },
               ]}
             />
@@ -175,7 +175,7 @@ function PlatformPlans({ plans, invoices = [], isSuperAdmin }: SaasPlansTabProps
         <ToggleList
           items={[
             { key: 'ai', label: 'Giám sát AI', desc: 'Xác thực khuôn mặt, phát hiện vật cấm', checked: form.has_ai_proctoring, onChange: (v) => setForm({ ...form, has_ai_proctoring: v }) },
-            { key: 'replay', label: 'Phát lại Op-Log', desc: 'Phát lại quá trình gõ code của thí sinh', checked: form.has_code_replay, onChange: (v) => setForm({ ...form, has_code_replay: v }) },
+            { key: 'replay', label: 'Xem lại quá trình gõ code', desc: 'Phát lại quá trình gõ code của thí sinh', checked: form.has_code_replay, onChange: (v) => setForm({ ...form, has_code_replay: v }) },
           ]}
         />
       </Modal>
@@ -189,7 +189,7 @@ function PlanFacts({ plan }: { plan: Pick<PlanItem, 'max_exams_per_month' | 'max
     ['Thí sinh / kỳ', plan.max_students_per_exam.toLocaleString('en')],
     ['Lưu trữ', `${plan.storage_limit_gb} GB`],
     ['Giám sát AI', <Flag on={plan.has_ai_proctoring} />],
-    ['Phát lại Op-Log', <Flag on={plan.has_code_replay} />],
+    ['Xem lại quá trình gõ code', <Flag on={plan.has_code_replay} />],
   ];
   return (
     <div className="flex flex-col">
@@ -224,7 +224,7 @@ function OrganizationQuota({ plans, myOrgQuota, currentOrgPlan }: SaasPlansTabPr
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Quota & Gói cước" desc="Gói dịch vụ và hạn mức sử dụng của tổ chức. Để nâng cấp gói, liên hệ quản trị nền tảng Foxy." />
+      <PageHeader title="Gói dịch vụ & hạn mức" desc="Gói dịch vụ và hạn mức sử dụng của tổ chức. Để nâng cấp gói, liên hệ quản trị nền tảng Foxy." />
 
       {q && (
         <Panel className="flex flex-col gap-4">
@@ -251,7 +251,7 @@ function OrganizationQuota({ plans, myOrgQuota, currentOrgPlan }: SaasPlansTabPr
               </span>
             </div>
             <div className="flex flex-col gap-1 bg-card px-4 py-3.5">
-              <span className="text-xs text-muted-foreground">Phát lại Op-Log</span>
+              <span className="text-xs text-muted-foreground">Xem lại quá trình gõ code</span>
               <span className="text-[15px] font-semibold">
                 <Flag on={!!q.has_code_replay} />
               </span>

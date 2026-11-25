@@ -21,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // addresses edited by the Root Admin override the .env defaults
+        \App\Support\ServiceEndpoints::apply();
+
         \Illuminate\Support\Facades\Gate::define('viewApiDocs', function ($user = null) {
             return true;
         });

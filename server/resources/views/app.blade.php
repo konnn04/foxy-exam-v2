@@ -7,6 +7,17 @@
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <title inertia>{{ config('app.name', 'Exam Guard') }}</title>
+        @php($seoPublic = \App\Http\Controllers\SeoController::isPublicPath(request()->path()))
+        @if ($seoPublic)
+        <meta name="description" head-key="description" content="Nền tảng tổ chức thi trực tuyến có giám sát dành cho nhà trường: tạo kỳ thi, theo dõi thí sinh theo thời gian thực, chấm bài tự động và lưu biên bản minh chứng.">
+        <link rel="canonical" href="{{ url(request()->path() === '/' ? '/' : '/' . request()->path()) }}">
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ config('app.name', 'Exam Guard') }}">
+        <meta property="og:url" content="{{ url(request()->path() === '/' ? '/' : '/' . request()->path()) }}">
+        <meta property="og:image" content="{{ url('/logo.png') }}">
+        @else
+        <meta name="robots" content="noindex, nofollow">
+        @endif
 
         <!-- Typography: Be Vietnam Pro + Instrument Sans + JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

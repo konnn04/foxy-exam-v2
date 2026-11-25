@@ -409,7 +409,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
               onClick={async () => {
                 const ok = await dialog.confirm({
                   title: 'Xóa vĩnh viễn phiên thi này?',
-                  text: 'Toàn bộ lịch sử vi phạm, nhật ký gõ phím (Op-Log) và bài nộp của phiên thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+                  text: 'Toàn bộ lịch sử vi phạm, nhật ký gõ phím và bài nộp của phiên thi này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
                   tone: 'danger',
                   confirmLabel: 'Xóa vĩnh viễn',
                 });

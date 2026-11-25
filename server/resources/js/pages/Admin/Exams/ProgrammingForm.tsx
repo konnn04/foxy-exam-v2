@@ -30,7 +30,7 @@ export default function ProgrammingExamForm(page: ExamFormPageProps) {
             <ToggleList
               items={[
                 { key: 'paste', label: 'Chặn dán ngoài editor', desc: `Ghi BULK_PASTE khi dán > ${form.max_paste_chars} ký tự`, checked: form.prevent_paste, onChange: (v) => state.flipMon('prevent_paste', v) },
-                { key: 'ks', label: 'Ghi Op-Log từng phím', desc: 'Cho phép phát lại quá trình gõ khi chấm', checked: form.track_keystroke, onChange: (v) => state.flipMon('track_keystroke', v) },
+                { key: 'ks', label: 'Ghi lại từng phím gõ', desc: 'Cho phép phát lại quá trình gõ khi chấm', checked: form.track_keystroke, onChange: (v) => state.flipMon('track_keystroke', v) },
               ]}
             />
           </Panel>
@@ -67,7 +67,7 @@ export default function ProgrammingExamForm(page: ExamFormPageProps) {
             </Panel>
             <Panel className="flex items-start gap-3 p-4">
               <Keyboard className="mt-0.5 size-4 shrink-0" />
-              <div className="text-[13px] text-muted-foreground">Op-Log ghi số phím gõ, số lần dán và thời gian gõ của từng bài để đối chiếu khi chấm lại.</div>
+              <div className="text-[13px] text-muted-foreground">Hệ thống ghi lại số phím gõ, số lần dán và thời gian gõ của từng bài để đối chiếu khi chấm lại.</div>
             </Panel>
           </div>
         </div>

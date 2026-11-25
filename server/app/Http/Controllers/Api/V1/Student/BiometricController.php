@@ -65,7 +65,7 @@ class BiometricController extends Controller
         }
         $row = FaceChangeRequest::create(['user_id' => $user->id, 'reason' => trim($data['reason']), 'status' => 'PENDING']);
         if ($user->organization_id) {
-            Notify::staff($user->organization_id, 'face_request', "{$user->name} xin đổi khuôn mặt", $row->reason, '/admin/faces?tab=requests');
+            Notify::staff($user->organization_id, 'face_request', "{$user->name} xin đổi khuôn mặt", $row->reason, '/admin/faces?tab=requests', 'face_request', ['name' => $user->name]);
         }
 
         return response()->json(['success' => true, 'message' => 'Đã gửi yêu cầu. Giảng viên sẽ duyệt và mở khoá cho bạn.', 'data' => ['id' => $row->id]], 201);

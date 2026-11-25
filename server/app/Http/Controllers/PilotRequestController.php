@@ -45,6 +45,7 @@ class PilotRequestController extends Controller
                 'Có yêu cầu thí điểm mới',
                 "{$lead->name} · {$lead->organization}",
                 '/admin/leads',
+                'lead',
             ));
         }
 

@@ -224,7 +224,7 @@ export default function AttemptSubmissions({ user, teams, attempt, problems, sub
             </Panel>
 
             <Panel className="flex flex-col gap-3.5 p-4">
-              <span className="font-semibold">Op-Log · {prob?.code}</span>
+              <span className="font-semibold">Quá trình gõ code · {prob?.code}</span>
               <div className="grid gap-px overflow-hidden rounded-lg bg-border" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))' }}>
                 {[
                   { k: 'Phím gõ', v: (op?.keys ?? 0).toLocaleString('en'), warn: false },
