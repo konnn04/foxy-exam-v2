@@ -124,7 +124,7 @@ export default function Main() {
         return;
       }
       if (err instanceof ApiError && err.status === 0) setOnline(false);
-      setError(err instanceof ApiError ? err.message : "Không tải được dữ liệu.");
+      setError(err instanceof ApiError ? err.message : t("main.loadFail"));
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
@@ -134,7 +134,7 @@ export default function Main() {
     void load();
     return onWindowShown(() => {
       const notice = takeNotice();
-      if (notice) void dialog.alert({ title: "Phòng thi đã đóng", text: notice, tone: "warning" });
+      if (notice) void dialog.alert({ title: t("main.notice.title"), text: notice, tone: "warning" });
       void load();
       device.refresh();
     });
@@ -176,11 +176,9 @@ export default function Main() {
     if (!auth) return;
     const isResuming = exam.latest_attempt?.status === "IN_PROGRESS" || data.exams.find((x) => x.id === exam.id)?.latest_attempt?.status === "IN_PROGRESS";
     const ok = await dialog.confirm({
-      title: isResuming ? `Tiếp tục ca thi “${exam.title}”?` : `Vào phòng thi “${exam.title}”?`,
-      text: isResuming
-        ? "Để vào lại phòng thi, hệ thống bắt buộc thực hiện bước kiểm tra lại thiết bị (precheck: camera, khuôn mặt, màn hình, điện thoại phụ và tiến trình máy). Thời gian làm bài của phiên thi hiện tại vẫn đang được tính."
-        : "Ứng dụng sẽ chuyển sang chế độ thi: toàn màn hình, bật camera và giám sát. Đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu” ở bước kiểm tra thiết bị.",
-      confirmLabel: isResuming ? "Kiểm tra thiết bị & Tiếp tục" : "Vào phòng thi",
+      title: isResuming ? t("main.resume.title", { title: exam.title }) : t("main.enter.title", { title: exam.title }),
+      text: isResuming ? t("main.resume.text") : t("main.enter.text"),
+      confirmLabel: isResuming ? t("main.resume.confirm") : t("main.enter.confirm"),
     });
     if (!ok) return;
     setStartingId(exam.id);
@@ -189,7 +187,7 @@ export default function Main() {
       savePendingExam({ id: exam.id, title: exam.title, code: exam.code, type: exam.type, resuming: isResuming });
       await switchWindow(exam.type === "QUIZ" ? AppWindow.ExamClassic : AppWindow.ExamCode);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Không vào được phòng thi.");
+      toast.error(err instanceof ApiError ? err.message : t("main.enter.fail"));
     } finally {
       setStartingId(null);
     }
@@ -200,9 +198,9 @@ export default function Main() {
       <div className="flex h-screen flex-col bg-app">
         <TitleBar title="Foxy Exam" />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-xs text-muted">
-          Chưa đăng nhập.
+          {t("main.notSignedIn")}
           <Button variant="primary" onClick={() => void switchWindow(AppWindow.Auth)}>
-            Về màn hình đăng nhập
+            {t("main.toSignIn")}
           </Button>
         </div>
       </div>

@@ -1,16 +1,15 @@
+import { translate } from "./i18n";
+
 /** One-shot message for the dashboard after an exam window closed by itself (absent, suspended...). */
 const KEY = "foxyexam:notice";
 
-export const NOTICE_TEXT: Record<string, string> = {
-  absent: "Bạn mất kết nối quá 5 phút nên bị tính vắng thi; bài làm hiện có đã được nộp.",
-  force_ended: "Giám thị đã đình chỉ phiên thi của bạn.",
-  ended: "Phiên thi đã kết thúc.",
-};
+const KNOWN = ["absent", "force_ended", "ended"];
 
-export const setNotice = (reason: string) => localStorage.setItem(KEY, NOTICE_TEXT[reason] ?? NOTICE_TEXT.ended);
+/** Stores only the reason: the text is written when it is shown, in the language selected at that moment. */
+export const setNotice = (reason: string) => localStorage.setItem(KEY, KNOWN.includes(reason) ? reason : "ended");
 
 export function takeNotice(): string | null {
   const v = localStorage.getItem(KEY);
   if (v) localStorage.removeItem(KEY);
-  return v;
+  return v ? translate(`notice.${v}`) : null;
 }

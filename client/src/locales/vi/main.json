@@ -180,5 +180,19 @@
   "notif.face_decision.approved.body": "Bạn có thể đăng ký lại khuôn mặt trong phòng chờ.",
   "notif.face_decision.rejected.title": "Yêu cầu đổi khuôn mặt bị từ chối",
   "notif.violation_report.published.title": "Biên bản xử lý vi phạm đã được ban hành: {exam}",
-  "notif.violation_report.summary.title": "Biên bản giám sát ca thi: {exam}"
+  "notif.violation_report.summary.title": "Biên bản giám sát ca thi: {exam}",
+  "main.enter.title": "Vào phòng thi “{title}”?",
+  "main.enter.text": "Ứng dụng sẽ chuyển sang chế độ thi: toàn màn hình, bật camera và giám sát. Đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu” ở bước kiểm tra thiết bị.",
+  "main.enter.confirm": "Vào phòng thi",
+  "main.resume.title": "Tiếp tục ca thi “{title}”?",
+  "main.resume.text": "Để vào lại phòng thi, bạn cần kiểm tra lại thiết bị (camera, khuôn mặt, màn hình, điện thoại phụ và các ứng dụng đang chạy). Thời gian làm bài của phiên thi hiện tại vẫn đang được tính.",
+  "main.resume.confirm": "Kiểm tra thiết bị & Tiếp tục",
+  "main.enter.fail": "Không vào được phòng thi.",
+  "main.loadFail": "Không tải được dữ liệu.",
+  "main.notice.title": "Phòng thi đã đóng",
+  "main.notSignedIn": "Chưa đăng nhập.",
+  "main.toSignIn": "Về màn hình đăng nhập",
+  "notice.absent": "Bạn mất kết nối quá 5 phút nên bị tính vắng thi; bài làm hiện có đã được nộp.",
+  "notice.force_ended": "Giám thị đã đình chỉ phiên thi của bạn.",
+  "notice.ended": "Phiên thi đã kết thúc."
 }

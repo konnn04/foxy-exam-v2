@@ -180,5 +180,19 @@
   "notif.face_decision.approved.body": "You can register your face again in the waiting room.",
   "notif.face_decision.rejected.title": "Your face change request was declined",
   "notif.violation_report.published.title": "Violation report issued: {exam}",
-  "notif.violation_report.summary.title": "Exam proctoring report: {exam}"
+  "notif.violation_report.summary.title": "Exam proctoring report: {exam}",
+  "main.enter.title": "Enter the exam room “{title}”?",
+  "main.enter.text": "The app will switch to exam mode: full screen, camera on and monitoring. The exam timer only starts when you press “Start” in the device check.",
+  "main.enter.confirm": "Enter exam room",
+  "main.resume.title": "Continue the exam “{title}”?",
+  "main.resume.text": "To rejoin the exam room you need to check your devices again (camera, face, screen, extra phone and running apps). The time of your current session is still counting.",
+  "main.resume.confirm": "Check devices & continue",
+  "main.enter.fail": "Couldn't enter the exam room.",
+  "main.loadFail": "Couldn't load the data.",
+  "main.notice.title": "The exam room has closed",
+  "main.notSignedIn": "You are not signed in.",
+  "main.toSignIn": "Back to sign in",
+  "notice.absent": "You were disconnected for more than 5 minutes and marked absent; your answers so far were submitted.",
+  "notice.force_ended": "A proctor has suspended your exam session.",
+  "notice.ended": "The exam session has ended."
 }
