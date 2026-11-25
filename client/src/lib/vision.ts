@@ -98,6 +98,8 @@ export class FaceMonitor {
   /** Called once when detection keeps failing (the analysis cannot run on this machine). */
   onFailure?: (err: unknown) => void;
   private fails = 0;
+  private sawFrame = false;
+  private sawResult = false;
   private failed = false;
 
   constructor(
@@ -107,6 +109,7 @@ export class FaceMonitor {
 
   /** Resolves with the delegate in use, or throws when MediaPipe cannot start at all (the exam goes on without it). */
   async start(stream: MediaStream, preferred: FaceDelegate = getFaceDelegate()): Promise<"GPU" | "CPU"> {
+    diag(`vision: delegate preference=${preferred}, linux=${IS_LINUX}`);
     const order: ("GPU" | "CPU")[] = preferred === "cpu" ? ["CPU"] : preferred === "gpu" ? ["GPU"] : ["GPU", "CPU"];
     let lastErr: unknown;
     for (const d of order) {
@@ -124,9 +127,17 @@ export class FaceMonitor {
     const v = document.createElement("video");
     v.muted = true;
     v.playsInline = true;
+    // WebKit does not decode frames of a <video> that is not in the page: it sits at readyState 0 and every reading
+    // is skipped (no error, no result). Keep it in the DOM, invisible but rendered.
+    v.setAttribute("aria-hidden", "true");
+    v.style.cssText = "position:fixed;left:0;top:0;width:320px;height:240px;opacity:0;pointer-events:none;z-index:-1";
+    document.body.appendChild(v);
     v.srcObject = stream;
-    await v.play().catch(() => {});
+    await v.play().catch((e) => diag(`vision: video.play failed: ${e instanceof Error ? e.message : String(e)}`));
     this.video = v;
+    window.setTimeout(() => {
+      if (this.video === v && !this.sawFrame) diag(`vision: still no frame after 3s (readyState=${v.readyState}, size=${v.videoWidth}x${v.videoHeight}, paused=${v.paused})`);
+    }, 3000);
     const t0 = performance.now();
     this.timer = window.setInterval(() => this.tick(t0), FRAME_MS[this.delegate]);
     return this.delegate;
@@ -136,6 +147,10 @@ export class FaceMonitor {
     const v = this.video;
     if (!this.lm || !v || v.readyState < 2 || v.videoWidth === 0 || v.currentTime === this.last) return;
     this.last = v.currentTime;
+    if (!this.sawFrame) {
+      this.sawFrame = true;
+      diag(`vision: first frame ${v.videoWidth}x${v.videoHeight}`);
+    }
     let r: FrameReading = EMPTY_READING;
     let faceLandmarks: { x: number; y: number }[][] = [];
     try {
@@ -157,6 +172,10 @@ export class FaceMonitor {
         }
       }
       this.fails = 0;
+      if (!this.sawResult) {
+        this.sawResult = true;
+        diag(`vision: first result, faces=${faceLandmarks.length}`);
+      }
     } catch (e) {
       // one bad frame is skipped; a stream of them means detection cannot work here
       this.fails += 1;
@@ -177,6 +196,7 @@ export class FaceMonitor {
     if (this.video) {
       this.video.pause();
       this.video.srcObject = null;
+      this.video.remove();
       this.video = null;
     }
     this.lm?.close();
