@@ -8,7 +8,7 @@ import { PhoneFeed, type PhoneState } from "./phoneFeed";
 import { bypass } from "./dev";
 import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, savePendingExam, setLobbyMedia } from "./lobbyMedia";
-import { LiveKitPublisher, explain, FAILURE_TEXT, getPreferredCamera, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
+import { LiveKitPublisher, explain, failureText, getPreferredCamera, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
 import { releaseEvidence } from "./evidence";
 import { startClipRecorder, stopClipRecorder } from "./clipRecorder";
@@ -441,7 +441,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       watchTracks();
       void startVision(s);
     } catch (e) {
-      setRestoreError(FAILURE_TEXT[explain(e)]);
+      setRestoreError(failureText(explain(e)));
     }
   }, [client, guard, startVision, watchTracks]);
 
@@ -456,7 +456,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       client.setState({ screen: true });
       watchTracks();
     } catch (e) {
-      setRestoreError(FAILURE_TEXT[explain(e)]);
+      setRestoreError(failureText(explain(e)));
     }
   }, [client, watchTracks]);
 

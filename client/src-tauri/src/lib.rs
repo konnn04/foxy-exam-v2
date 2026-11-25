@@ -41,6 +41,33 @@ fn restore_app_window(app: &AppHandle) {
     }
 }
 
+/// Linux (WebKitGTK) refuses camera / microphone access (NotAllowedError) unless the app answers the permission
+/// request itself: unlike WebView2 on Windows there is no prompt of its own. Exam windows are the app's own pages, so
+/// allow media capture (camera, microphone) for them. Nothing else (geolocation, notifications...) is granted.
+#[cfg(target_os = "linux")]
+fn allow_media_permissions(app: &tauri::App) {
+    use webkit2gtk::glib::prelude::*;
+    use webkit2gtk::{PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, WebViewExt};
+
+    for (_, window) in app.webview_windows() {
+        let _ = window.with_webview(|webview| {
+            let view = webview.inner();
+            if let Some(settings) = WebViewExt::settings(&view) {
+                settings.set_enable_media_stream(true);
+                settings.set_enable_mediasource(true);
+            }
+            view.connect_permission_request(|_, request| {
+                if request.is::<UserMediaPermissionRequest>() {
+                    request.allow();
+                    true
+                } else {
+                    false
+                }
+            });
+        });
+    }
+}
+
 // Các cửa sổ (update, auth, main, exam-classic, exam-code) được
 // khai báo sẵn trong tauri.conf.json. Điều hướng qua lại giữa chúng hiện được
 // xử lý hoàn toàn ở phía frontend (xem `src/lib/windowNav.ts`) bằng
@@ -76,6 +103,9 @@ pub fn run() {
             runner::runner_session_kill,
         ])
         .setup(|app| {
+            #[cfg(target_os = "linux")]
+            allow_media_permissions(app);
+
             // Menu chuột phải trên icon khay hệ thống (system tray).
             let check_update =
                 MenuItem::with_id(app, "check-update", "Kiểm tra cập nhật", true, None::<&str>)?;

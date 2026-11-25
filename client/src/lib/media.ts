@@ -1,3 +1,4 @@
+import { translate } from "./i18n";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 
 /** Camera / microphone / screen helpers shared by the pre-exam setup and the exam windows. */
@@ -24,14 +25,8 @@ export function explain(err: unknown): MediaFailure {
   }
 }
 
-export const FAILURE_TEXT: Record<MediaFailure, string> = {
-  denied: "Quyền truy cập bị từ chối — hãy cho phép trong cài đặt quyền của hệ điều hành.",
-  notfound: "Không tìm thấy thiết bị.",
-  busy: "Thiết bị đang được ứng dụng khác sử dụng.",
-  unsupported: "Trình hiển thị không hỗ trợ tính năng này.",
-  surface: "Hãy chọn “Toàn màn hình” (Entire screen), không chia sẻ một cửa sổ hay tab.",
-  unknown: "Không mở được thiết bị.",
-};
+/** Message for a failure, in the language currently selected. */
+export const failureText = (f: MediaFailure): string => translate(`media.${f}`);
 
 const CAMERA_KEY = "foxy:camera-id";
 

@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { captureFrame } from "../lib/evidence";
 import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
-import { explain, FAILURE_TEXT, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
+import { explain, failureText, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
 import { frontalHint, isFrontal, LivenessChallenge, livenessText, type FrameReading } from "../lib/vision-core";
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
@@ -18,6 +18,7 @@ import { saveSession } from "../lib/session";
 import { dialog, errorText } from "../lib/dialog";
 import { diag } from "../lib/diag";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { translate as t, useI18n } from "../lib/i18n";
 
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
@@ -51,6 +52,7 @@ export default function ExamLobby({
   onStarted: () => void;
   onCancel: () => void;
 }) {
+  useI18n(); // re-render when the language changes (texts below use the global translate)
   const [detail, setDetail] = useState<ExamDetail | null>(null);
   const [checks, setChecks] = useState<Record<Check["id"], Check>>(() => initial());
   const [level, setLevel] = useState(0);
@@ -95,7 +97,7 @@ export default function ExamLobby({
   const watchFace = useCallback(
     async (stream: MediaStream, required: boolean) => {
       stopFace();
-      set("face", { level: "checking", detail: "Đang kiểm tra… ngồi thẳng, nhìn vào camera, thấy rõ hai mắt", required });
+      set("face", { level: "checking", detail: t("lobby.face.checking"), required });
       let seen = 0;
       let missed = 0;
       let ok = false;
@@ -111,7 +113,7 @@ export default function ExamLobby({
           }
           if (!ok && seen >= 3) {
             ok = true;
-            set("face", { level: "ok", detail: "Khuôn mặt thẳng, thấy rõ hai mắt", required });
+            set("face", { level: "ok", detail: t("lobby.face.ok"), required });
           } else if ((ok && missed >= 6) || (!ok && missed >= 3)) {
             ok = false;
             set("face", { level: "fail", detail: frontalHint(s), required });
@@ -126,7 +128,7 @@ export default function ExamLobby({
         // the analysis itself cannot run on this machine: do not lock the candidate out, the proctor still sees the camera
         m.stop();
         console.error("[lobby] MediaPipe không chạy:", e);
-        set("face", { level: "warn", detail: "Không phân tích được khuôn mặt trên máy này — bỏ qua bước này", required: false });
+        set("face", { level: "warn", detail: t("lobby.face.skip"), required: false });
       }
     },
     [set, stopFace],
@@ -138,17 +140,17 @@ export default function ExamLobby({
     const required = Boolean(cfg?.ai_identity);
     let lastText = "";
     const show = (detail: string, level: Level = "checking") => set("liveness", { level, detail, required });
-    show(`Bước 1/2: ${livenessText(challenge.steps[0])}`);
+    show(t("lobby.liveness.step", { n: 1, text: livenessText(challenge.steps[0]) }));
     liveFeed.current = (r) => {
       const st = challenge.update(r, performance.now() / 1000);
       if (st.done) {
         liveFeed.current = null;
-        show("Đã xác nhận bạn là người thật", "ok");
+        show(t("lobby.liveness.done"), "ok");
       } else if (st.failed) {
         liveFeed.current = null;
-        show("Chưa đạt — nhấn “Thử lại” và làm đúng từng bước", "fail");
+        show(t("lobby.liveness.failed"), "fail");
       } else if (st.step) {
-        const text = `Bước ${challenge.steps.indexOf(st.step) + 1}/2: ${livenessText(st.step)}`;
+        const text = t("lobby.liveness.step", { n: challenge.steps.indexOf(st.step) + 1, text: livenessText(st.step) });
         if (text !== lastText) {
           lastText = text;
           show(text);
@@ -160,14 +162,14 @@ export default function ExamLobby({
   const runCamera = useCallback(
     async (required: boolean, deviceId?: string) => {
       if (bypass("camera")) {
-        set("face", { level: "warn", detail: "Dev: bỏ qua nhận diện khuôn mặt", required: false });
-        return set("camera", { level: "warn", detail: "Dev: bỏ qua camera", required: false });
+        set("face", { level: "warn", detail: t("lobby.cam.devBypassFace"), required: false });
+        return set("camera", { level: "warn", detail: t("lobby.cam.devBypass"), required: false });
       }
       stopFace();
-      set("camera", { level: "checking", detail: "Đang mở camera…", required });
-      set("face", { level: "idle", detail: "Chờ camera", required });
+      set("camera", { level: "checking", detail: t("lobby.cam.opening"), required });
+      set("face", { level: "idle", detail: t("lobby.face.waitCamera"), required });
       liveFeed.current = null;
-      set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(cfg?.ai_identity) && required });
+      set("liveness", { level: "idle", detail: t("lobby.liveness.idle"), required: Boolean(cfg?.ai_identity) && required });
       try {
         stopStream(getLobbyMedia().camera);
         const s = await openCamera(deviceId ?? (cameraId || null));
@@ -181,13 +183,13 @@ export default function ExamLobby({
         }
         // labels are readable only after permission: refresh the list now
         void listCameras().then(setCameras).catch(() => {});
-        set("camera", { level: "ok", detail: track?.label || "Camera hoạt động", required });
+        set("camera", { level: "ok", detail: track?.label || t("lobby.cam.working"), required });
         void watchFace(s, required);
       } catch (e) {
-        set("camera", { level: required ? "fail" : "warn", detail: FAILURE_TEXT[explain(e)], required });
-        set("face", { level: "idle", detail: "Chờ camera", required });
+        set("camera", { level: required ? "fail" : "warn", detail: failureText(explain(e)), required });
+        set("face", { level: "idle", detail: t("lobby.face.waitCamera"), required });
         liveFeed.current = null;
-        set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(cfg?.ai_identity) && required });
+        set("liveness", { level: "idle", detail: t("lobby.liveness.idle"), required: Boolean(cfg?.ai_identity) && required });
       }
     },
     [attachPreview, cameraId, set, stopFace, watchFace],
@@ -195,16 +197,16 @@ export default function ExamLobby({
 
   const runMic = useCallback(
     async (required: boolean) => {
-      set("mic", { level: "checking", detail: "Đang mở micro…", required });
+      set("mic", { level: "checking", detail: t("lobby.mic.opening"), required });
       try {
         stopMeter.current?.();
         stopStream(micStream.current);
         const s = await openMic();
         micStream.current = s;
         stopMeter.current = micMeter(s, setLevel);
-        set("mic", { level: "ok", detail: s.getAudioTracks()[0]?.label || "Micro hoạt động — hãy nói thử", required });
+        set("mic", { level: "ok", detail: s.getAudioTracks()[0]?.label || t("lobby.mic.working"), required });
       } catch (e) {
-        set("mic", { level: required ? "fail" : "warn", detail: FAILURE_TEXT[explain(e)], required });
+        set("mic", { level: required ? "fail" : "warn", detail: failureText(explain(e)), required });
       }
     },
     [set],
@@ -216,10 +218,10 @@ export default function ExamLobby({
       stopStream(getLobbyMedia().screen);
       const s = await openScreen();
       setLobbyMedia({ screen: s });
-      set("screen", { level: "ok", detail: s.getAudioTracks().length > 0 ? "Đã chia sẻ toàn màn hình (có âm thanh)" : "Đã chia sẻ toàn màn hình", required: needScreen });
-      s.getVideoTracks()[0]?.addEventListener("ended", () => set("screen", { level: needScreen ? "fail" : "warn", detail: "Đã dừng chia sẻ màn hình", required: needScreen }));
+      set("screen", { level: "ok", detail: s.getAudioTracks().length > 0 ? t("lobby.screen.sharedAudio") : t("lobby.screen.shared"), required: needScreen });
+      s.getVideoTracks()[0]?.addEventListener("ended", () => set("screen", { level: needScreen ? "fail" : "warn", detail: t("lobby.screen.stopped"), required: needScreen }));
     } catch (e) {
-      set("screen", { level: needScreen ? "fail" : "warn", detail: `${FAILURE_TEXT[explain(e)]}${needScreen ? "" : " (không bắt buộc)"}`, required: needScreen });
+      set("screen", { level: needScreen ? "fail" : "warn", detail: `${failureText(explain(e))}${needScreen ? "" : t("lobby.optionalSuffix")}`, required: needScreen });
     } finally {
       setScreenBusy(false);
     }
@@ -231,34 +233,34 @@ export default function ExamLobby({
     let d: ExamDetail | null = null;
 
     // 1. network + clock
-    set("network", { level: "checking", detail: "Đang kết nối máy chủ…" });
+    set("network", { level: "checking", detail: t("lobby.net.connecting") });
     try {
       const t0 = Date.now();
       const h = await getHealth();
       const ms = Date.now() - t0;
       const skew = h.timestamp ? Math.abs(Date.now() - new Date(h.timestamp).getTime()) : 0;
-      set("network", skew > 120_000 ? { level: "warn", detail: `Đồng hồ máy lệch ${Math.round(skew / 1000)}s so với máy chủ` } : { level: "ok", detail: `Máy chủ phản hồi ${ms} ms` });
+      set("network", skew > 120_000 ? { level: "warn", detail: t("lobby.net.skew", { s: Math.round(skew / 1000) }) } : { level: "ok", detail: t("lobby.net.ok", { ms }) });
     } catch {
-      set("network", bypass("network") ? { level: "warn", detail: "Dev: bỏ qua lỗi mạng" } : { level: "fail", detail: "Không kết nối được máy chủ FoxyExam" });
+      set("network", bypass("network") ? { level: "warn", detail: t("lobby.net.devBypass") } : { level: "fail", detail: t("lobby.net.fail") });
     }
 
     // 2. exam: schedule, enrolment, AI availability
-    set("exam", { level: "checking", detail: "Đang kiểm tra kỳ thi…" });
+    set("exam", { level: "checking", detail: t("lobby.exam.checking") });
     try {
       d = (await getExam(pending.id)).data;
       setDetail(d);
       const now = Date.now();
-      if (d.start_time && now < new Date(d.start_time).getTime()) set("exam", { level: "fail", detail: `Kỳ thi chưa mở (bắt đầu ${formatDateTime(d.start_time)})` });
-      else if (d.end_time && now > new Date(d.end_time).getTime()) set("exam", { level: "fail", detail: "Kỳ thi đã đóng" });
-      else if (!d.can_start) set("exam", { level: "fail", detail: d.ai_service?.message || "Chưa thể bắt đầu kỳ thi này" });
-      else set("exam", { level: "ok", detail: `${d.duration_minutes} phút · mã ${d.code}` });
+      if (d.start_time && now < new Date(d.start_time).getTime()) set("exam", { level: "fail", detail: t("lobby.exam.notOpen", { at: formatDateTime(d.start_time) }) });
+      else if (d.end_time && now > new Date(d.end_time).getTime()) set("exam", { level: "fail", detail: t("lobby.exam.closed") });
+      else if (!d.can_start) set("exam", { level: "fail", detail: d.ai_service?.message || t("lobby.exam.cantStart") });
+      else set("exam", { level: "ok", detail: t("lobby.exam.ok", { min: d.duration_minutes, code: d.code }) });
     } catch (e) {
-      set("exam", { level: "fail", detail: e instanceof ApiError ? e.message : "Không tải được thông tin kỳ thi" });
+      set("exam", { level: "fail", detail: e instanceof ApiError ? e.message : t("lobby.exam.loadFail") });
     }
 
     // 3 + 4. displays and banned apps (Rust monitor)
-    set("display", { level: "checking", detail: "Đang kiểm tra màn hình…" });
-    set("apps", { level: "checking", detail: "Đang kiểm tra ứng dụng…" });
+    set("display", { level: "checking", detail: t("lobby.display.checking") });
+    set("apps", { level: "checking", detail: t("lobby.apps.checking") });
     let snap: SystemSnapshot | null = null;
     try {
       snap = await getSnapshot();
@@ -266,47 +268,47 @@ export default function ExamLobby({
       /* not running inside Tauri (plain browser dev) */
     }
     if (!snap) {
-      set("display", { level: "warn", detail: "Không đọc được thông tin màn hình (ngoài Tauri)", required: false });
-      set("apps", { level: "warn", detail: "Không đọc được danh sách tiến trình (ngoài Tauri)", required: false });
+      set("display", { level: "warn", detail: t("lobby.display.noInfo"), required: false });
+      set("apps", { level: "warn", detail: t("lobby.apps.noInfo"), required: false });
     } else {
       const n = screenCount(snap.displays, snap.devices);
       const cards = captureDevices(snap.devices);
       set(
         "display",
         bypass("devices")
-          ? { level: n <= 1 && cards.length === 0 ? "ok" : "warn", detail: n <= 1 && cards.length === 0 ? "1 màn hình" : `Dev: bỏ qua ${n} màn hình / ${cards.length} capture` }
+          ? { level: n <= 1 && cards.length === 0 ? "ok" : "warn", detail: n <= 1 && cards.length === 0 ? t("lobby.display.one") : t("lobby.display.devBypass", { n, c: cards.length }) }
           : cards.length > 0
-            ? { level: "fail", detail: `Có thiết bị capture/video-in: ${cards.map((c) => c.name).join(", ")} — hãy rút ra` }
+            ? { level: "fail", detail: t("lobby.display.capture", { names: cards.map((c) => c.name).join(", ") }) }
             : n > 1
-              ? { level: "fail", detail: `Đang có ${n} màn hình (kể cả màn nhân bản / màn ảo) — hãy rút màn hình phụ` }
-              : { level: "ok", detail: "1 màn hình" },
+              ? { level: "fail", detail: t("lobby.display.multi", { n }) }
+              : { level: "ok", detail: t("lobby.display.one") },
       );
       try {
         const bad = [...new Set((await getProcesses()).map((p) => p.name).filter(matchesBanned))];
-        set("apps", bad.length === 0 ? { level: "ok", detail: "Không có ứng dụng bị cấm" } : bypass("devices") ? { level: "warn", detail: `Dev: bỏ qua ${bad.join(", ")}` } : { level: "fail", detail: `Hãy đóng: ${bad.join(", ")}` });
+        set("apps", bad.length === 0 ? { level: "ok", detail: t("lobby.apps.none") } : bypass("devices") ? { level: "warn", detail: t("lobby.apps.devBypass", { names: bad.join(", ") }) } : { level: "fail", detail: t("lobby.apps.close", { names: bad.join(", ") }) });
       } catch {
-        set("apps", { level: "warn", detail: "Không đọc được danh sách tiến trình", required: false });
+        set("apps", { level: "warn", detail: t("lobby.apps.noList"), required: false });
       }
     }
 
     // 5 + 6 + 7. media (needs the exam config for "required")
     const reqCam = Boolean(d?.monitoring_config?.ai_face_check) && !bypass("camera");
     // the camera and microphone are opened only when the student asks, never silently on entering the lobby
-    set("camera", { level: "idle", detail: reqCam ? "Bắt buộc — nhấn “Bật camera” để kiểm tra" : "Nhấn “Bật camera” để kiểm tra (không bắt buộc)", required: reqCam });
-    set("face", { level: "idle", detail: "Bật camera để nhận diện khuôn mặt", required: reqCam });
-    set("liveness", { level: "idle", detail: "Bật camera, ngồi thẳng rồi nhấn “Bắt đầu”", required: Boolean(d?.monitoring_config?.ai_identity) && reqCam });
+    set("camera", { level: "idle", detail: reqCam ? t("lobby.cam.requiredPrompt") : t("lobby.cam.optionalPrompt"), required: reqCam });
+    set("face", { level: "idle", detail: t("lobby.face.turnOnCamera"), required: reqCam });
+    set("liveness", { level: "idle", detail: t("lobby.liveness.idle"), required: Boolean(d?.monitoring_config?.ai_identity) && reqCam });
     if (d?.monitoring_config?.ai_identity) {
       try {
         const st = (await getFaceStatus()).data;
-        set("enroll", st.enrolled ? { level: "ok", detail: "Đã có khuôn mặt tham chiếu của bạn", required: true } : { level: "fail", detail: "Bạn chưa đăng ký khuôn mặt — bật camera, nhìn thẳng rồi bấm “Đăng ký”", required: true });
+        set("enroll", st.enrolled ? { level: "ok", detail: t("lobby.enroll.have"), required: true } : { level: "fail", detail: t("lobby.enroll.missing"), required: true });
       } catch {
-        set("enroll", { level: "fail", detail: "Không kiểm tra được trạng thái đăng ký khuôn mặt", required: true });
+        set("enroll", { level: "fail", detail: t("lobby.enroll.statusFail"), required: true });
       }
     }
-    set("mic", { level: "idle", detail: "Nhấn “Kiểm tra micro” để thử", required: Boolean(d?.monitoring_config?.require_mic) });
-    if (bypass("screen")) set("screen", { level: "warn", detail: "Dev: bỏ qua chia sẻ màn hình", required: false });
-    else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: "Bắt buộc chia sẻ TOÀN MÀN HÌNH — nhấn “Chia sẻ màn hình”", required: true });
-    else set("screen", { level: "idle", detail: "Nhấn “Chia sẻ màn hình” để giám thị theo dõi bài làm (khuyến nghị)", required: false });
+    set("mic", { level: "idle", detail: t("lobby.mic.prompt"), required: Boolean(d?.monitoring_config?.require_mic) });
+    if (bypass("screen")) set("screen", { level: "warn", detail: t("lobby.screen.devBypass"), required: false });
+    else if (d?.monitoring_config?.require_screen) set("screen", { level: "idle", detail: t("lobby.screen.requiredPrompt"), required: true });
+    else set("screen", { level: "idle", detail: t("lobby.screen.optionalPrompt"), required: false });
   }, [pending.id, runCamera, runMic, set]);
 
   useEffect(() => {
@@ -319,7 +321,7 @@ export default function ExamLobby({
     const onHide = () => document.visibilityState === "hidden" && !startedRef.current && releaseLobbyMedia();
     document.addEventListener("visibilitychange", onHide);
     const closing = getCurrentWindow().listen("exam://close-requested", async () => {
-      const leave = await dialog.confirm({ title: "Rời phòng chờ?", text: "Bạn chưa bắt đầu làm bài. Camera và chia sẻ màn hình sẽ được tắt.", confirmLabel: "Rời đi", tone: "warning" });
+      const leave = await dialog.confirm({ title: t("lobby.dlg.leaveTitle"), text: t("lobby.dlg.leaveText"), confirmLabel: t("lobby.dlg.leave"), tone: "warning" });
       if (leave) cancelRef.current();
     });
     return () => {
@@ -341,12 +343,12 @@ export default function ExamLobby({
   useEffect(() => {
     if (!wantPhone) return;
     const bad = needPhone ? "fail" : "warn";
-    if (phone.link === "idle") set("phone", { level: needPhone ? "fail" : "idle", detail: "Nhấn “Tạo mã QR”, rồi quét bằng điện thoại", required: needPhone });
-    else if (phone.link === "error") set("phone", { level: bad, detail: phone.error || "Không tạo được liên kết", required: needPhone });
-    else if (phone.link === "waiting") set("phone", { level: bad, detail: "Đang chờ điện thoại — quét mã QR và bật camera", required: needPhone });
-    else if (phone.layout === "ok") set("phone", { level: "ok", detail: phone.layoutMessage || "Điện thoại đã kết nối, góc đặt phù hợp", required: needPhone });
+    if (phone.link === "idle") set("phone", { level: needPhone ? "fail" : "idle", detail: t("lobby.phone.idle"), required: needPhone });
+    else if (phone.link === "error") set("phone", { level: bad, detail: phone.error || t("lobby.phone.linkFail"), required: needPhone });
+    else if (phone.link === "waiting") set("phone", { level: bad, detail: t("lobby.phone.waiting"), required: needPhone });
+    else if (phone.layout === "ok") set("phone", { level: "ok", detail: phone.layoutMessage || t("lobby.phone.good"), required: needPhone });
     else if (phone.layout === "bad") set("phone", { level: bad, detail: phone.layoutMessage, required: needPhone });
-    else set("phone", { level: "checking", detail: "Điện thoại đã kết nối — đang kiểm tra góc đặt…", required: needPhone });
+    else set("phone", { level: "checking", detail: t("lobby.phone.checking"), required: needPhone });
   }, [wantPhone, needPhone, phone.link, phone.layout, phone.layoutMessage, phone.error, set]);
 
   // the link is created as soon as the exam is known to want a phone
@@ -373,24 +375,24 @@ export default function ExamLobby({
 
   useEffect(() => {
     getFaceChange()
-      .then((r) => r.data && setChangeState(r.data.status === "PENDING" ? "Đã gửi yêu cầu đổi khuôn mặt, đang chờ giảng viên duyệt." : r.data.status === "REJECTED" ? `Yêu cầu đổi bị từ chối${r.data.note ? `: ${r.data.note}` : "."}` : null))
+      .then((r) => r.data && setChangeState(r.data.status === "PENDING" ? t("lobby.change.pending") : r.data.status === "REJECTED" ? `${t("lobby.change.rejected")}${r.data.note ? `: ${r.data.note}` : "."}` : null))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!faceQr) return;
-    const t = window.setInterval(() => {
+    const poll = window.setInterval(() => {
       void getFaceStatus()
         .then((r) => {
           if (!r.data.enrolled) return;
           setFaceQr(null);
-          set("enroll", { level: "ok", detail: "Đã đăng ký khuôn mặt từ điện thoại", required: true });
+          set("enroll", { level: "ok", detail: t("lobby.enroll.fromPhone"), required: true });
         })
         .catch(() => {});
     }, 3000);
     const stop = window.setTimeout(() => setFaceQr(null), 10 * 60_000);
     return () => {
-      window.clearInterval(t);
+      window.clearInterval(poll);
       window.clearTimeout(stop);
     };
   }, [faceQr, set]);
@@ -400,7 +402,7 @@ export default function ExamLobby({
       const r = await getFacePhoneLink();
       setFaceQr(await QRCode.toDataURL(r.data.url, { margin: 1, width: 264 }));
     } catch (e) {
-      void dialog.alert({ title: "Chưa tạo được mã QR", text: errorText(e, "Thử lại sau."), tone: "danger" });
+      void dialog.alert({ title: t("lobby.dlg.qrFailTitle"), text: errorText(e, t("lobby.dlg.retryLater")), tone: "danger" });
     }
   }, []);
 
@@ -409,10 +411,10 @@ export default function ExamLobby({
       const r = await requestFaceChange(changeReason.trim());
       setChangeOpen(false);
       setChangeReason("");
-      setChangeState("Đã gửi yêu cầu đổi khuôn mặt, đang chờ giảng viên duyệt.");
-      void dialog.alert({ title: "Đã gửi yêu cầu", text: r.message, tone: "success" });
+      setChangeState(t("lobby.change.pending"));
+      void dialog.alert({ title: t("lobby.dlg.sentTitle"), text: r.message, tone: "success" });
     } catch (e) {
-      void dialog.alert({ title: "Chưa gửi được yêu cầu", text: errorText(e, "Thử lại sau."), tone: "danger" });
+      void dialog.alert({ title: t("lobby.dlg.sendFailTitle"), text: errorText(e, t("lobby.dlg.retryLater")), tone: "danger" });
     }
   }, [changeReason]);
 
@@ -420,12 +422,12 @@ export default function ExamLobby({
     setEnrolling(true);
     try {
       const blob = await captureFrame("camera");
-      if (!blob) throw new Error("Chưa có hình từ camera.");
+      if (!blob) throw new Error(t("lobby.dlg.noFrame"));
       await enrollFace(blob);
-      set("enroll", { level: "ok", detail: "Đã đăng ký khuôn mặt của bạn", required: true });
-      void dialog.alert({ title: "Đã đăng ký khuôn mặt", text: "Khuôn mặt này sẽ được dùng để xác thực bạn trong kỳ thi. Muốn đổi, hãy nhờ giảng viên mở khoá.", tone: "success" });
+      set("enroll", { level: "ok", detail: t("lobby.enroll.done"), required: true });
+      void dialog.alert({ title: t("lobby.dlg.enrolledTitle"), text: t("lobby.dlg.enrolledText"), tone: "success" });
     } catch (e) {
-      void dialog.alert({ title: "Chưa đăng ký được khuôn mặt", text: errorText(e, "Thử lại sau."), tone: "danger" });
+      void dialog.alert({ title: t("lobby.dlg.enrollFailTitle"), text: errorText(e, t("lobby.dlg.retryLater")), tone: "danger" });
     } finally {
       setEnrolling(false);
     }
@@ -438,14 +440,14 @@ export default function ExamLobby({
 
   const start = useCallback(async () => {
     const auth = getAuth();
-    if (!auth) return void dialog.alert({ title: "Phiên đăng nhập đã hết hạn", text: "Hãy đăng nhập lại để vào thi.", tone: "warning" });
+    if (!auth) return void dialog.alert({ title: t("lobby.dlg.expiredTitle"), text: t("lobby.dlg.expiredText"), tone: "warning" });
     setStarting(true);
     setError(null);
     try {
       if (needScreen && !getLobbyMedia().screen?.active) await shareScreen();
       if (needScreen && !getLobbyMedia().screen?.active) {
         setStarting(false);
-        return void dialog.alert({ title: "Chưa chia sẻ màn hình", text: "Kỳ thi này bắt buộc chia sẻ toàn màn hình. Nhấn “Bắt đầu” lần nữa và chọn Toàn màn hình (Entire screen).", tone: "warning" });
+        return void dialog.alert({ title: t("lobby.dlg.noScreenTitle"), text: t("lobby.dlg.noScreenText"), tone: "warning" });
       }
       const res = (await startExam(pending.id)).data;
       saveSession({
@@ -460,9 +462,9 @@ export default function ExamLobby({
       startedRef.current = true;
       onStarted();
     } catch (e) {
-      const text = e instanceof ApiError ? e.message : errorText(e, "Không vào được phòng thi.");
+      const text = e instanceof ApiError ? e.message : errorText(e, t("lobby.dlg.cantEnterText"));
       setError(text);
-      void dialog.alert({ title: "Không vào được phòng thi", text, tone: "danger" });
+      void dialog.alert({ title: t("lobby.dlg.cantEnterTitle"), text, tone: "danger" });
     } finally {
       setStarting(false);
     }
@@ -493,8 +495,8 @@ export default function ExamLobby({
       <div className={cx("flex h-7 shrink-0 items-center gap-2 px-4 text-[11px]", isResuming ? "bg-danger-soft text-danger font-medium" : "bg-surface-3 text-muted")}>
         <ShieldAlert size={12} />
         {isResuming
-          ? "Kiểm tra lại thiết bị để kết nối lại phòng thi — bắt buộc xác thực camera, khuôn mặt, màn hình và điện thoại phụ trước khi tiếp tục"
-          : "Chuẩn bị vào phòng thi — đồng hồ làm bài chỉ chạy khi bạn bấm “Bắt đầu”"}
+          ? t("lobby.title.resumeBar")
+          : t("lobby.title.bar")}
         {IS_DEV && <span className="ml-auto font-mono text-warning">DEV</span>}
       </div>
 
@@ -502,25 +504,25 @@ export default function ExamLobby({
         <section className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold">{pending.title}</h1>
-            {isResuming && <Badge tone="danger">Kết nối lại ca thi đang diễn ra</Badge>}
+            {isResuming && <Badge tone="danger">{t("lobby.badge.resuming")}</Badge>}
           </div>
           <p className="mt-0.5 text-xs text-muted">
             {pending.code}
-            {detail ? ` · ${detail.course?.name ?? ""} · ${detail.duration_minutes} phút` : ""}
+            {detail ? ` · ${detail.course?.name ?? ""} · ${t("lobby.minutes", { n: detail.duration_minutes })}` : ""}
           </p>
           {detail?.description && <p className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-surface p-3 text-xs text-muted">{detail.description}</p>}
 
-          <h2 className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wider text-subtle">Kiểm tra thiết bị</h2>
+          <h2 className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wider text-subtle">{t("lobby.section.devices")}</h2>
           <ul className="space-y-1.5">
             <Row c={checks.network} icon={<Wifi size={14} />} />
             <Row c={checks.exam} icon={<ShieldAlert size={14} />} />
             <Row c={checks.display} icon={<Monitor size={14} />} />
             <Row c={checks.apps} icon={<Cpu size={14} />} />
-            {wantCamera && <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? "Bật camera" : "Thử lại"}</Button> : undefined} />}
+            {wantCamera && <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? t("lobby.cam.on") : t("lobby.retry")}</Button> : undefined} />}
             {wantCamera && cameras.length > 1 && (
               <li className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs">
                 <Camera size={14} className="text-muted" />
-                <span className="text-muted">Chọn camera</span>
+                <span className="text-muted">{t("lobby.cam.pick")}</span>
                 <select
                   value={cameraId}
                   onChange={(e) => {
@@ -545,7 +547,7 @@ export default function ExamLobby({
                 action={
                   checks.liveness.level !== "ok" && checks.liveness.level !== "checking" ? (
                     <Button size="sm" disabled={checks.face.level !== "ok"} onClick={startLiveness}>
-                      {checks.liveness.level === "fail" ? "Thử lại" : "Bắt đầu"}
+                      {checks.liveness.level === "fail" ? t("lobby.retry") : t("lobby.start")}
                     </Button>
                   ) : undefined
                 }
@@ -559,15 +561,15 @@ export default function ExamLobby({
                   checks.enroll.level !== "ok" ? (
                     <span className="flex gap-1.5">
                       <Button size="sm" loading={enrolling} disabled={checks.face.level !== "ok"} onClick={() => void enroll()}>
-                        Đăng ký
+                        {t("lobby.enroll.register")}
                       </Button>
                       <Button size="sm" icon={<Smartphone size={12} />} onClick={() => void openPhoneEnroll()}>
-                        Bằng điện thoại
+                        {t("lobby.enroll.byPhone")}
                       </Button>
                     </span>
                   ) : (
                     <Button size="sm" onClick={() => setChangeOpen((o) => !o)}>
-                      Xin đổi
+                      {t("lobby.enroll.change")}
                     </Button>
                   )
                 }
@@ -575,12 +577,12 @@ export default function ExamLobby({
             )}
             {wantIdentity && faceQr && (
               <li className="flex items-center gap-4 rounded-lg border border-line bg-surface p-3">
-                <img src={faceQr} alt="Mã QR đăng ký khuôn mặt bằng điện thoại" className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
+                <img src={faceQr} alt={t("lobby.enroll.qrAlt")} className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
                 <div className="min-w-0 space-y-1 text-[11px] leading-relaxed text-muted">
-                  <p className="text-xs font-medium text-fg">Quét bằng camera điện thoại</p>
-                  <p>Nhìn thẳng vào camera trước, mặt rõ, đủ sáng. Mã dùng một lần, hết hạn sau 10 phút. Ảnh về máy tự cập nhật ở đây.</p>
+                  <p className="text-xs font-medium text-fg">{t("lobby.enroll.qrTitle")}</p>
+                  <p>{t("lobby.enroll.qrHelp")}</p>
                   <button type="button" className="text-accent hover:underline" onClick={() => void openPhoneEnroll()}>
-                    Tạo mã mới
+                    {t("lobby.newCode")}
                   </button>
                 </div>
               </li>
@@ -588,20 +590,20 @@ export default function ExamLobby({
             {wantIdentity && changeState && <li className="rounded-lg border border-line bg-surface px-3 py-2 text-[11px] text-muted">{changeState}</li>}
             {wantIdentity && changeOpen && checks.enroll.level === "ok" && (
               <li className="space-y-2 rounded-lg border border-line bg-surface p-3">
-                <p className="text-xs font-medium text-fg">Lý do muốn đổi khuôn mặt tham chiếu</p>
+                <p className="text-xs font-medium text-fg">{t("lobby.change.reasonTitle")}</p>
                 <textarea
                   value={changeReason}
                   maxLength={500}
                   onChange={(e) => setChangeReason(e.target.value)}
                   className="h-16 w-full rounded-md border border-line bg-surface-2 p-2 text-xs text-fg outline-none"
-                  placeholder="Ví dụ: ảnh cũ chụp thiếu sáng, tôi đã đổi kiểu tóc…"
+                  placeholder={t("lobby.change.placeholder")}
                 />
                 <div className="flex gap-2">
                   <Button size="sm" variant="primary" disabled={changeReason.trim().length < 5} onClick={() => void sendChange()}>
-                    Gửi yêu cầu
+                    {t("lobby.change.send")}
                   </Button>
                   <Button size="sm" onClick={() => setChangeOpen(false)}>
-                    Huỷ
+                    {t("lobby.cancel")}
                   </Button>
                 </div>
               </li>
@@ -613,15 +615,15 @@ export default function ExamLobby({
                 action={
                   phone.link === "idle" || phone.link === "error" ? (
                     <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect(true)}>
-                      Tạo mã QR
+                      {t("lobby.phone.qr")}
                     </Button>
                   ) : phone.link === "connected" ? (
                     <span className="flex gap-1.5">
                       <Button size="sm" loading={phone.layout === "checking"} onClick={() => void phone.checkLayout()}>
-                        Kiểm tra góc đặt
+                        {t("lobby.phone.checkLayout")}
                       </Button>
                       <Button size="sm" icon={<QrCode size={12} />} onClick={() => void phone.connect(true)}>
-                        Đổi máy / QR mới
+                        {t("lobby.phone.change")}
                       </Button>
                     </span>
                   ) : undefined
@@ -630,26 +632,26 @@ export default function ExamLobby({
             )}
             {wantPhone && phone.qr && phone.link !== "connected" && (
               <li className="flex items-center gap-4 rounded-lg border border-line bg-surface p-3">
-                <img src={phone.qr} alt="Mã QR kết nối điện thoại" className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
+                <img src={phone.qr} alt={t("lobby.phone.qrAlt")} className="h-[132px] w-[132px] shrink-0 rounded-md bg-white p-1" />
                 <div className="min-w-0 space-y-1 text-[11px] leading-relaxed text-muted">
-                  <p className="text-xs font-medium text-fg">Quét bằng camera điện thoại</p>
-                  <p>1. Mở liên kết, cho phép camera.</p>
-                  <p>2. Đặt điện thoại nằm ngang ở góc bàn, thấy bạn và màn hình laptop.</p>
-                  <p>3. Cắm sạc, giữ màn hình sáng suốt giờ thi.</p>
+                  <p className="text-xs font-medium text-fg">{t("lobby.enroll.qrTitle")}</p>
+                  <p>{t("lobby.phone.step1")}</p>
+                  <p>{t("lobby.phone.step2")}</p>
+                  <p>{t("lobby.phone.step3")}</p>
                   <button type="button" className="text-accent hover:underline" onClick={() => void phone.connect(true)}>
-                    Tạo mã mới
+                    {t("lobby.newCode")}
                   </button>
                 </div>
               </li>
             )}
-            {wantMic && <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? "Kiểm tra micro" : "Thử lại"}</Button> : undefined} />}
+            {wantMic && <Row c={{ ...checks.mic, required: needMic }} icon={<Mic size={14} />} action={checks.mic.level !== "ok" && checks.mic.level !== "checking" ? <Button size="sm" onClick={() => void runMic(needMic)}>{checks.mic.level === "idle" ? t("lobby.mic.test") : t("lobby.retry")}</Button> : undefined} />}
             {wantScreen && <Row
               c={{ ...checks.screen, required: needScreen }}
               icon={<MonitorUp size={14} />}
               action={
                 !bypass("screen") && (
                   <Button size="sm" loading={screenBusy} onClick={() => void shareScreen()}>
-                    Chia sẻ màn hình
+                    {t("lobby.screen.share")}
                   </Button>
                 )
               }
@@ -658,10 +660,10 @@ export default function ExamLobby({
 
           <div className="mt-5 flex items-center gap-2">
             <Button icon={<RefreshCw size={13} />} onClick={() => void runAll()} disabled={checking || starting}>
-              Kiểm tra lại
+              {t("lobby.recheck")}
             </Button>
             <Button onClick={cancel} disabled={starting}>
-              Quay lại
+              {t("lobby.back")}
             </Button>
           </div>
         </section>
@@ -675,28 +677,28 @@ export default function ExamLobby({
           {wantPhone && phone.link === "connected" && (
             <div className="overflow-hidden rounded-xl border border-line bg-black">
               <video ref={phone.attach} autoPlay muted playsInline className="aspect-video w-full object-cover" />
-              <p className="bg-surface px-2.5 py-1 text-[10px] text-muted">Hình từ điện thoại</p>
+              <p className="bg-surface px-2.5 py-1 text-[10px] text-muted">{t("lobby.phone.preview")}</p>
             </div>
           )}
           {wantMic && <div className="rounded-xl border border-line bg-surface p-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted">
-              <Mic size={12} /> Mức âm thanh
+              <Mic size={12} /> {t("lobby.mic.level")}
             </p>
             <div className="h-2 overflow-hidden rounded-full bg-surface-3">
               <div className="h-full rounded-full bg-success transition-[width] duration-75" style={{ width: `${Math.round(level * 100)}%` }} />
             </div>
           </div>}
           <ul className="space-y-1 rounded-xl border border-line bg-surface p-3 text-[11px] leading-relaxed text-muted">
-            {wantCamera && <li>• Ngồi nơi đủ sáng, thấy rõ mặt.</li>}
-            <li>• Đóng mọi ứng dụng khác (chat, quay màn hình, điều khiển từ xa).</li>
-            <li>• Chỉ dùng một màn hình, không cắm thêm bàn phím.</li>
-            <li>• Trong giờ thi mọi thao tác rời cửa sổ đều được ghi nhận.</li>
+            {wantCamera && <li>{t("lobby.tip.light")}</li>}
+            <li>{t("lobby.tip.apps")}</li>
+            <li>{t("lobby.tip.display")}</li>
+            <li>{t("lobby.tip.focus")}</li>
           </ul>
 
           <Button variant="primary" size="lg" className="w-full" disabled={!ready} loading={starting} onClick={() => void start()}>
-            {isResuming ? "Xác nhận & Vào lại phòng thi" : "Bắt đầu làm bài"}
+            {isResuming ? t("lobby.cta.resume") : t("lobby.cta.start")}
           </Button>
-          {!ready && !checking && <p className="text-center text-[11px] text-danger">Hãy khắc phục các mục màu đỏ để tiếp tục.</p>}
+          {!ready && !checking && <p className="text-center text-[11px] text-danger">{t("lobby.fixRed")}</p>}
         </aside>
       </div>
       <DevPanel />
@@ -705,19 +707,19 @@ export default function ExamLobby({
 }
 
 function initial(): Record<Check["id"], Check> {
-  const mk = (id: Check["id"], label: string, required: boolean): Check => ({ id, label, level: "idle", detail: "Chưa kiểm tra", required });
+  const mk = (id: Check["id"], required: boolean): Check => ({ id, label: id, level: "idle", detail: t("lobby.notChecked"), required });
   return {
-    network: mk("network", "Kết nối máy chủ", true),
-    exam: mk("exam", "Kỳ thi", true),
-    display: mk("display", "Màn hình", true),
-    apps: mk("apps", "Ứng dụng bị cấm", true),
-    camera: mk("camera", "Camera", false),
-    face: mk("face", "Nhận diện khuôn mặt", false),
-    liveness: mk("liveness", "Kiểm tra người thật", false),
-    enroll: mk("enroll", "Khuôn mặt đã đăng ký", false),
-    phone: mk("phone", "Camera mở rộng (điện thoại)", false),
-    mic: mk("mic", "Micro", false),
-    screen: mk("screen", "Chia sẻ màn hình", false),
+    network: mk("network", true),
+    exam: mk("exam", true),
+    display: mk("display", true),
+    apps: mk("apps", true),
+    camera: mk("camera", false),
+    face: mk("face", false),
+    liveness: mk("liveness", false),
+    enroll: mk("enroll", false),
+    phone: mk("phone", false),
+    mic: mk("mic", false),
+    screen: mk("screen", false),
   };
 }
 
@@ -735,7 +737,7 @@ function Row({ c, icon, action }: { c: Check; icon: ReactNode; action?: ReactNod
       <span className="shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="font-medium">
-          {c.label} {c.required && <Badge tone="neutral">bắt buộc</Badge>}
+          {t(`lobby.check.${c.id}`)} {c.required && <Badge tone="neutral">{t("lobby.required")}</Badge>}
         </p>
         <p className="truncate text-[11px] opacity-80">{c.detail}</p>
       </div>

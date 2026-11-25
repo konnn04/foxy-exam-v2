@@ -11,6 +11,8 @@ import viMain from "../locales/vi/main.json";
 import enMain from "../locales/en/main.json";
 import viExam from "../locales/vi/exam.json";
 import enExam from "../locales/en/exam.json";
+import viLobby from "../locales/vi/lobby.json";
+import enLobby from "../locales/en/lobby.json";
 
 export type Lang = "vi" | "en";
 
@@ -49,6 +51,7 @@ const vi: Record<string, string> = {
   ...viUpdate,
   ...viMain,
   ...viExam,
+  ...viLobby,
 };
 
 const en: Record<string, string> = {
@@ -57,6 +60,7 @@ const en: Record<string, string> = {
   ...enUpdate,
   ...enMain,
   ...enExam,
+  ...enLobby,
 };
 
 const DICT: Record<Lang, Record<string, string>> = { vi, en };

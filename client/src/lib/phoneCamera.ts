@@ -1,3 +1,4 @@
+import { translate } from "./i18n";
 import QRCode from "qrcode";
 import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -64,7 +65,7 @@ export function usePhoneCamera(examId: number) {
         setQr(await QRCode.toDataURL(res.url, { margin: 1, width: 220, errorCorrectionLevel: "M" }));
         viewer = res.viewer;
       }
-      if (!viewer) throw new Error("Máy chủ chưa bật hệ thống phát hình.");
+      if (!viewer) throw new Error(translate("lobby.phone.noViewer"));
       const r = new Room({ adaptiveStream: true });
       r.on(RoomEvent.TrackSubscribed, (t) => {
         if (t.kind !== Track.Kind.Video) return;
@@ -90,13 +91,13 @@ export function usePhoneCamera(examId: number) {
             phoneTelemetry.current = msg;
             if (msg.type === "CAMERA_SWITCHED") {
               setLayout("bad");
-              setLayoutMessage("Bạn vừa đổi camera trên điện thoại. Vui lòng đặt lại máy và bấm “Kiểm tra góc đặt”.");
+              setLayoutMessage(translate("lobby.phone.switched"));
             } else if (msg.type === "PHONE_SCREEN_OFF" || msg.visibility === "hidden") {
               setLayout("bad");
-              setLayoutMessage("Màn hình điện thoại đang bị tắt hoặc trình duyệt bị ẩn. Hãy mở lại trang camera trên điện thoại.");
+              setLayoutMessage(translate("lobby.phone.screenOff"));
             } else if (msg.portrait) {
               setLayout("bad");
-              setLayoutMessage("Điện thoại đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) để thấy bạn và màn hình laptop.");
+              setLayoutMessage(translate("lobby.phone.portrait"));
             } else if (msg.tiltWarning) {
               setLayout("bad");
               setLayoutMessage(msg.tiltWarning);
@@ -128,23 +129,23 @@ export function usePhoneCamera(examId: number) {
       }
     } catch (e) {
       setLink("error");
-      setError(e instanceof Error ? e.message : "Không tạo được liên kết cho điện thoại.");
+      setError(e instanceof Error ? e.message : translate("lobby.phone.linkError"));
     }
   }, [examId, leave]);
 
   /** Is the candidate (and the laptop) visible in the phone's picture? Checked by the server's object service + local sensor check. */
   const checkLayout = useCallback(async () => {
     const v = video.current;
-    if (!v || v.videoWidth === 0) return setLayoutMessage("Chưa có hình từ điện thoại.");
+    if (!v || v.videoWidth === 0) return setLayoutMessage(translate("lobby.phone.noImage"));
     // 1. Check orientation & telemetry before sending to server
     if (v.videoHeight > v.videoWidth || phoneTelemetry.current?.portrait) {
       setLayout("bad");
-      setLayoutMessage("Điện thoại đang đặt dọc. Hãy xoay ngang điện thoại (Landscape) rồi bấm kiểm tra lại.");
+      setLayoutMessage(translate("lobby.phone.portraitRecheck"));
       return;
     }
     if (phoneTelemetry.current?.visibility === "hidden") {
       setLayout("bad");
-      setLayoutMessage("Trang camera trên điện thoại đang bị ẩn hoặc tắt màn hình. Hãy mở lại trên điện thoại.");
+      setLayoutMessage(translate("lobby.phone.hidden"));
       return;
     }
     if (phoneTelemetry.current?.tiltWarning) {
@@ -177,7 +178,7 @@ export function usePhoneCamera(examId: number) {
       const std = Math.sqrt(Math.max(0, sqSum / Math.max(1, count) - mean * mean));
       if (mean < 15 || std < 6) {
         setLayout("bad");
-        setLayoutMessage("Khung hình từ điện thoại quá tối hoặc camera đang bị che. Hãy bật đèn và đặt điện thoại nhìn vào bạn và laptop.");
+        setLayoutMessage(translate("lobby.phone.dark"));
         return;
       }
     }
@@ -190,7 +191,7 @@ export function usePhoneCamera(examId: number) {
       setLayoutMessage(res.message);
     } catch (e) {
       setLayout("bad");
-      setLayoutMessage(e instanceof Error ? e.message : "Không kiểm tra được góc đặt điện thoại.");
+      setLayoutMessage(e instanceof Error ? e.message : translate("lobby.phone.layoutFail"));
     }
   }, [examId]);
 

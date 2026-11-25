@@ -1,3 +1,4 @@
+import { translate } from "./i18n";
 /**
  * Pure maths + decision logic of the camera attention check (no MediaPipe, no DOM): head pose from the facial
  * transformation matrix, gaze from blendshapes, an attention score, and the debounce that turns noisy per-frame
@@ -100,12 +101,12 @@ export function isFrontal(r: FrameReading): boolean {
 
 /** Why the face is not accepted yet, in words for the candidate. */
 export function frontalHint(r: FrameReading): string {
-  if (r.faces === 0) return "Không thấy khuôn mặt — hãy ngồi vào khung hình";
-  if (r.faces > 1) return `${r.faces} khuôn mặt trong khung — chỉ một người được ngồi thi`;
-  if (r.faceRatio < FRONTAL.minRatio) return "Ngồi gần camera hơn";
-  if (r.eyesClosed > FRONTAL.eyesClosed) return "Chưa thấy rõ mắt — mở mắt, bỏ kính tối màu hoặc vật che";
-  if (Math.abs(r.yaw) > FRONTAL.yaw || Math.abs(r.pitch) > FRONTAL.pitch) return "Hãy nhìn thẳng vào camera";
-  return "Hãy nhìn thẳng vào camera, giữ hai mắt hướng về màn hình";
+  if (r.faces === 0) return translate("vision.noFace");
+  if (r.faces > 1) return translate("vision.many", { n: r.faces });
+  if (r.faceRatio < FRONTAL.minRatio) return translate("vision.closer");
+  if (r.eyesClosed > FRONTAL.eyesClosed) return translate("vision.eyes");
+  if (Math.abs(r.yaw) > FRONTAL.yaw || Math.abs(r.pitch) > FRONTAL.pitch) return translate("vision.straight");
+  return translate("vision.straight2");
 }
 
 /** 0..100: how much the candidate faces the screen. 0 when nobody is there. */
@@ -237,4 +238,4 @@ export class LivenessChallenge {
   }
 }
 
-export const livenessText = (s: LivenessStep) => (s === "blink" ? "Chớp mắt 2 lần" : "Quay đầu sang một bên rồi nhìn thẳng lại");
+export const livenessText = (s: LivenessStep) => (s === "blink" ? translate("lobby.liveness.blink") : translate("lobby.liveness.turn"));
