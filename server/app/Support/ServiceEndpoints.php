@@ -84,12 +84,16 @@ final class ServiceEndpoints
     }
 
     /**
+     * All-or-nothing: every key is validated first and nothing is written unless all of them pass, so a rejected
+     * request can never leave a half-applied change behind.
+     *
      * @param  array<string, mixed>  $input  key => URL ('' removes the override)
-     * @return array<string, string> key => error message
+     * @return array<string, string> key => error message (empty = saved)
      */
     public static function save(array $input): array
     {
         $errors = [];
+        $clean = [];
         foreach ($input as $key => $value) {
             if (!isset(self::schema()[$key])) {
                 continue;
@@ -99,42 +103,59 @@ final class ServiceEndpoints
             $allowed = $family === 'ws' ? '(wss?|https?)' : '(https?)';
             if ($value !== '' && !preg_match('#^' . $allowed . '://[A-Za-z0-9.\-]+(:\d{1,5})?(/[^\s]*)?$#', $value)) {
                 $errors[$key] = $family === 'ws' ? 'Địa chỉ phải bắt đầu bằng ws://, wss://, http:// hoặc https://.' : 'Địa chỉ phải bắt đầu bằng http:// hoặc https://.';
-
-                continue;
-            }
-            if ($value !== '' && self::isForbiddenHost((string) parse_url($value, PHP_URL_HOST))) {
+            } elseif ($value !== '' && self::isForbiddenHost((string) parse_url($value, PHP_URL_HOST))) {
                 $errors[$key] = 'Địa chỉ này không được phép (địa chỉ nội bộ của nhà cung cấp đám mây).';
-
-                continue;
-            }
-            if ($value === '') {
-                DB::table('system_settings')->where('key', "service.{$key}")->delete();
             } else {
-                DB::table('system_settings')->upsert(
-                    [['key' => "service.{$key}", 'value' => $value, 'created_at' => now(), 'updated_at' => now()]],
-                    ['key'],
-                    ['value', 'updated_at'],
-                );
+                $clean[$key] = $value;
             }
         }
+        if ($errors) {
+            return $errors;
+        }
+
+        DB::transaction(function () use ($clean) {
+            foreach ($clean as $key => $value) {
+                if ($value === '') {
+                    DB::table('system_settings')->where('key', "service.{$key}")->delete();
+                } else {
+                    DB::table('system_settings')->upsert(
+                        [['key' => "service.{$key}", 'value' => $value, 'created_at' => now(), 'updated_at' => now()]],
+                        ['key'],
+                        ['value', 'updated_at'],
+                    );
+                }
+            }
+        });
         Cache::forget(self::CACHE_KEY);
         // a changed AI address must be pinged again right away, not after the cached verdict expires
         foreach (['face', 'objects', 'agent'] as $w) {
             Cache::forget("foxy_ai_ping_{$w}");
         }
 
-        return $errors;
+        return [];
     }
 
-    /** Link-local (169.254.0.0/16, fe80::/10) and cloud metadata names: never a legitimate AI or realtime service. */
+    /**
+     * Link-local (169.254.0.0/16, fe80::/10) and cloud metadata names: never a legitimate AI or realtime service.
+     * The name is resolved and every address it maps to is checked too, so "metadata.attacker.com -> 169.254.169.254"
+     * is refused. Odd spellings of an IP (all digits, 0x…, trailing dot) are refused outright. A name that does not
+     * resolve yet is allowed (the service may not be up when it is saved). DNS can still change after this check; the
+     * AI token is the secret at stake and is scoped to AI calls only (see AI_TOKEN in .env.example).
+     */
     private static function isForbiddenHost(string $host): bool
     {
         $host = strtolower(trim($host, '[]'));
+        if ($host === '' || str_ends_with($host, '.') || preg_match('/^(0x[0-9a-f]+|\d+)$/', $host)) {
+            return true;
+        }
         if (in_array($host, ['metadata.google.internal', 'metadata', 'instance-data'], true)) {
             return true;
         }
-        if (filter_var($host, FILTER_VALIDATE_IP)) {
-            return str_starts_with($host, '169.254.') || str_starts_with($host, 'fe80:');
+        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
+        foreach ($ips as $ip) {
+            if (str_starts_with($ip, '169.254.') || str_starts_with(strtolower($ip), 'fe80:')) {
+                return true;
+            }
         }
 
         return false;
