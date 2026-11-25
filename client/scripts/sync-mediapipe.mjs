@@ -12,6 +12,37 @@ const MODEL_URL =
 
 const SRC_WASM = path.join(ROOT, "node_modules", "@mediapipe", "tasks-vision", "wasm");
 
+// Audio classifier (speech detection during the exam): YAMNet, ~4 MB, runs on the candidate machine.
+const SRC_AUDIO_WASM = path.join(ROOT, "node_modules", "@mediapipe", "tasks-audio", "wasm");
+const DEST_AUDIO_WASM = path.join(ROOT, "public", "mediapipe", "audio-wasm");
+const DEST_AUDIO_MODEL = path.join(ROOT, "public", "mediapipe", "yamnet.tflite");
+const AUDIO_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite";
+
+function copyAudioWasmIfNeeded() {
+  const marker = "audio_wasm_internal.wasm";
+  const src = path.join(SRC_AUDIO_WASM, marker);
+  if (!fs.existsSync(src)) {
+    throw new Error(`Missing ${src} — install dependencies (pnpm install).`);
+  }
+  const dest = path.join(DEST_AUDIO_WASM, marker);
+  if (fs.existsSync(dest) && fs.statSync(dest).size === fs.statSync(src).size) {
+    console.log("[sync-mediapipe] audio WASM up to date, skip copy.");
+    return;
+  }
+  fs.mkdirSync(DEST_AUDIO_WASM, { recursive: true });
+  fs.cpSync(SRC_AUDIO_WASM, DEST_AUDIO_WASM, { recursive: true });
+  console.log("[sync-mediapipe] Copied audio WASM → public/mediapipe/audio-wasm/");
+}
+
+async function ensureAudioModel() {
+  if (fs.existsSync(DEST_AUDIO_MODEL) && fs.statSync(DEST_AUDIO_MODEL).size >= 1_000_000) {
+    console.log("[sync-mediapipe] yamnet.tflite present, skip download.");
+    return;
+  }
+  console.log("[sync-mediapipe] Downloading yamnet.tflite …");
+  await downloadFile(AUDIO_MODEL_URL, DEST_AUDIO_MODEL);
+}
+
 function copyWasmIfNeeded() {
   const marker = "vision_wasm_internal.wasm";
   const srcFile = path.join(SRC_WASM, marker);
@@ -96,6 +127,8 @@ async function ensureModel() {
 async function main() {
   copyWasmIfNeeded();
   await ensureModel();
+  copyAudioWasmIfNeeded();
+  await ensureAudioModel();
 }
 
 main().catch((e) => {

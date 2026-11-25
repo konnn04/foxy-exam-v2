@@ -17,6 +17,7 @@
     "bump:major": "node scripts/bump-version.mjs major"
   },
   "dependencies": {
+    "@mediapipe/tasks-audio": "1.0.1",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@sentry/browser": "^11.7.0",
     "@tauri-apps/api": "^2",

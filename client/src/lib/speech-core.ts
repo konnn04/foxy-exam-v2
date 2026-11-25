@@ -32,3 +32,48 @@ export class SpeechGate {
     return false;
   }
 }
+
+/**
+ * Speech gate for the YAMNet classifier: one vote per ~1 s window ("was this window speech?"). Fires when 3 of the
+ * last 5 windows were speech (about 3 s of talking, the catalog's SPEECH_DETECTED threshold), then stays quiet for a
+ * minute. Coughs, music, typing and other sounds are other YAMNet classes, so they do not vote.
+ */
+export const SPEECH_LABELS = new Set([
+  "Speech",
+  "Conversation",
+  "Whispering",
+  "Narration, monologue",
+  "Male speech, man speaking",
+  "Female speech, woman speaking",
+  "Child speech, kid speaking",
+  "Speech synthesizer",
+  "Telephone",
+]);
+
+export function speechScore(categories: { categoryName: string; score: number }[]): number {
+  let best = 0;
+  for (const c of categories) if (SPEECH_LABELS.has(c.categoryName) && c.score > best) best = c.score;
+  return best;
+}
+
+export class SpeechVoteGate {
+  private votes: boolean[] = [];
+  private mutedUntil = 0;
+
+  constructor(
+    private threshold = 0.5,
+    private window = 5,
+    private needed = 3,
+    private cooldownMs = 60_000,
+  ) {}
+
+  /** `score` = speech score of one ~1 s window (0..1); `now` in ms. true once per cooldown when talking lasted. */
+  update(score: number, now: number): boolean {
+    this.votes.push(score >= this.threshold);
+    if (this.votes.length > this.window) this.votes.shift();
+    if (now < this.mutedUntil || this.votes.filter(Boolean).length < this.needed) return false;
+    this.votes = [];
+    this.mutedUntil = now + this.cooldownMs;
+    return true;
+  }
+}
