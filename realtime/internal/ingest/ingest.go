@@ -373,7 +373,7 @@ func (s *Server) handleSignal(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case req.Command != nil:
 		c := *req.Command
-		if !events.CommandTypes[c.Type] || c.ID == "" || len(c.Message) > 1200 {
+		if !events.CommandTypes[c.Type] || c.ID == "" || len(c.Message) > 1200 || len(c.Name) > 260 || len(c.ViolationType) > 64 {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "bad_command"})
 			return
 		}

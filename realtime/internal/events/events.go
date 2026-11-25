@@ -134,13 +134,28 @@ func (e Event) Validate() error {
 // Command is a server instruction for one candidate, delivered in an ingest response until acknowledged.
 type Command struct {
 	ID      string `json:"id"`
-	Type    string `json:"type"` // WARN | PAUSE | RESUME | FORCE_END | CHAT
+	Type    string `json:"type"` // see CommandTypes
 	Message string `json:"message,omitempty"`
 	By      int64  `json:"by,omitempty"` // proctor user id
 	At      int64  `json:"at"`           // unix ms
+	// KILL_PROCESS: which process
+	Pid  int64  `json:"pid,omitempty"`
+	Name string `json:"name,omitempty"`
+	// CLIP: the violation the candidate's rolling recorder should cut a clip for (found by type + time)
+	ViolationType string `json:"violation_type,omitempty"`
+	ViolationAt   int64  `json:"violation_at,omitempty"` // unix ms
 }
 
-var CommandTypes = map[string]bool{"WARN": true, "PAUSE": true, "RESUME": true, "FORCE_END": true, "CHAT": true}
+// CommandTypes are the commands the core may send to a candidate (signed internal call).
+var CommandTypes = map[string]bool{
+	"WARN": true, "PAUSE": true, "RESUME": true, "FORCE_END": true, "CHAT": true,
+	"REQ_PROCESSES": true, "KILL_PROCESS": true,
+	"CLIP": true, // a server-side detector (AI agent) found a violation: cut the client's buffered clip now
+}
+
+// HubCommandTypes are the ones a proctor may send straight through the hub; the rest go through the core,
+// which checks permissions and keeps the audit trail.
+var HubCommandTypes = map[string]bool{"WARN": true, "PAUSE": true, "RESUME": true, "FORCE_END": true, "CHAT": true}
 
 // Stored is an event as it travels through the Redis stream towards the worker.
 type Stored struct {

@@ -303,3 +303,40 @@ func TestTheCoreCanQueueAChatMessageForACandidateAndSignalItsProctors(t *testing
 		t.Fatalf("an unsigned signal must be refused, got %d", rec.Code)
 	}
 }
+
+func TestTheCoreCanAskForAClipAndForProcesses(t *testing.T) {
+	e := setup(t, nil)
+	tok := candidate(5, 2)
+	post(e.h, tok, map[string]any{"events": []any{ev(1, "hb", map[string]any{})}})
+	signed := func(body string) int {
+		raw := []byte(body)
+		ts, sig := auth.SignBody(intSecret, raw, time.Now())
+		req := httptest.NewRequest("POST", "/internal/v1/signal", bytes.NewReader(raw))
+		req.Header.Set(auth.HeaderTimestamp, ts)
+		req.Header.Set(auth.HeaderSignature, sig)
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"command":{"id":"c1","type":"CLIP","violation_type":"PROHIBITED_DEVICE","violation_at":1700000000000}}`); c != 200 {
+		t.Fatalf("clip command: %d", c)
+	}
+	if c := signed(`{"attempt_id":5,"exam_id":2,"command":{"id":"k1","type":"KILL_PROCESS","pid":4242,"name":"obs"}}`); c != 200 {
+		t.Fatalf("kill command: %d", c)
+	}
+	r := decode(t, post(e.h, tok, map[string]any{"events": []any{ev(2, "hb", map[string]any{})}}))
+	if len(r.Commands) != 2 {
+		t.Fatalf("both commands must reach the candidate: %+v", r.Commands)
+	}
+	byType := map[string]int{}
+	for i, c := range r.Commands {
+		byType[c.Type] = i
+	}
+	clip, kill := r.Commands[byType["CLIP"]], r.Commands[byType["KILL_PROCESS"]]
+	if clip.ViolationType != "PROHIBITED_DEVICE" || clip.ViolationAt != 1700000000000 {
+		t.Fatalf("clip fields lost: %+v", clip)
+	}
+	if kill.Pid != 4242 || kill.Name != "obs" {
+		t.Fatalf("kill fields lost: %+v", kill)
+	}
+}

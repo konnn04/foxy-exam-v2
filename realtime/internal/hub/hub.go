@@ -530,7 +530,7 @@ type commandRequest struct {
 }
 
 func (h *Hub) sendCommand(ctx context.Context, c auth.Claims, eid int64, req commandRequest) (int, string) {
-	if !events.CommandTypes[req.Command] {
+	if !events.HubCommandTypes[req.Command] {
 		return http.StatusBadRequest, "unknown_command"
 	}
 	// the target must really belong to this room: a proctor token of exam A must not act on exam B

@@ -45,12 +45,13 @@ class EventsController extends Controller
         $heartbeats = $data['heartbeats'] ?? [];
 
         $attemptIds = collect([...$violations, ...$oplogs, ...$heartbeats])->pluck('attempt_id')->filter()->unique()->map(fn ($i) => (int) $i)->all();
-        $attempts = ExamAttempt::whereIn('id', $attemptIds)->get()->keyBy('id');
+        $attempts = ExamAttempt::with('exam')->whereIn('id', $attemptIds)->get()->keyBy('id');
 
         $stats = ['violations' => 0, 'oplogs' => 0, 'heartbeats' => 0, 'duplicates' => 0, 'skipped' => 0];
         $points = []; // attempt id => risk points to add
+        $clipAsks = []; // violations found by a server-side detector: the candidate's app cuts the clip around them
 
-        DB::transaction(function () use ($violations, $oplogs, $heartbeats, $attempts, &$stats, &$points) {
+        DB::transaction(function () use ($violations, $oplogs, $heartbeats, $attempts, &$stats, &$points, &$clipAsks) {
             $seen = array_fill_keys(
                 Violation::withoutGlobalScopes()->whereIn('client_event_id', $this->clientIds($violations, $oplogs))->pluck('client_event_id')->all(),
                 true,
@@ -83,6 +84,9 @@ class EventsController extends Controller
                 ]);
                 $points[$attempt->id] = ($points[$attempt->id] ?? 0) + Risk::weight($v['severity']);
                 $stats['violations']++;
+                if (str_starts_with($cid, 'agent:') && !empty(($attempt->exam?->monitoring_config ?? [])['violation_clips'])) {
+                    $clipAsks[] = [$attempt, $v['violation_type'], $this->at($v['occurred_at'] ?? null)->getTimestampMs()];
+                }
             }
 
             foreach ($oplogs as $o) {
@@ -155,6 +159,17 @@ class EventsController extends Controller
                 $stats['heartbeats']++;
             }
         });
+
+        // after the commit: the candidate's app holds the last seconds of camera / screen in memory, so it can upload
+        // a clip around the moment within seconds, long before any recording is finalized
+        foreach ($clipAsks as [$attempt, $type, $atMs]) {
+            app(\App\Services\Realtime::class)->signal($attempt, ['command' => [
+                'id' => 'clip-' . bin2hex(random_bytes(4)),
+                'type' => 'CLIP',
+                'violation_type' => $type,
+                'violation_at' => $atMs,
+            ]]);
+        }
 
         return response()->json(['success' => true, ...$stats]);
     }

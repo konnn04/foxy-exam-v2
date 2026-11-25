@@ -2,7 +2,7 @@ import { diag } from "./diag";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import QRCode from "qrcode";
-import { getMobileViewer, issueMobileCamera, reportProcesses, verifyMobileLayout, type MonitoringConfig } from "./api";
+import { getMobileViewer, issueMobileCamera, reportProcesses, verifyMobileLayout, type MonitoringConfig, type ViolationType } from "./api";
 import { getProcesses, killProcess } from "./monitor";
 import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
@@ -11,8 +11,8 @@ import { useExamGuard } from "./examGuard";
 import { getLobbyMedia, releaseLobbyMedia, savePendingExam, setLobbyMedia } from "./lobbyMedia";
 import { LiveKitPublisher, explain, failureText, getPreferredCamera, onTrackEnded, openCamera, openScreen, stopStream } from "./media";
 import { RealtimeClient, type RtCommand, type RtStatus } from "./realtime";
-import { releaseEvidence } from "./evidence";
-import { startClipRecorder, stopClipRecorder } from "./clipRecorder";
+import { releaseEvidence, shootClip } from "./evidence";
+import { clipRecorderActive, startClipRecorder, stopClipRecorder } from "./clipRecorder";
 import { systemLoad } from "./sysinfo";
 import { FaceMonitor, type VisionSample } from "./vision";
 import { isLookingAway } from "./vision-core";
@@ -100,6 +100,8 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     }
   }, []);
 
+  // the command handler below runs inside the client it belongs to: it reaches the instance through this ref
+  const clientRef = useRef<RealtimeClient | null>(null);
   const client = useMemo(
     () =>
       new RealtimeClient({
@@ -113,6 +115,9 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
           else if (cmd.type === "CHAT") setChatIn({ id: cmd.id, message: cmd.message ?? "" });
           else if (cmd.type === "REQ_PROCESSES") {
             void syncProcesses();
+          } else if (cmd.type === "CLIP" && cmd.violation_type && cmd.violation_at) {
+            // the AI on the server saw something: the seconds before it are only in this app's rolling buffer
+            if (clipRecorderActive()) void shootClip(clientRef.current!, cmd.violation_type as ViolationType, cmd.violation_at).catch(() => undefined);
           } else if (cmd.type === "KILL_PROCESS" && typeof cmd.pid === "number") {
             const pid = cmd.pid;
             const name = cmd.name;
@@ -124,6 +129,7 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
       }),
     [syncProcesses],
   );
+  clientRef.current = client;
 
   const guard = useExamGuard(config, client);
   const needCamera = Boolean(config?.ai_face_check) && !bypass("camera");
