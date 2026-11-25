@@ -10,6 +10,7 @@ import { bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, failureText, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
+import { clearOverlay, drawFaceOverlay } from "../lib/faceOverlay";
 import { frontalHint, isFrontal, LivenessChallenge, livenessText, type FrameReading } from "../lib/vision-core";
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
@@ -60,6 +61,7 @@ export default function ExamLobby({
   const [, setError] = useState<string | null>(null);
   const [screenBusy, setScreenBusy] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
+  const overlay = useRef<HTMLCanvasElement>(null);
   const stopMeter = useRef<(() => void) | null>(null);
   const micStream = useRef<MediaStream | null>(null);
   const startedRef = useRef(false);
@@ -91,6 +93,7 @@ export default function ExamLobby({
   const stopFace = useCallback(() => {
     face.current?.stop();
     face.current = null;
+    clearOverlay(overlay.current);
   }, []);
 
   /** Watches the preview with MediaPipe: the exam can start only while exactly one face is in front of the camera. */
@@ -110,6 +113,7 @@ export default function ExamLobby({
         diag(`lobby: face analysis skipped (${why})`);
         face.current?.stop();
         face.current = null;
+        clearOverlay(overlay.current);
         liveFeed.current = null;
         set("face", { level: "warn", detail: t("lobby.face.skip"), required: false });
       };
@@ -117,6 +121,7 @@ export default function ExamLobby({
         (s) => {
           gotSample = true;
           liveFeed.current?.(s);
+          drawFaceOverlay(overlay.current, video.current, s.landmarks, s.faces > 1 ? "bad" : isFrontal(s) ? "ok" : "warn");
           if (isFrontal(s)) {
             seen += 1;
             missed = 0;
@@ -689,8 +694,10 @@ export default function ExamLobby({
 
         <aside className="w-[300px] shrink-0 space-y-3">
           {wantCamera && (
-            <div className="overflow-hidden rounded-xl border border-line bg-black">
+            <div className="relative overflow-hidden rounded-xl border border-line bg-black">
               <video ref={video} autoPlay muted playsInline className="aspect-[4/3] w-full object-cover" />
+              {/* what MediaPipe recognised, drawn over the picture */}
+              <canvas ref={overlay} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />
             </div>
           )}
           {wantPhone && phone.link === "connected" && (

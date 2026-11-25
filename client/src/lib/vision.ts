@@ -21,13 +21,15 @@ export const getFaceDelegate = (): FaceDelegate => {
 export const setFaceDelegate = (v: FaceDelegate) => localStorage.setItem(KEY, v);
 
 export interface VisionSample extends FrameReading {
+  /** Landmarks of every face found (normalised 0..1), for drawing an overlay on the preview. */
+  landmarks: { x: number; y: number }[][];
   attention: number;
   delegate: "GPU" | "CPU";
 }
 
 interface Landmarker {
   detectForVideo(video: HTMLVideoElement, ts: number): {
-    faceLandmarks: { x: number }[][];
+    faceLandmarks: { x: number; y: number }[][];
     faceBlendshapes?: { categories: { categoryName: string; score: number }[] }[];
     facialTransformationMatrixes?: { data: number[] }[];
   };
@@ -135,8 +137,10 @@ export class FaceMonitor {
     if (!this.lm || !v || v.readyState < 2 || v.videoWidth === 0 || v.currentTime === this.last) return;
     this.last = v.currentTime;
     let r: FrameReading = EMPTY_READING;
+    let faceLandmarks: { x: number; y: number }[][] = [];
     try {
       const res = this.lm.detectForVideo(v, performance.now());
+      faceLandmarks = res.faceLandmarks;
       r = { ...EMPTY_READING, faces: res.faceLandmarks.length };
       if (r.faces > 0) {
         r.faceRatio = faceRatio(res.faceLandmarks[0]);
@@ -163,7 +167,7 @@ export class FaceMonitor {
       }
       return;
     }
-    this.onSample({ ...r, attention: attention(r), delegate: this.delegate });
+    this.onSample({ ...r, landmarks: faceLandmarks, attention: attention(r), delegate: this.delegate });
     for (const e of this.tracker.update(r, (performance.now() - t0) / 1000)) this.onEvent(e);
   }
 
