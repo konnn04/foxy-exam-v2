@@ -5,6 +5,7 @@ import { Download, Eye, Settings2, ShieldAlert, Users } from 'lucide-react';
 import { useViolationFeed, type FeedRow } from '@/hooks/use-violation-feed';
 import { formatDateTime, formatTime } from '@/lib/datetime';
 import AdminLayout from '@/layouts/AdminLayout';
+import { ActivityHeatmap } from '@/components/foxy/activity-heatmap';
 import { type TeamItem } from '@/components/team-switcher';
 import { FxButton, IconButton, PageHeader, Panel, Pill, type Tone } from '@/components/foxy/ui';
 import { useLiveRoom } from '@/hooks/use-live-room';
@@ -206,6 +207,8 @@ export default function ExamReportShow({ user, teams, exam, attempts = [], viola
           </>
         )}
       />
+
+      <ActivityHeatmap examId={exam.id} live={exam.status === 'IN_PROGRESS' || attempts.some((a) => a.status === 'IN_PROGRESS')} />
 
       <Panel padded={false} className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">

@@ -388,6 +388,16 @@ class MonitoringController extends Controller
     }
 
     /** Subscribe-only LiveKit token so the live screen can show candidates' camera and screen. */
+    /** GET /admin/exams/{id}/heatmap.json — candidates x time: interaction intensity, violations, unusual bursts. */
+    public function heatmap(int $examId)
+    {
+        $this->guardStaff();
+        $exam = Exam::findOrFail($examId);
+        $this->tenant->enforceOwnership($exam);
+
+        return response()->json(\App\Support\ActivityHeatmap::forExam($exam));
+    }
+
     public function liveVideo(int $examId)
     {
         $this->guardStaff();
