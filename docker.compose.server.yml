@@ -49,7 +49,6 @@ services:
       QUEUE_CONNECTION: sync
       RUN_MIGRATIONS: "true"
       RUN_SEED: ${RUN_SEED:-true}
-      AI_WORKER_URL: ${AI_WORKER_URL:-}
       AI_WORKER_TIMEOUT: ${AI_WORKER_TIMEOUT:-2}
       AI_ENFORCE: ${AI_ENFORCE:-false}
       RT_JWT_SECRET: ${SERVICE_PASSWORD_64_RTJWT}
