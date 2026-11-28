@@ -42,6 +42,12 @@ export const VIOLATION_LABEL: Record<string, string> = {
   CAMERA_LOST: 'Mất camera',
   SCREEN_SHARE_STOPPED: 'Dừng chia sẻ màn hình',
   OFFLINE_TOO_LONG: 'Mất kết nối quá lâu',
+  PHONE_MOVED: 'Điện thoại phụ bị cầm lên / di chuyển',
+  VIRTUAL_MACHINE: 'Thi trên máy ảo',
+  VIRTUAL_CAMERA: 'Dùng camera ảo',
+  REMOTE_SESSION: 'Điều khiển từ xa (Remote Desktop)',
+  IP_CHANGED: 'Đổi địa chỉ IP / mạng giữa giờ thi',
+  DEVICE_RESTARTED: 'Khởi động lại máy / mở lại app giữa giờ thi',
 };
 
 /** Keys of violation `details` -> label shown to the proctor. Unknown keys are shown as they are. */

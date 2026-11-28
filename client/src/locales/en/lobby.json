@@ -153,5 +153,14 @@
   "vision.eyes": "Can't see your eyes — open them and remove dark glasses or anything covering them",
   "vision.straight": "Look straight at the camera",
   "vision.straight2": "Look straight at the camera and keep both eyes toward the screen",
-  "lobby.cam.noWebrtc": "This computer can't stream video live (WebRTC), so proctors would not receive your camera. Use Windows, or a Linux build with WebRTC support."
+  "lobby.cam.noWebrtc": "This computer can't stream video live (WebRTC), so proctors would not receive your camera. Use Windows, or a Linux build with WebRTC support.",
+  "lobby.check.env": "Machine environment",
+  "lobby.env.checking": "Checking for virtual machines and remote control…",
+  "lobby.env.noInfo": "Machine information unavailable (running outside FoxyClient)",
+  "lobby.env.ok": "{os}, physical machine, no remote control",
+  "lobby.env.vm": "This computer is a virtual machine ({vendor}). Use a physical computer.",
+  "lobby.env.remote": "This computer is being controlled remotely (Remote Desktop). Sit at the machine itself.",
+  "lobby.env.os": "This exam only allows: {allowed}.",
+  "lobby.cam.virtual": "“{name}” is a virtual camera and cannot be used. Pick a real camera.",
+  "lobby.dlg.precheckTitle": "This computer cannot enter the exam yet"
 }

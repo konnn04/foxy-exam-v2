@@ -204,6 +204,9 @@ export function useExamForm(kind: ExamKind, { courses, questionSets, defaultCour
     banned_apps: pick<string[]>('banned_apps', DEFAULT_BANNED_APPS_LIST),
     lock_device: pick('lock_device', true),
     offline_minutes: pick('offline_minutes', 5),
+    block_vm: pick('block_vm', true),
+    block_virtual_camera: pick('block_virtual_camera', true),
+    allowed_os: pick<string[]>('allowed_os', []),
     allowed_apps_enabled: pick('allowed_apps_enabled', false),
     allowed_apps: pick<string[]>('allowed_apps', ['devenv', 'code']),
     excluded_student_ids: (exam?.excluded_student_ids ?? []) as number[],
@@ -640,6 +643,20 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
                 onChange: (v: boolean) => state.set('lock_device', v),
               },
               {
+                key: 'block_vm',
+                label: 'Chặn máy ảo',
+                desc: 'Không cho vào thi trên VMware, VirtualBox, Hyper-V, QEMU, Parallels… (máy chủ kiểm tra ở bước precheck). Điều khiển từ xa luôn bị chặn',
+                checked: form.block_vm,
+                onChange: (v: boolean) => state.set('block_vm', v),
+              },
+              {
+                key: 'block_virtual_camera',
+                label: 'Chặn camera ảo',
+                desc: 'OBS Virtual Camera, ManyCam, DroidCam, Iriun, NVIDIA Broadcast… không được dùng làm camera thi',
+                checked: form.block_virtual_camera,
+                onChange: (v: boolean) => state.set('block_virtual_camera', v),
+              },
+              {
                 key: 'clips',
                 label: 'Quay clip quanh vi phạm',
                 desc: 'Máy thí sinh tự quay khoảng 10 giây (5 giây trước, 5 giây sau) camera và màn hình rồi tải lên. Cần bật camera hoặc chia sẻ màn hình',
@@ -656,6 +673,13 @@ export function ExamMonitorStep({ page, state }: { page: ExamFormPageProps; stat
               },
             ]}
           />
+          <div className="flex flex-col gap-2 border-t border-border py-3.5">
+            <div>
+              <div className="text-sm font-medium">Hệ điều hành được phép</div>
+              <div className="text-xs text-muted-foreground">Máy chủ từ chối ở bước precheck nếu máy thí sinh dùng hệ điều hành khác. Không chọn gì = cho phép tất cả.</div>
+            </div>
+            <OsPicker value={form.allowed_os} onChange={(v) => state.set('allowed_os', v)} />
+          </div>
           {(form.ai_objects || form.extra_camera_objects) && (
             <div className="flex flex-col gap-2 border-t border-border py-3.5">
               <div>
@@ -925,5 +949,34 @@ export function AttemptsField({ state }: { state: ExamFormState }) {
         onChange={(e) => state.set('max_attempts', e.target.value ? Number(e.target.value) : null)}
       />
     </Field>
+  );
+}
+
+export const EXAM_OS: [string, string][] = [
+  ['windows', 'Windows'],
+  ['macos', 'macOS'],
+  ['linux', 'Linux'],
+];
+
+/** Which operating systems may sit the exam; none selected = any. */
+export function OsPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {EXAM_OS.map(([v, label]) => {
+        const on = value.includes(v);
+        return (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(on ? value.filter((x) => x !== v) : [...value, v])}
+            className={`cursor-pointer rounded-full border px-3 py-1 text-xs transition ${on ? 'border-primary bg-primary/10 font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
+          >
+            {label}
+          </button>
+        );
+      })}
+      <span className="text-xs text-muted-foreground">{value.length === 0 || value.length === 3 ? 'Mọi hệ điều hành' : `Chỉ ${value.map((v) => EXAM_OS.find((o) => o[0] === v)?.[1]).join(', ')}`}</span>
+    </div>
   );
 }

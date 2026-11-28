@@ -112,6 +112,13 @@ export default function ExamClassic() {
         })
         .catch((err) => {
           loadedAttempt.current = null;
+          if (err instanceof ApiError && err.status === 428) {
+            // this window's session is stale (app or machine restarted): back to the lobby, then resume
+            const p: PendingExam = { id: s.exam.id, title: s.exam.title, code: s.exam.code, type: s.exam.type ?? "QUIZ", resuming: true };
+            savePendingExam(p);
+            setPending(p);
+            return;
+          }
           setLoadError(err instanceof ApiError ? err.message : "Không tải được đề thi.");
         })
         .finally(() => setLoading(false));

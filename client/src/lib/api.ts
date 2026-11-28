@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "./config";
 import { getAuth } from "./authStore";
-import { getSession } from "./session";
+import { getSession, getSessionKey } from "./session";
 import { deviceInfo } from "./sysinfo";
 
 /**
@@ -38,6 +38,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired when the server answers 428 PRECHECK_REQUIRED on an exam request. */
+export const PRECHECK_EVENT = "foxy:precheck-required";
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -55,6 +58,8 @@ async function request<T>(
     // a student can hold several attempts (retakes, parallel exams): name the one this window belongs to
     const attempt = getSession()?.attemptId;
     if (attempt) headers["X-Foxy-Attempt"] = String(attempt);
+    const key = getSessionKey();
+    if (key) headers["X-Foxy-Session"] = key;
   }
 
   let res: Response;
@@ -72,7 +77,9 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const b = (body ?? {}) as { message?: string; errors?: Record<string, string[]> };
+    const b = (body ?? {}) as { message?: string; errors?: Record<string, string[]>; error_code?: string };
+    // the server rotated this attempt's session (restart, other window/machine): the exam window must re-run the precheck
+    if (res.status === 428 && b.error_code === "PRECHECK_REQUIRED") window.dispatchEvent(new CustomEvent(PRECHECK_EVENT));
     throw new ApiError(
       res.status,
       b.message ?? `Lỗi máy chủ (HTTP ${res.status})`,
@@ -95,6 +102,14 @@ export interface MonitoringConfig {
   banned_apps?: string[];
   /** lock attempt to the initial machine fingerprint (prevents resuming on another computer) */
   lock_device?: boolean;
+  /** refuse virtual machines at precheck (default true) */
+  block_vm?: boolean;
+  /** refuse OBS / ManyCam / DroidCam… as the exam camera (default true) */
+  block_virtual_camera?: boolean;
+  /** windows / macos / linux; empty = any */
+  allowed_os?: string[];
+  /** minutes offline before the server closes the attempt as absent (0 = never) */
+  offline_minutes?: number;
   require_screen?: boolean;
   require_mic?: boolean;
   prevent_tab_switch: boolean;
@@ -322,6 +337,8 @@ export function getDashboard(): Promise<ApiEnvelope<DashboardData>> {
 
 export interface StartExamData {
   attempt_id: number;
+  /** sent back as X-Foxy-Session on every exam request (rotated by each start) */
+  session_key?: string;
   attempt_number: number;
   status: string;
   duration_minutes: number;
@@ -335,10 +352,24 @@ export interface StartExamData {
   };
 }
 
-export async function startExam(examId: number): Promise<ApiEnvelope<StartExamData>> {
+export interface PrecheckBody {
+  /** lobby check id -> level (ok / warn / fail / idle) */
+  checks: Record<string, string>;
+  env: Record<string, unknown>;
+}
+
+/** The server re-checks the lobby against the exam policy; a pass returns a single-use token for `start`. */
+export async function submitPrecheck(examId: number, body: PrecheckBody): Promise<ApiEnvelope<{ precheck_token: string; expires_at: string }>> {
+  return request(`/student/exams/${examId}/precheck`, {
+    method: "POST",
+    body: JSON.stringify({ ...body, device_info: await deviceInfo() }),
+  });
+}
+
+export async function startExam(examId: number, precheckToken?: string): Promise<ApiEnvelope<StartExamData>> {
   return request<ApiEnvelope<StartExamData>>(`/student/exams/${examId}/start`, {
     method: "POST",
-    body: JSON.stringify({ device_info: await deviceInfo() }),
+    body: JSON.stringify({ device_info: await deviceInfo(), precheck_token: precheckToken }),
   });
 }
 
@@ -706,7 +737,13 @@ export type ViolationType =
   | "SCREEN_SHARE_STOPPED"
   | "OFFLINE_TOO_LONG"
   | "COPY_ATTEMPT"
-  | "SPEECH_DETECTED";
+  | "SPEECH_DETECTED"
+  | "PHONE_MOVED"
+  | "VIRTUAL_MACHINE"
+  | "VIRTUAL_CAMERA"
+  | "REMOTE_SESSION"
+  | "IP_CHANGED"
+  | "DEVICE_RESTARTED";
 
 export type ViolationSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 

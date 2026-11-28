@@ -18,6 +18,7 @@ final class ViolationCatalog
         'SYSTEM_SHORTCUT', 'BANNED_APP', 'MULTIPLE_MONITORS', 'CAPTURE_DEVICE', 'MULTIPLE_KEYBOARDS', 'DEVICE_CHANGED',
         'CAMERA_LOST', 'MANUAL', 'SCREEN_SHARE_STOPPED', 'OFFLINE_TOO_LONG', 'PHONE_DISCONNECTED', 'PHONE_SCREEN_OFF',
         'PHONE_ORIENTATION_INVALID', 'CAMERA_TAMPERED', 'COPY_ATTEMPT',
+        'PHONE_MOVED', 'VIRTUAL_MACHINE', 'VIRTUAL_CAMERA', 'REMOTE_SESSION', 'IP_CHANGED', 'DEVICE_RESTARTED',
     ];
 
     public const LABELS = [
@@ -51,6 +52,12 @@ final class ViolationCatalog
         'MULTIPLE_KEYBOARDS' => 'Nhiều bàn phím',
         'DEVICE_CHANGED' => 'Thay đổi thiết bị ngoại vi khi đang thi',
         'MANUAL' => 'Giám thị ghi nhận trực tiếp',
+        'PHONE_MOVED' => 'Điện thoại phụ bị cầm lên / di chuyển',
+        'VIRTUAL_MACHINE' => 'Thi trên máy ảo',
+        'VIRTUAL_CAMERA' => 'Dùng camera ảo',
+        'REMOTE_SESSION' => 'Điều khiển từ xa (Remote Desktop)',
+        'IP_CHANGED' => 'Đổi địa chỉ IP / mạng giữa giờ thi',
+        'DEVICE_RESTARTED' => 'Khởi động lại máy / mở lại app giữa giờ thi',
     ];
 
     /**
@@ -87,6 +94,12 @@ final class ViolationCatalog
         'MULTIPLE_KEYBOARDS' => ['severity' => 'MEDIUM', 'cooldown_seconds' => 30, 'threshold_seconds' => 0, 'locks_screen' => false],
         'DEVICE_CHANGED' => ['severity' => 'MEDIUM', 'cooldown_seconds' => 5, 'threshold_seconds' => 0, 'locks_screen' => false],
         'MANUAL' => ['severity' => 'MEDIUM', 'cooldown_seconds' => 0, 'threshold_seconds' => 0, 'locks_screen' => false],
+        'PHONE_MOVED' => ['severity' => 'MEDIUM', 'cooldown_seconds' => 30, 'threshold_seconds' => 2, 'locks_screen' => true],
+        'VIRTUAL_MACHINE' => ['severity' => 'CRITICAL', 'cooldown_seconds' => 300, 'threshold_seconds' => 0, 'locks_screen' => false],
+        'VIRTUAL_CAMERA' => ['severity' => 'HIGH', 'cooldown_seconds' => 60, 'threshold_seconds' => 0, 'locks_screen' => true],
+        'REMOTE_SESSION' => ['severity' => 'CRITICAL', 'cooldown_seconds' => 120, 'threshold_seconds' => 0, 'locks_screen' => true],
+        'IP_CHANGED' => ['severity' => 'LOW', 'cooldown_seconds' => 60, 'threshold_seconds' => 0, 'locks_screen' => false],
+        'DEVICE_RESTARTED' => ['severity' => 'MEDIUM', 'cooldown_seconds' => 0, 'threshold_seconds' => 0, 'locks_screen' => false],
     ];
 
     public static function label(string $type): string

@@ -29,6 +29,10 @@ final class MonitoringConfig
         'banned_apps.*' => ['string', 'max:60', 'regex:/^[A-Za-z0-9._*-]+$/'],
         'lock_device' => ['nullable', 'boolean'],
         'offline_minutes' => ['nullable', 'integer', 'min:0', 'max:60'],
+        'block_vm' => ['nullable', 'boolean'],
+        'block_virtual_camera' => ['nullable', 'boolean'],
+        'allowed_os' => ['nullable', 'array', 'max:3'],
+        'allowed_os.*' => ['string', 'in:windows,macos,linux'],
     ];
 
     /** Minutes without a sign of life before an attempt is closed as absent; 0 = never. */
@@ -48,6 +52,14 @@ final class MonitoringConfig
             $config[$k] = (bool) ($validated[$k] ?? false);
         }
 
+        foreach (['block_vm', 'block_virtual_camera'] as $k) {
+            if (array_key_exists($k, $validated) && $validated[$k] !== null) {
+                $config[$k] = (bool) $validated[$k];
+            }
+        }
+        if (array_key_exists('allowed_os', $validated)) {
+            $config['allowed_os'] = (array) ($validated['allowed_os'] ?? []);
+        }
         if (array_key_exists('offline_minutes', $validated) && $validated['offline_minutes'] !== null) {
             $config['offline_minutes'] = (int) $validated['offline_minutes'];
         }
@@ -77,6 +89,11 @@ final class MonitoringConfig
         $c['lock_device'] = !empty($c['lock_device']);
         $c['seal_after_exam'] = !empty($c['seal_after_exam']);
         $c['offline_minutes'] = self::offlineMinutes($c);
+        // machine policy: VM and virtual cameras are refused unless an exam turns that off; [] = any OS
+        $c['block_vm'] = (bool) ($c['block_vm'] ?? true);
+        $c['block_virtual_camera'] = (bool) ($c['block_virtual_camera'] ?? true);
+        $os = array_values(array_unique(array_intersect((array) ($c['allowed_os'] ?? []), ['windows', 'macos', 'linux'])));
+        $c['allowed_os'] = count($os) === 3 ? [] : $os;
         $c['banned_apps'] = array_values(array_unique(array_filter(array_map(
             fn ($v) => strtolower(trim(preg_replace('/\.exe$/i', '', (string) $v))),
             (array) ($c['banned_apps'] ?? [])

@@ -7,6 +7,8 @@ export interface PhoneSignalPayload {
   facing?: "environment" | "user";
   portrait?: boolean;
   tiltWarning?: string | null;
+  /** accelerometer: the phone is being held or moved */
+  moving?: boolean;
   visibility?: string;
   deviceId?: string | null;
   ts?: number;

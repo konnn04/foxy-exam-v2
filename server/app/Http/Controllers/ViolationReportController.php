@@ -23,7 +23,7 @@ class ViolationReportController extends Controller
 
     private function guardStaff(): void
     {
-        abort_unless(in_array(Auth::user()?->role, ['SUPER_ADMIN', 'ORG_ADMIN', 'LECTURER']), 403);
+        abort_unless(in_array(Auth::user()?->role, ['SUPER_ADMIN', 'ORG_ADMIN', 'TEACHER']), 403);
     }
 
     private function attemptOrFail(int $attemptId): ExamAttempt
@@ -312,7 +312,7 @@ class ViolationReportController extends Controller
         }
 
         // Mint a short-lived read-only proctor token scoped strictly to this exam so we can fetch presigned URLs
-        $dummyViewer = new User(['role' => 'LECTURER']);
+        $dummyViewer = new User(['role' => 'TEACHER']);
         $dummyViewer->id = (int) ($report->reported_by ?: 1);
         $token = $rt->proctorToken($dummyViewer, (int) $report->exam->organization_id, [(int) $report->exam_id], 900);
         $recordUrl = rtrim((string) config('services.realtime.record_url'), '/');

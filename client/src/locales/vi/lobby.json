@@ -153,5 +153,14 @@
   "vision.eyes": "Chưa thấy rõ mắt — mở mắt, bỏ kính tối màu hoặc vật che",
   "vision.straight": "Hãy nhìn thẳng vào camera",
   "vision.straight2": "Hãy nhìn thẳng vào camera, giữ hai mắt hướng về màn hình",
-  "lobby.cam.noWebrtc": "Máy này không hỗ trợ truyền hình ảnh trực tiếp (WebRTC), nên giám thị sẽ không nhận được camera. Hãy thi trên Windows hoặc bản Linux có hỗ trợ WebRTC."
+  "lobby.cam.noWebrtc": "Máy này không hỗ trợ truyền hình ảnh trực tiếp (WebRTC), nên giám thị sẽ không nhận được camera. Hãy thi trên Windows hoặc bản Linux có hỗ trợ WebRTC.",
+  "lobby.check.env": "Môi trường máy",
+  "lobby.env.checking": "Đang kiểm tra máy ảo, điều khiển từ xa…",
+  "lobby.env.noInfo": "Không đọc được thông tin máy (chạy ngoài FoxyClient)",
+  "lobby.env.ok": "{os}, máy thật, không điều khiển từ xa",
+  "lobby.env.vm": "Máy đang chạy trong máy ảo ({vendor}). Hãy thi trên máy thật.",
+  "lobby.env.remote": "Máy đang được điều khiển từ xa (Remote Desktop). Hãy ngồi trực tiếp tại máy.",
+  "lobby.env.os": "Kỳ thi chỉ cho phép: {allowed}.",
+  "lobby.cam.virtual": "“{name}” là camera ảo, không được dùng để thi. Chọn camera thật.",
+  "lobby.dlg.precheckTitle": "Máy chưa đạt yêu cầu vào thi"
 }

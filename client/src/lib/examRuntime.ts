@@ -2,7 +2,7 @@ import { diag } from "./diag";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import QRCode from "qrcode";
-import { getMobileViewer, issueMobileCamera, reportProcesses, verifyMobileLayout, type MonitoringConfig, type ViolationType } from "./api";
+import { PRECHECK_EVENT, getMobileViewer, issueMobileCamera, reportProcesses, verifyMobileLayout, type MonitoringConfig, type ViolationType } from "./api";
 import { getProcesses, killProcess } from "./monitor";
 import { getSession } from "./session";
 import { PhoneFeed, type PhoneState } from "./phoneFeed";
@@ -266,6 +266,12 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
             if (throttle("tilt", 25_000)) {
               guard.report("PHONE_ORIENTATION_INVALID", "MEDIUM", "Điện thoại giám sát phụ bị đặt nằm phẳng trên mặt bàn (úp/ngửa)");
             }
+          } else if (sig.type === "PHONE_MOVED" || sig.moving) {
+            // the phone was picked up or carried: the layout checked in the lobby no longer holds
+            setPhoneIssue("Điện thoại phụ vừa bị di chuyển. Đặt lại đứng yên đúng góc rồi bấm “Kiểm tra lại góc đặt”.");
+            if (throttle("moved", 30_000)) {
+              guard.report("PHONE_MOVED", "MEDIUM", "Điện thoại giám sát phụ bị cầm lên hoặc di chuyển trong giờ thi");
+            }
           }
         },
       );
@@ -522,6 +528,16 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
     }, 1000);
     return () => window.clearInterval(t);
   }, [status]);
+  // the server refused this window's session key (machine restarted, another window or machine took over)
+  const [sessionStale, setSessionStale] = useState(false);
+  useEffect(() => {
+    const on = () => {
+      setSessionStale(true);
+      setRecheckNeeded(true);
+    };
+    window.addEventListener(PRECHECK_EVENT, on);
+    return () => window.removeEventListener(PRECHECK_EVENT, on);
+  }, []);
   useEffect(() => {
     if (offlineFor === 0 && wasOffline && status === "live") {
       setWasOffline(false);
@@ -551,7 +567,12 @@ export function useExamRuntime(config: Partial<MonitoringConfig> | null | undefi
   const needPhone = cfgRef.current?.extra_camera === "required";
   const blocker =
     recheckNeeded && active.current
-      ? ({ kind: "recheck", text: "Mạng vừa kết nối lại sau khi gián đoạn. Theo quy chế thi, bạn bắt buộc thực hiện kiểm tra lại thiết bị (precheck) để tiếp tục làm bài." } as const)
+      ? ({
+          kind: "recheck",
+          text: sessionStale
+            ? "Phiên làm bài đã được mở lại ở nơi khác hoặc sau khi khởi động lại máy. Hãy kiểm tra lại thiết bị (precheck) để tiếp tục; câu trả lời chưa gửi vẫn được giữ."
+            : "Mạng vừa kết nối lại sau khi gián đoạn. Theo quy chế thi, bạn bắt buộc thực hiện kiểm tra lại thiết bị (precheck) để tiếp tục làm bài.",
+        } as const)
       : needCamera && camera === "lost"
         ? ({ kind: "camera", text: "Camera đã bị tắt. Bật lại camera để tiếp tục làm bài." } as const)
         : needScreen && screen === "lost"

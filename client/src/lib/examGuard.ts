@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "r
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getViolationRules, reportViolation, sendOpLogBatch, type MonitoringConfig, type ViolationRuleSpec, type ViolationSeverity, type ViolationType } from "./api";
 import { bypass } from "./dev";
+import { envCheck } from "./environment";
 import { type RealtimeClient } from "./realtime";
 import {
   DEFAULT_BANNED_APPS,
@@ -345,6 +346,14 @@ export function useExamGuard(config: Partial<MonitoringConfig> | null | undefine
 
     const flushTimer = window.setInterval(() => void flushKeylog(), KEYLOG_FLUSH_MS);
     on(() => window.clearInterval(flushTimer));
+
+    // remote control can start mid-exam (an RDP connection); a VM never changes, it was refused at the precheck
+    const envTimer = window.setInterval(() => {
+      void envCheck(true).then((env) => {
+        if (env?.remote_session && !bypass("devices")) record("REMOTE_SESSION", "CRITICAL", "Máy thi đang bị điều khiển từ xa (Remote Desktop)");
+      });
+    }, 60_000);
+    on(() => window.clearInterval(envTimer));
 
     // presence signals for the proctor dashboard: window focus + fullscreen, sent with every heartbeat
     rt?.setState({ focus: document.hasFocus(), fullscreen: !lockdownOn() });

@@ -59,7 +59,8 @@ export function flushAnswers(): Promise<boolean> {
         try {
           await saveQuestionAnswer(input);
         } catch (e) {
-          if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 408 && e.status !== 429) {
+          // 428: the session must pass the precheck again; the answer is kept and sent after that
+          if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 408 && e.status !== 428 && e.status !== 429) {
             const s = read();
             delete s[k];
             write(s);

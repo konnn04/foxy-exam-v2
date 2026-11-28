@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { CheckCircle2, Globe2, KeyRound, Loader2, Lock, PlugZap, RotateCcw, Save, ShieldCheck, Sparkles } from 'lucide-react';
 import { Field, FxButton, FxInput, FxSelect, PageHeader, Panel, PanelTitle, Pill, RadioCards, Segmented, Switch } from '@/components/foxy/ui';
-import { DEFAULT_BANNED_APPS_LIST, PROHIBITED_DEFAULT } from '@/components/foxy/exam-form';
+import { DEFAULT_BANNED_APPS_LIST, OsPicker, PROHIBITED_DEFAULT } from '@/components/foxy/exam-form';
 
 interface OrganizationData {
   id: number;
@@ -29,6 +29,9 @@ type Policy = {
   violation_clips: boolean;
   lock_device: boolean;
   offline_minutes: number;
+  block_vm: boolean;
+  block_virtual_camera: boolean;
+  allowed_os: string[];
   max_paste_chars: number;
   prohibited_labels: string[];
   banned_apps: string[];
@@ -49,6 +52,9 @@ const SYSTEM_POLICY: Policy = {
   violation_clips: false,
   lock_device: true,
   offline_minutes: 5,
+  block_vm: true,
+  block_virtual_camera: true,
+  allowed_os: [],
   max_paste_chars: 80,
   prohibited_labels: PROHIBITED_DEFAULT,
   banned_apps: DEFAULT_BANNED_APPS_LIST,
@@ -111,6 +117,8 @@ function PolicyPanel() {
         <PolicyRow label="Phát hiện vật dụng cấm" desc="Điện thoại, sách, laptop… trong khung hình camera trước." checked={p.ai_objects} onChange={(v) => set('ai_objects', v)} disabled={!camera} />
         <PolicyRow label="Yêu cầu micro" desc="Thí sinh phải bật micro khi thi." checked={p.require_mic} onChange={(v) => set('require_mic', v)} />
         <PolicyRow label="Chia sẻ màn hình" desc="Ghi lại màn hình trong suốt giờ thi." checked={p.require_screen} onChange={(v) => set('require_screen', v)} />
+        <PolicyRow label="Chặn máy ảo" desc="VMware, VirtualBox, Hyper-V, QEMU… bị từ chối ở bước precheck. Điều khiển từ xa luôn bị chặn." checked={p.block_vm} onChange={(v) => set('block_vm', v)} />
+        <PolicyRow label="Chặn camera ảo" desc="OBS Virtual Camera, ManyCam, DroidCam, NVIDIA Broadcast… không được làm camera thi." checked={p.block_virtual_camera} onChange={(v) => set('block_virtual_camera', v)} />
         <PolicyRow label="Quay clip quanh vi phạm" desc="Lưu khoảng 10 giây camera và màn hình làm bằng chứng." checked={p.violation_clips} onChange={(v) => set('violation_clips', v)} disabled={!camera && !p.require_screen} />
       </div>
 
@@ -129,6 +137,14 @@ function PolicyPanel() {
           <PolicyRow label="Nhận diện vật cấm ở camera phụ" desc="Chạy AI trên hình từ điện thoại." checked={p.extra_camera_objects} onChange={(v) => set('extra_camera_objects', v)} disabled={!phone} />
           <PolicyRow label="Kiểm tra góc đặt điện thoại" desc="Yêu cầu giữ đúng góc quay trong lúc thi." checked={p.extra_camera_spot_check} onChange={(v) => set('extra_camera_spot_check', v)} disabled={!phone} />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-[10px] bg-surface p-3">
+        <div>
+          <div className="text-[13px] font-medium">Hệ điều hành được phép</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">Không chọn gì = cho phép tất cả.</div>
+        </div>
+        <OsPicker value={p.allowed_os} onChange={(v) => set('allowed_os', v)} />
       </div>
 
       <div className="grid gap-3 rounded-[10px] bg-surface p-3 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">

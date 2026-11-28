@@ -46,6 +46,8 @@ export default function MobileCamera({ token }: { token: string }) {
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [portrait, setPortrait] = useState(false);
   const [tiltWarning, setTiltWarning] = useState<string | null>(null);
+  /** the accelerometer says the phone is being moved / held (it must stand still on the desk) */
+  const [moving, setMoving] = useState(false);
   const [dark, setDark] = useState(false);
   const [backgrounded, setBackgrounded] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
@@ -62,6 +64,8 @@ export default function MobileCamera({ token }: { token: string }) {
   portraitRef.current = portrait;
   const tiltRef = useRef<string | null>(null);
   tiltRef.current = tiltWarning;
+  const movingRef = useRef(false);
+  movingRef.current = moving;
 
   const requestWakeLock = useCallback(async () => {
     try {
@@ -82,6 +86,7 @@ export default function MobileCamera({ token }: { token: string }) {
         facing: facingRef.current,
         portrait: portraitRef.current,
         tiltWarning: tiltRef.current,
+        moving: movingRef.current,
         visibility: document.visibilityState,
         ts: Date.now(),
         ...extra,
@@ -128,6 +133,43 @@ export default function MobileCamera({ token }: { token: string }) {
       window.removeEventListener('deviceorientation', onDeviceOrientation);
     };
   }, []);
+
+  // Stillness: a phone standing on the desk barely changes its acceleration. Being held or picked up shakes it.
+  // The change between two samples (jerk) is smoothed; above ~0.6 m/s² for 1.5 s = moving, below 0.25 for 3 s = still again.
+  useEffect(() => {
+    let last: [number, number, number] | null = null;
+    let level = 0;
+    let since = 0;
+    let state = false;
+    const onMotion = (e: DeviceMotionEvent) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a || a.x === null || a.y === null || a.z === null) return;
+      const cur: [number, number, number] = [a.x, a.y, a.z];
+      if (last) {
+        const d = Math.hypot(cur[0] - last[0], cur[1] - last[1], cur[2] - last[2]);
+        level = level * 0.85 + d * 0.15;
+      }
+      last = cur;
+      const now = Date.now();
+      const want = state ? level > 0.25 : level > 0.6;
+      if (want === state) {
+        since = 0;
+        return;
+      }
+      since ||= now;
+      if (now - since >= (state ? 3000 : 1500)) {
+        state = want;
+        since = 0;
+        setMoving(want);
+      }
+    };
+    window.addEventListener('devicemotion', onMotion);
+    return () => window.removeEventListener('devicemotion', onMotion);
+  }, []);
+
+  useEffect(() => {
+    if (phase === 'live') sendPhoneSignal(moving ? 'PHONE_MOVED' : 'PHONE_STILL', { moving });
+  }, [moving, phase, sendPhoneSignal]);
 
   // Notify desktop immediately when orientation or tilt changes while live
   useEffect(() => {
@@ -223,6 +265,10 @@ export default function MobileCamera({ token }: { token: string }) {
         if (typeof DOE?.requestPermission === 'function') {
           await DOE.requestPermission().catch(() => {});
         }
+        const DME = window.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
+        if (typeof DME?.requestPermission === 'function') {
+          await DME.requestPermission().catch(() => {});
+        }
       } catch {
         /* ignore */
       }
@@ -313,6 +359,11 @@ export default function MobileCamera({ token }: { token: string }) {
           <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-xl bg-amber-500/95 px-3 py-2.5 text-xs font-semibold text-black shadow-lg">
             <RotateCw className="size-4 shrink-0 animate-spin" style={{ animationDuration: '4s' }} />
             Bắt buộc xoay ngang điện thoại (Landscape) để thấy rõ cả thí sinh và màn hình laptop.
+          </div>
+        )}
+        {!portrait && !tiltWarning && moving && phase === 'live' && (
+          <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-xl bg-red-600/95 px-3 py-2.5 text-xs font-semibold text-white shadow-lg">
+            <Compass className="size-4 shrink-0" /> Điện thoại đang bị di chuyển. Đặt điện thoại đứng yên trên bàn, đúng góc đã kiểm tra.
           </div>
         )}
         {!portrait && tiltWarning && phase === 'live' && (

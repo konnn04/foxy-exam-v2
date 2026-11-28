@@ -97,6 +97,15 @@ class AuthController extends Controller
             ], 503);
         }
 
+        // the legacy exam-code sign-in opens an attempt without the server-side precheck: closed while that is required
+        if (config('foxy.precheck.required')) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'CLIENT_OUTDATED',
+                'message' => 'Cách vào thi bằng mã phòng đã ngừng. Hãy cập nhật FoxyClient, đăng nhập bằng tài khoản rồi chọn kỳ thi.',
+            ], 426);
+        }
+
         // 4. Resume lượt thi đang dở, hoặc tạo lượt mới nếu còn trong hạn mức
         // `max_attempts` của kỳ thi (NULL = không giới hạn).
         $pastAttempts = ExamAttempt::where('exam_id', $exam->id)

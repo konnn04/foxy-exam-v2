@@ -3,6 +3,7 @@ use std::sync::Mutex;
 mod monitor;
 mod runner;
 mod sys;
+mod env_check;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -97,6 +98,7 @@ pub fn run() {
             monitor::monitor_keylog_drain,
             sys::system_info,
             sys::system_load,
+            env_check::env_check,
             runner::runner_toolchains,
             runner::runner_run,
             runner::runner_session_start,

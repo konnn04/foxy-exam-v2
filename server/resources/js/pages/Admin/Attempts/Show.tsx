@@ -4,6 +4,7 @@ import { Ban, BarChart3, Check, ChevronDown, CircleCheck, Code, Copy, EllipsisVe
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { FxButton, Modal, PageHeader, Panel, Pill } from '@/components/foxy/ui';
+import { formatDateTime } from '@/lib/datetime';
 import {
   ATTEMPT_STATUS,
   clockOffset,
@@ -39,6 +40,7 @@ export interface AttemptPayload {
   device_info: Record<string, unknown> | null;
   pending_grading?: number;
   shared_device_with?: { attempt_id: number; name: string | null; username: string | null }[];
+  prechecks?: PrecheckRow[];
   user: {
     id?: number | null;
     name: string;
@@ -114,7 +116,45 @@ function groupViolations(list: ViolationRow[]): Group[] {
   return out;
 }
 
-function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; shared: NonNullable<AttemptPayload['shared_device_with']> }) {
+interface PrecheckRow {
+  id: number;
+  at: string | null;
+  passed: boolean;
+  used: boolean;
+  reasons: string[];
+  ip: string | null;
+  os: string | null;
+  vm: boolean;
+  vm_vendor: string | null;
+  remote: boolean;
+  camera: string | null;
+}
+
+/** Every lobby check of this attempt: when the candidate entered (or came back) and what the server refused. */
+function PrecheckList({ rows }: { rows: PrecheckRow[] }) {
+  if (!rows.length) return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted-foreground">Kiểm tra thiết bị (precheck), mới nhất trước</span>
+      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border text-[13px]">
+        {rows.map((p) => (
+          <li key={p.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2">
+            <span className="font-mono text-xs text-muted-foreground">{formatDateTime(p.at)}</span>
+            {p.passed ? <Pill tone={p.used ? 'success' : 'neutral'}>{p.used ? 'Đạt, đã vào thi' : 'Đạt, chưa dùng'}</Pill> : <Pill tone="danger">Bị từ chối</Pill>}
+            <span className="text-xs text-muted-foreground">
+              {[p.os, p.ip, p.camera].filter(Boolean).join(' · ')}
+              {p.vm ? ` · máy ảo${p.vm_vendor ? ` (${p.vm_vendor})` : ''}` : ''}
+              {p.remote ? ' · điều khiển từ xa' : ''}
+            </span>
+            {p.reasons.length > 0 && <span className="w-full text-xs text-danger-fg">{p.reasons.join(' ')}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DevicePanel({ info, shared, prechecks = [] }: { info: Record<string, unknown> | null; shared: NonNullable<AttemptPayload['shared_device_with']>; prechecks?: PrecheckRow[] }) {
   const [open, setOpen] = useState(false);
   if (!info) return null;
   const rows: [string, unknown][] = [
@@ -126,8 +166,10 @@ function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; s
     ['Địa chỉ IP', info.ip],
     ['Mã thiết bị', info.fingerprint ? String(info.fingerprint).slice(0, 12) : null],
   ];
+  const env = (info.env ?? null) as { vm?: { detected?: boolean; vendor?: string }; remote_session?: boolean; os_family?: string } | null;
+  if (env) rows.push(['Máy ảo', env.vm?.detected ? `Có${env.vm.vendor ? ` (${env.vm.vendor})` : ''}` : 'Không phát hiện']);
   const shown = rows.filter(([, v]) => v);
-  if (shown.length === 0 && shared.length === 0) return null;
+  if (shown.length === 0 && shared.length === 0 && prechecks.length === 0) return null;
   const summary = [info.hostname, info.os, info.screen].filter(Boolean).map(String).join(' · ');
   return (
     <Panel className="flex flex-col gap-3 p-4">
@@ -147,6 +189,7 @@ function DevicePanel({ info, shared }: { info: Record<string, unknown> | null; s
           ))}
         </div>
       )}
+      {open && <PrecheckList rows={prechecks} />}
       {shared.length > 0 && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-2.5 text-[13px]">
           Cùng một máy với {shared.map((s) => `${s.name ?? s.username} (${s.username})`).join(', ')} trong kỳ thi này.
@@ -468,7 +511,7 @@ export default function AttemptShow({ user, teams, attempt, violations, typing, 
             refreshKey={`${signature}:${violations.length}`}
           />
 
-          <DevicePanel info={attempt.device_info} shared={attempt.shared_device_with ?? []} />
+          <DevicePanel info={attempt.device_info} shared={attempt.shared_device_with ?? []} prechecks={attempt.prechecks ?? []} />
 
           <AttemptTools attemptId={attempt.id} running={running} chatSeq={row?.chat_seq} deviceInfo={attempt.device_info} />
 

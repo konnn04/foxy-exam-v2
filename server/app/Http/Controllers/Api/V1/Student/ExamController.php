@@ -125,6 +125,16 @@ class ExamController extends Controller
             ], 503);
         }
 
+        // 0. Precheck do máy chủ xác nhận: cả lượt mới lẫn vào lại (sau khi tắt máy, mất mạng, mở lại app)
+        $precheck = \App\Support\Precheck::find($request->input('precheck_token'), $user, $exam, (array) $request->input('device_info', []));
+        if (config('foxy.precheck.required') && !$precheck) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PRECHECK_REQUIRED',
+                'message' => 'Cần hoàn tất kiểm tra thiết bị (precheck) trên máy này ngay trước khi vào thi. Hãy kiểm tra lại rồi bấm Bắt đầu.',
+            ], 428);
+        }
+
         // 1. Kiểm tra xem có phiên đang làm dở (IN_PROGRESS) hay không -> Resume
         $activeAttempt = ExamAttempt::where('exam_id', $exam->id)
             ->where('user_id', $user->id)
@@ -154,12 +164,14 @@ class ExamController extends Controller
                 return response()->json(['success' => false, 'error_code' => 'TIME_UP', 'message' => 'Lượt thi trước đã hết giờ và được nộp tự động với các câu trả lời đã lưu.'], 409);
             }
             $timeRemaining = $activeAttempt->secondsLeft();
+            $sessionKey = \App\Support\Precheck::enter($activeAttempt, $precheck, $request, true);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tiếp tục bài thi đang làm dở.',
                 'data' => [
                     'attempt_id' => $activeAttempt->id,
+                    'session_key' => $sessionKey,
                     'attempt_number' => $activeAttempt->attempt_number,
                     'status' => $activeAttempt->status,
                     'started_at' => $activeAttempt->started_at?->toIso8601String(),
@@ -208,6 +220,7 @@ class ExamController extends Controller
             'session_token' => Str::random(40),
             'device_info' => array_merge((array) $request->input('device_info', []), ['ip' => $request->ip()]),
         ]);
+        $sessionKey = \App\Support\Precheck::enter($attempt, $precheck, $request, false);
         app(\App\Services\Realtime::class)->lifecycle($attempt, 'active');
         \App\Http\Controllers\Api\V1\Student\MobileCameraController::bind($user, $exam, $attempt);
 
@@ -216,6 +229,7 @@ class ExamController extends Controller
             'message' => 'Bắt đầu làm bài thi thành công.',
             'data' => [
                 'attempt_id' => $attempt->id,
+                'session_key' => $sessionKey,
                 'attempt_number' => $attempt->attempt_number,
                 'status' => $attempt->status,
                 'started_at' => $attempt->started_at->toIso8601String(),
@@ -253,6 +267,9 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => 'Bài thi đã được nộp, không thể tiếp tục làm bài.',
             ], 400);
+        }
+        if ($stale = \App\Support\Precheck::guard($request, $attempt)) {
+            return $stale;
         }
 
         // Tính thời gian còn lại
@@ -379,6 +396,9 @@ class ExamController extends Controller
         if ($attempt->status === 'SUBMITTED' || $attempt->status === 'FORCE_ENDED') {
             return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp.'], 400);
         }
+        if ($stale = \App\Support\Precheck::guard($request, $attempt)) {
+            return $stale;
+        }
 
         // the clock is the server's: an answer after the deadline (+1 minute for the network) is not taken
         $attempt->setRelation('exam', $exam);
@@ -468,6 +488,9 @@ class ExamController extends Controller
             return response()->json(['success' => false, 'message' => 'Bài thi đã được nộp hoặc đã bị kết thúc trước đó.'], 400);
         }
 
+        if ($stale = \App\Support\Precheck::guard($request, $attempt)) {
+            return $stale;
+        }
         $attempt->setRelation('exam', $exam);
         $attempt = app(\App\Services\AttemptFinisher::class)->submit($attempt, $attempt->isOverdue() ? 'TIME_UP' : null);
         if ($attempt->status !== 'SUBMITTED') {

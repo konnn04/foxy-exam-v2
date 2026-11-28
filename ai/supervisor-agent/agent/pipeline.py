@@ -82,6 +82,9 @@ class Pipeline:
 
         if (info.extra_camera_objects if source == "phone" else info.ai_objects):
             found, raw_objects = await self._detect_objects(jpeg, info.prohibited_labels)
+            if source == "phone":
+                # the phone is placed to see the candidate AND the exam laptop: a screen there is expected, not prohibited
+                found = {k: v for k, v in found.items() if k not in SCREEN_LABELS}
             for label in st.objects.update(set(found), now):
                 matching_boxes = [o for o in raw_objects if o.get("label") == label]
                 annotated = annotate_boxes(jpeg, matching_boxes)

@@ -49,4 +49,15 @@ export function getSession(): Session | null {
 
 export function clearSession(): void {
   localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(KEY_STORAGE);
 }
+
+const KEY_STORAGE = "foxyexam:session-key";
+
+/**
+ * The key `start` hands out after a passed precheck. It lives in sessionStorage on purpose: it survives a reload
+ * of the exam window but not a restart of the app or the machine, so the server sends a restarted machine back
+ * through the precheck (428 PRECHECK_REQUIRED) before it can load the paper or save answers again.
+ */
+export const setSessionKey = (key: string | null | undefined) => (key ? sessionStorage.setItem(KEY_STORAGE, key) : sessionStorage.removeItem(KEY_STORAGE));
+export const getSessionKey = () => sessionStorage.getItem(KEY_STORAGE);

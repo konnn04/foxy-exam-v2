@@ -956,6 +956,16 @@ HTML;
             'submitted_at' => $attempt->submitted_at?->toIso8601String(),
             'device_info' => $attempt->device_info,
             'shared_device_with' => $this->sharedDevice($attempt),
+            // each lobby check of this candidate for this exam: the entries (and refusals) of the attempt
+            'prechecks' => \App\Models\ExamPrecheck::where('user_id', $attempt->user_id)->where('exam_id', $attempt->exam_id)
+                ->where(fn ($q) => $q->whereNull('exam_attempt_id')->orWhere('exam_attempt_id', $attempt->id))
+                ->latest('id')->limit(20)->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id, 'at' => $p->created_at?->toIso8601String(), 'passed' => $p->passed, 'used' => $p->used_at !== null,
+                    'reasons' => $p->reasons ?? [], 'ip' => $p->ip, 'os' => $p->os_family,
+                    'vm' => $p->env['vm']['detected'] ?? false, 'vm_vendor' => $p->env['vm']['vendor'] ?? null,
+                    'remote' => $p->env['remote_session'] ?? false, 'camera' => $p->env['camera_label'] ?? null,
+                ])->all(),
             'pending_grading' => \App\Models\ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)->whereNull('is_correct')
                 ->whereHas('question', fn ($q) => $q->whereIn('type', \App\Http\Controllers\Admin\GradingController::MANUAL))->count(),
             'user' => [

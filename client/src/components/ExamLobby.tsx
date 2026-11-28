@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Camera, Check, Cpu, Loader2, Mic, Monitor, MonitorUp, QrCode, RefreshCw, ScanFace, ShieldAlert, Smartphone, Wifi, X } from "lucide-react";
+import { Camera, Check, Cpu, HardDrive, Loader2, Mic, Monitor, MonitorUp, QrCode, RefreshCw, ScanFace, ShieldAlert, Smartphone, Wifi, X } from "lucide-react";
 import { Badge, Button, cx } from "./ui";
 import { DevPanel } from "./DevPanel";
 import { usePhoneCamera } from "../lib/phoneCamera";
-import { ApiError, enrollFace, getExam, getFaceChange, getFacePhoneLink, getFaceStatus, getHealth, requestFaceChange, startExam, type ExamDetail } from "../lib/api";
+import { ApiError, enrollFace, getExam, getFaceChange, getFacePhoneLink, getFaceStatus, getHealth, requestFaceChange, startExam, submitPrecheck, type ExamDetail } from "../lib/api";
+import { envCheck, isVirtualCamera, virtualCameraNames, type EnvCheck } from "../lib/environment";
 import QRCode from "qrcode";
 import { captureFrame } from "../lib/evidence";
-import { bypass, IS_DEV } from "../lib/dev";
+import { activeBypasses, bypass, IS_DEV } from "../lib/dev";
 import { clearPendingExam, getLobbyMedia, releaseLobbyMedia, setLobbyMedia, type PendingExam } from "../lib/lobbyMedia";
 import { explain, failureText, hasWebRTC, listCameras, micMeter, openCamera, openMic, openScreen, setPreferredCamera, getPreferredCamera, stopStream, type CameraInfo } from "../lib/media";
 import { FaceMonitor } from "../lib/vision";
@@ -15,7 +16,7 @@ import { frontalHint, isFrontal, LivenessChallenge, livenessText, type FrameRead
 import { captureDevices, DEFAULT_BANNED_APPS, getProcesses, getSnapshot, screenCount, type SystemSnapshot } from "../lib/monitor";
 import { getAuth } from "../lib/authStore";
 import { formatDateTime } from "../lib/datetime";
-import { saveSession } from "../lib/session";
+import { saveSession, setSessionKey } from "../lib/session";
 import { dialog, errorText } from "../lib/dialog";
 import { diag } from "../lib/diag";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -24,7 +25,7 @@ import { translate as t, useI18n } from "../lib/i18n";
 type Level = "idle" | "checking" | "ok" | "warn" | "fail";
 
 interface Check {
-  id: "network" | "exam" | "display" | "apps" | "camera" | "face" | "liveness" | "enroll" | "phone" | "mic" | "screen";
+  id: "network" | "exam" | "display" | "env" | "apps" | "camera" | "face" | "liveness" | "enroll" | "phone" | "mic" | "screen";
   label: string;
   level: Level;
   detail: string;
@@ -32,7 +33,7 @@ interface Check {
   required: boolean;
 }
 
-const ORDER: Check["id"][] = ["network", "exam", "display", "apps", "camera", "face", "liveness", "enroll", "phone", "mic", "screen"];
+const ORDER: Check["id"][] = ["network", "exam", "display", "env", "apps", "camera", "face", "liveness", "enroll", "phone", "mic", "screen"];
 
 const matchesBanned = (name: string) => {
   const n = name.toLowerCase().replace(/\.exe$/, "");
@@ -58,6 +59,8 @@ export default function ExamLobby({
   const [checks, setChecks] = useState<Record<Check["id"], Check>>(() => initial());
   const [level, setLevel] = useState(0);
   const [starting, setStarting] = useState(false);
+  const snapRef = useRef<SystemSnapshot | null>(null);
+  const envRef = useRef<EnvCheck | null>(null);
   const [, setError] = useState<string | null>(null);
   const [screenBusy, setScreenBusy] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
@@ -211,6 +214,8 @@ export default function ExamLobby({
           // the picture works here, but it can never reach the proctors: do not let the exam start unmonitored
           diag("lobby: this webview has no WebRTC, the camera cannot be streamed to proctors");
           set("camera", { level: required ? "fail" : "warn", detail: t("lobby.cam.noWebrtc"), required });
+        } else if ((cfg?.block_virtual_camera ?? true) && isVirtualCamera(track?.label) && !bypass("camera")) {
+          set("camera", { level: "fail", detail: t("lobby.cam.virtual", { name: track?.label ?? "" }), required: true });
         } else {
           set("camera", { level: "ok", detail: track?.label || t("lobby.cam.working"), required });
         }
@@ -319,6 +324,34 @@ export default function ExamLobby({
       } catch {
         set("apps", { level: "warn", detail: t("lobby.apps.noList"), required: false });
       }
+    }
+
+    // 4b. machine: virtual machine, remote desktop, allowed OS (the server decides again at precheck)
+    snapRef.current = snap;
+    set("env", { level: "checking", detail: t("lobby.env.checking") });
+    const env = await envCheck(true);
+    envRef.current = env;
+    const mc = d?.monitoring_config;
+    if (!env) {
+      set("env", { level: "warn", detail: t("lobby.env.noInfo"), required: false });
+    } else {
+      const allowed = (mc?.allowed_os ?? []) as string[];
+      const osName = { windows: "Windows", macos: "macOS", linux: "Linux" } as const;
+      const problem = env.remote_session
+        ? t("lobby.env.remote")
+        : env.vm.detected && (mc?.block_vm ?? true)
+          ? t("lobby.env.vm", { vendor: env.vm.vendor ?? "?" })
+          : allowed.length > 0 && allowed.length < 3 && !allowed.includes(env.os_family)
+            ? t("lobby.env.os", { allowed: allowed.map((o) => osName[o as keyof typeof osName] ?? o).join(", ") })
+            : null;
+      set(
+        "env",
+        problem
+          ? bypass("devices")
+            ? { level: "warn", detail: `${problem} (DEV)` }
+            : { level: "fail", detail: problem }
+          : { level: "ok", detail: t("lobby.env.ok", { os: osName[env.os_family] ?? env.os_family }) },
+      );
     }
 
     // 5 + 6 + 7. media (needs the exam config for "required")
@@ -466,7 +499,7 @@ export default function ExamLobby({
   const blockers = ORDER.map((id) => checks[id]).filter((c) => c.required && c.level !== "ok" && c.level !== "warn");
   const checking = ORDER.some((id) => checks[id].level === "checking");
   // a required check that only warned (e.g. dev bypass) does not block; "fail" and "idle" on required ones do
-  const ready = !checking && blockers.length === 0 && checks.exam.level === "ok" && checks.network.level !== "fail" && checks.display.level !== "fail" && checks.apps.level !== "fail";
+  const ready = !checking && blockers.length === 0 && checks.exam.level === "ok" && checks.network.level !== "fail" && checks.display.level !== "fail" && checks.env.level !== "fail" && checks.apps.level !== "fail";
 
   const start = useCallback(async () => {
     const auth = getAuth();
@@ -479,7 +512,33 @@ export default function ExamLobby({
         setStarting(false);
         return void dialog.alert({ title: t("lobby.dlg.noScreenTitle"), text: t("lobby.dlg.noScreenText"), tone: "warning" });
       }
-      const res = (await startExam(pending.id)).data;
+      // the server checks the lobby again and signs this entry (single use, this machine only)
+      const env = envRef.current ?? (await envCheck());
+      const snap = snapRef.current;
+      const levels = Object.fromEntries(ORDER.map((id) => [id, checks[id].level]));
+      let token: string;
+      try {
+        token = (
+          await submitPrecheck(pending.id, {
+            checks: levels,
+            env: {
+              ...(env ?? {}),
+              virtual_cameras: await virtualCameraNames(),
+              camera_label: getLobbyMedia().camera?.getVideoTracks()[0]?.label ?? null,
+              capture_devices: snap ? captureDevices(snap.devices).map((c) => c.name) : [],
+              displays: snap ? screenCount(snap.displays, snap.devices) : 1,
+              dev: IS_DEV && activeBypasses().length > 0,
+            },
+          })
+        ).data.precheck_token;
+      } catch (e) {
+        const reasons = e instanceof ApiError && Array.isArray(e.body?.reasons) ? (e.body.reasons as string[]) : null;
+        setStarting(false);
+        if (reasons) setError(reasons.join(" "));
+        return void dialog.alert({ title: t("lobby.dlg.precheckTitle"), text: reasons ? reasons.join("\n") : errorText(e, t("lobby.dlg.cantEnterText")), tone: "danger" });
+      }
+      const res = (await startExam(pending.id, token)).data;
+      setSessionKey(res.session_key);
       saveSession({
         token: auth.token,
         attemptId: res.attempt_id,
@@ -498,7 +557,7 @@ export default function ExamLobby({
     } finally {
       setStarting(false);
     }
-  }, [onStarted, pending.id, needScreen, shareScreen]);
+  }, [onStarted, pending.id, needScreen, shareScreen, checks]);
 
   // dev: "setup" bypass goes straight in as soon as the exam detail is known
   const auto = useRef(false);
@@ -547,6 +606,7 @@ export default function ExamLobby({
             <Row c={checks.network} icon={<Wifi size={14} />} />
             <Row c={checks.exam} icon={<ShieldAlert size={14} />} />
             <Row c={checks.display} icon={<Monitor size={14} />} />
+            <Row c={checks.env} icon={<HardDrive size={14} />} />
             <Row c={checks.apps} icon={<Cpu size={14} />} />
             {wantCamera && <Row c={{ ...checks.camera, required: needCamera }} icon={<Camera size={14} />} action={checks.camera.level !== "ok" && checks.camera.level !== "checking" ? <Button size="sm" onClick={() => void runCamera(needCamera)}>{checks.camera.level === "idle" ? t("lobby.cam.on") : t("lobby.retry")}</Button> : undefined} />}
             {wantCamera && cameras.length > 1 && (
@@ -744,6 +804,7 @@ function initial(): Record<Check["id"], Check> {
     network: mk("network", true),
     exam: mk("exam", true),
     display: mk("display", true),
+    env: mk("env", true),
     apps: mk("apps", true),
     camera: mk("camera", false),
     face: mk("face", false),

@@ -42,7 +42,8 @@
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $fwd_proto;
-        client_max_body_size 2m;
+        # evidence goes through here: images up to 8 MiB, violation clips (webm) up to 60 MiB (record service limits)
+        client_max_body_size 64m;
     }
 
     # --------------------------------------------------------------------------

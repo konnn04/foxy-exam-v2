@@ -39,6 +39,9 @@ class RealtimeController extends Controller
         if (!$attempt || $attempt->status !== 'IN_PROGRESS') {
             return response()->json(['success' => false, 'message' => 'Không có phiên làm bài đang diễn ra.'], 409);
         }
+        if ($stale = \App\Support\Precheck::guard($request, $attempt)) {
+            return $stale;
+        }
 
         $exam = $attempt->exam;
         $elapsed = $attempt->started_at ? (int) $attempt->started_at->diffInSeconds(now(), true) : 0;
