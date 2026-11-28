@@ -96,3 +96,20 @@ Cấu hình `extra_camera`: `off` | `optional` | `required`.
 ## Ảnh minh chứng
 
 Mỗi vi phạm cần ảnh có tối đa 3 ảnh (`details.evidence`): **màn hình**, **camera chính**, **camera phụ** (chụp từ video điện thoại đang xem). `violations.evidence_id` là ảnh sát nhất với loại vi phạm. Trang phiên thi của giám thị hiện cả ba ảnh; phần video chỉ hiện nguồn đã được ghi hoặc kỳ thi yêu cầu.
+
+## Precheck có chữ ký và khoá phiên
+
+1. Phòng chờ chạy các kiểm tra (mạng, kỳ thi, màn hình, **môi trường máy**, ứng dụng cấm, camera, khuôn mặt, camera phụ, micro, màn hình).
+   "Môi trường máy" lấy từ Rust `env_check` (`client/src-tauri/src/env_check.rs`): máy ảo (CPUID vendor, chuỗi SMBIOS, driver guest;
+   bit hypervisor đơn lẻ không tính vì Windows bật VBS/WSL2 cũng có), Remote Desktop, hệ điều hành, thời điểm khởi động.
+2. Bấm **Bắt đầu** → `POST /student/exams/{id}/precheck` gửi kết quả + môi trường (camera đang dùng, camera ảo thấy được, thiết bị capture, số màn hình).
+   Máy chủ (`App\Support\Precheck`) xét lại theo chính sách kỳ thi: `allowed_os`, `block_vm`, `block_virtual_camera`, điều khiển từ xa (luôn chặn),
+   các mục bắt buộc. Mọi lần kiểm tra được lưu ở `exam_prechecks` (cả lần bị từ chối); lần đạt nhận mã dùng một lần, hết hạn sau 15 phút, gắn với máy.
+3. `POST /start` (lượt mới **và** vào lại) bắt buộc có mã đó (`428 PRECHECK_REQUIRED` nếu thiếu). Mỗi lần vào, máy chủ đổi **khoá phiên**
+   (`session_key`, lưu băm ở `exam_attempts.session_token`); app gửi lại qua header `X-Foxy-Session` và chỉ giữ trong `sessionStorage`,
+   nên mất khi tắt app hoặc khởi động lại máy.
+4. `take`, `save-answer`, `submit`, `realtime/session` từ chối khoá cũ bằng `428`: cửa sổ cũ bị che bài và đưa về precheck,
+   câu trả lời chưa gửi được giữ lại. Vào lại với thời điểm khởi động khác → vi phạm `DEVICE_RESTARTED`; đổi IP → `IP_CHANGED` (một lần mỗi địa chỉ).
+5. Đăng nhập bằng mã phòng cũ (`/student/login`) bị đóng khi bật precheck (`426 CLIENT_OUTDATED`).
+
+Tắt: `PRECHECK_REQUIRED=false`. Máy dev dùng nút DEV: `PRECHECK_ALLOW_DEV=true` (mặc định bật khi `APP_ENV=local`).
