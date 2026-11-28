@@ -88,6 +88,8 @@ const SECTIONS: { id: string; title: string; desc: string; fields: FieldDef[] }[
     fields: [
       { key: 'contact.email', label: 'Email', kind: 'text' },
       { key: 'contact.phone', label: 'Hotline', kind: 'text' },
+      { key: 'contact.zalo', label: 'Link Zalo', kind: 'url', hint: 'Ví dụ https://zalo.me/0387291237. Để trống thì nút Zalo dùng số hotline.' },
+      { key: 'chat.enabled', label: 'Trợ lý AI ở góc phải dưới', kind: 'bool', hint: 'Cần đặt CHAT_DEEPSEEK_KEY trên máy chủ. Tắt thì chỉ còn nút Zalo và Liên hệ.' },
       { key: 'contact.phone_role', label: 'Chú thích hotline', kind: 'text', loc: true, builtin: (l) => T(l).footer.leaderRole },
       { key: 'contact.address', label: 'Địa chỉ', kind: 'text', loc: true, builtin: (l) => T(l).footer.address },
     ],

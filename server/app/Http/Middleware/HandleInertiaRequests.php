@@ -68,6 +68,7 @@ class HandleInertiaRequests extends Middleware
             ],
             // White-label content of the public website (cached; only the public pages read it)
             'site' => fn () => \App\Support\SiteSettings::all(),
+            'chatAvailable' => fn () => \App\Services\LandingChat::available(),
             // default monitoring policy of the ACTIVE school: a NEW exam starts from it
             'orgPolicy' => fn () => $user && $tenantContext->capabilities()['academic'] ? ($tenantContext->current()->settings['monitoring_defaults'] ?? null) : null,
             // AI question generator of the ACTIVE school (the key itself never leaves the server)

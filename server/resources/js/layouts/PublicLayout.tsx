@@ -4,7 +4,6 @@ import {
   Download,
   Menu,
   X,
-  ArrowUp,
   ArrowRight,
   Laptop,
   CheckCircle2,
@@ -14,6 +13,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSite } from '@/hooks/use-site';
 import CookieConsent from '@/components/public/CookieConsent';
+import ContactDock from '@/components/public/ContactDock';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -28,19 +28,6 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
   const email = site.get('contact.email');
   const phone = site.get('contact.phone');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   const navLinks = [
     { label: t.nav.home, href: '/' },
@@ -287,17 +274,8 @@ function PublicLayoutContent({ children }: PublicLayoutProps) {
 
       <CookieConsent />
 
-      {/* Back to top */}
-      <button
-        type="button"
-        onClick={scrollToTop}
-        aria-label="Cuộn lên đầu trang"
-        className={`fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center cursor-pointer ${
-          showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}
-      >
-        <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-      </button>
+      {/* bottom-right corner: back to top, Zalo, contact form, AI assistant */}
+      <ContactDock />
     </div>
   );
 }

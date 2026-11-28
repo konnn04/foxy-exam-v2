@@ -9,7 +9,7 @@ class Lead extends Model
 {
     public const STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'CLOSED', 'SPAM'];
 
-    protected $fillable = ['name', 'email', 'phone', 'organization', 'locale', 'status', 'note', 'handled_by', 'terms_accepted_at', 'terms_hash', 'ip', 'user_agent'];
+    protected $fillable = ['name', 'email', 'phone', 'organization', 'locale', 'source', 'plan', 'scale', 'message', 'status', 'note', 'handled_by', 'terms_accepted_at', 'terms_hash', 'ip', 'user_agent'];
 
     protected $casts = ['terms_accepted_at' => 'datetime'];
 

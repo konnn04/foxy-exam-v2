@@ -98,7 +98,7 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate --force
       - name: Tests that must pass
-        run: php artisan test --filter='SiteSettingsTest|PlatformAdminTest|SchoolToolsTest|AiQuestionTest|SweepAttemptsTest'
+        run: php artisan test --filter='SiteSettingsTest|PlatformAdminTest|SchoolToolsTest|AiQuestionTest|SweepAttemptsTest|PrecheckTest|LandingChatTest'
       - name: Full suite (informational, the older tests expect a HCMUS seed that is not created)
         continue-on-error: true
         run: php artisan test

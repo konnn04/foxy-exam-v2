@@ -21,6 +21,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/health', [TelemetryController::class, 'health']);
     Route::get('/ai/status', [TelemetryController::class, 'aiStatusProxy']);
     Route::get('/public/violation-rules', [TelemetryController::class, 'violationRules']);
+    // plans, prices, contact, latest app: the live facts the landing assistant (and any bot) reads
+    Route::get('/public/facts', [\App\Http\Controllers\LandingChatController::class, 'facts'])->middleware('throttle:60,1');
     Route::get('/public/organizations', [\App\Http\Controllers\Api\V1\Public\OrganizationController::class, 'publicList']);
 
     // Phone camera: the token in the link is the credential
@@ -57,6 +59,7 @@ Route::prefix('v1')->group(function () {
 
             // Exams Flow
             Route::get('/exams/{exam}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'show']);
+            Route::post('/exams/{exam}/precheck', [\App\Http\Controllers\Api\V1\Student\PrecheckController::class, 'store'])->middleware('throttle:20,1');
             Route::post('/exams/{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->middleware('biometric');
             Route::get('/exams/{exam}/take/{attempt}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'take']);
             Route::post('/exams/{exam}/take/{attempt}/save-answer', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer']);

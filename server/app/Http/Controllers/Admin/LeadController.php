@@ -38,6 +38,7 @@ class LeadController extends Controller
             ->through(fn (Lead $l) => [
                 'id' => $l->id, 'name' => $l->name, 'email' => $l->email, 'phone' => $l->phone,
                 'organization' => $l->organization, 'locale' => $l->locale, 'status' => $l->status, 'note' => $l->note,
+                'source' => $l->source, 'plan' => $l->plan, 'scale' => $l->scale, 'message' => $l->message,
                 'handler' => $l->handler?->name, 'at' => $l->created_at?->toIso8601String(),
                 'terms_at' => $l->terms_accepted_at?->toIso8601String(), 'terms_hash' => substr($l->terms_hash, 0, 12),
             ]);
@@ -48,7 +49,20 @@ class LeadController extends Controller
             'leads' => $leads,
             'filters' => ['status' => $status, 'q' => $q],
             'counts' => array_merge(['ALL' => Lead::count()], Lead::selectRaw('status, count(*) c')->groupBy('status')->pluck('c', 'status')->all()),
+            // what the landing assistant could not answer: material for the public FAQ
+            'chatQuestions' => \Illuminate\Support\Facades\Schema::hasTable('chat_questions')
+                ? \Illuminate\Support\Facades\DB::table('chat_questions')->where('resolved', false)->latest('id')->limit(50)->get(['id', 'question', 'locale', 'created_at'])
+                : [],
         ]);
+    }
+
+    /** Marks an unanswered assistant question as handled (added to the FAQ, or not worth it). */
+    public function resolveQuestion(int $id)
+    {
+        $this->authorizePlatform();
+        \Illuminate\Support\Facades\DB::table('chat_questions')->where('id', $id)->update(['resolved' => true]);
+
+        return back();
     }
 
     public function update(Request $request, int $id)

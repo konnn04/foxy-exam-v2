@@ -41,6 +41,13 @@ return [
     // the supervisor agent watches the cameras in LiveKit and runs both services on every second's frame
     'ai_agent' => ['url' => env('AI_AGENT_URL')],
 
+    // landing-page assistant (the platform's own DeepSeek key, separate from each school's AI settings)
+    'landing_chat' => [
+        'key' => env('CHAT_DEEPSEEK_KEY', ''),
+        'model' => env('CHAT_MODEL', 'deepseek-v4-flash'),
+        'daily_limit' => (int) env('CHAT_DAILY_LIMIT', 3000),
+    ],
+
     'ai_worker' => [
         'url' => env('AI_WORKER_URL'),
         'timeout' => (float) env('AI_WORKER_TIMEOUT', 2.0),

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { ChevronDown, Inbox, Mail, Phone, Save, Search, ShieldCheck } from 'lucide-react';
+import { Bot, Check, ChevronDown, Inbox, Mail, MessageCircleQuestion, Phone, Save, Search, ShieldCheck } from 'lucide-react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { type TeamItem } from '@/components/team-switcher';
 import { EmptyState, Field, FxButton, FxInput, FxSelect, FxTextarea, PageHeader, Panel, Pill, Segmented, type Tone } from '@/components/foxy/ui';
@@ -20,6 +20,17 @@ interface Lead {
   at: string;
   terms_at: string;
   terms_hash: string;
+  source?: string | null;
+  plan?: string | null;
+  scale?: string | null;
+  message?: string | null;
+}
+
+interface ChatQuestion {
+  id: number;
+  question: string;
+  locale: string;
+  created_at: string;
 }
 
 const STATUS: Record<string, { label: string; tone: Tone }> = {
@@ -49,6 +60,11 @@ function LeadRow({ lead }: { lead: Lead }) {
           <div className="truncate text-xs text-muted-foreground">{lead.organization || 'Chưa ghi đơn vị'}</div>
         </div>
         <span className="text-xs text-muted-foreground">{formatDateTime(lead.at)}</span>
+        {lead.source === 'chat' && (
+          <Pill tone="violet">
+            <Bot className="size-3" /> Từ trợ lý AI
+          </Pill>
+        )}
         <Pill tone={STATUS[lead.status]?.tone ?? 'neutral'}>{STATUS[lead.status]?.label ?? lead.status}</Pill>
         <ChevronDown className={`size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -62,6 +78,23 @@ function LeadRow({ lead }: { lead: Lead }) {
             <a href={`tel:${lead.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:underline">
               <Phone className="size-4 text-muted-foreground" /> {lead.phone}
             </a>
+            {(lead.plan || lead.scale || lead.message) && (
+              <div className="rounded-lg border border-border bg-card p-3 text-[13px]">
+                {lead.plan && (
+                  <div>
+                    <span className="text-muted-foreground">Gói quan tâm: </span>
+                    {lead.plan}
+                  </div>
+                )}
+                {lead.scale && (
+                  <div>
+                    <span className="text-muted-foreground">Quy mô: </span>
+                    {lead.scale}
+                  </div>
+                )}
+                {lead.message && <p className="mt-1 whitespace-pre-wrap">{lead.message}</p>}
+              </div>
+            )}
             <div className="mt-1 flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success-fg" />
               <span>
@@ -98,7 +131,50 @@ function LeadRow({ lead }: { lead: Lead }) {
   );
 }
 
-export default function LeadsIndex({ user, teams, leads, filters, counts }: { user: any; teams: TeamItem[]; leads: Paginated<Lead>; filters: { status: string | null; q: string }; counts: Record<string, number> }) {
+/** Questions the landing assistant could not answer: add the good ones to resources/chat/faq_public.md. */
+function ChatQuestions({ rows }: { rows: ChatQuestion[] }) {
+  if (!rows.length) return null;
+  return (
+    <Panel padded={false}>
+      <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+        <MessageCircleQuestion className="size-4 text-muted-foreground" />
+        <span className="text-sm font-semibold">Câu hỏi trợ lý AI chưa trả lời được</span>
+        <span className="text-xs text-muted-foreground">Bổ sung vào FAQ để lần sau trợ lý trả lời được</span>
+      </div>
+      <ul className="divide-y divide-border">
+        {rows.map((q) => (
+          <li key={q.id} className="flex items-start gap-3 px-5 py-2.5 text-[13px]">
+            <span className="min-w-0 flex-1">{q.question}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(q.created_at)}</span>
+            <button
+              type="button"
+              onClick={() => router.post(`/admin/leads/questions/${q.id}/resolve`, {}, { preserveScroll: true })}
+              className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-brand-fg hover:underline"
+            >
+              <Check className="size-3.5" /> Đã xử lý
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+export default function LeadsIndex({
+  user,
+  teams,
+  leads,
+  filters,
+  counts,
+  chatQuestions = [],
+}: {
+  user: any;
+  teams: TeamItem[];
+  leads: Paginated<Lead>;
+  filters: { status: string | null; q: string };
+  counts: Record<string, number>;
+  chatQuestions?: ChatQuestion[];
+}) {
   const [q, setQ] = useState(filters.q ?? '');
 
   const visit = (next: { status?: string | null; q?: string }) => {
@@ -145,6 +221,7 @@ export default function LeadsIndex({ user, teams, leads, filters, counts }: { us
           )}
         </Panel>
         <Pager page={leads} />
+        <ChatQuestions rows={chatQuestions} />
       </div>
     </AdminLayout>
   );

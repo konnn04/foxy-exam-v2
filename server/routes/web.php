@@ -70,6 +70,7 @@ Route::get('/', function () {
 })->name('landing');
 
 Route::post('/pilot-requests', [\App\Http\Controllers\PilotRequestController::class, 'store'])->middleware('throttle:6,1')->name('pilot.store');
+Route::post('/chat', [\App\Http\Controllers\LandingChatController::class, 'chat'])->middleware('throttle:15,1')->name('landing.chat');
 
 Route::get('/features', fn () => Inertia::render('Public/Features'))->name('features');
 Route::get('/pricing', function () {
@@ -144,7 +145,7 @@ Route::post('/login', function (Request $request) {
     return back()->withErrors([
         'username' => 'Tên đăng nhập hoặc mật khẩu không chính xác.',
     ]);
-});
+})->middleware('throttle:login');
 
 Route::post('/logout', function (Request $request) {
     \App\Support\Audit::record('auth.logout', 'Đăng xuất');
@@ -2049,6 +2050,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/platform/services', [\App\Http\Controllers\Admin\PlatformController::class, 'services']);
     Route::post('/platform/services', [\App\Http\Controllers\Admin\PlatformController::class, 'updateServices']);
     Route::get('/leads', [\App\Http\Controllers\Admin\LeadController::class, 'index']);
+    Route::post('/leads/questions/{id}/resolve', [\App\Http\Controllers\Admin\LeadController::class, 'resolveQuestion'])->whereNumber('id');
     Route::post('/leads/{id}', [\App\Http\Controllers\Admin\LeadController::class, 'update'])->whereNumber('id');
     Route::get('/audit-log', [\App\Http\Controllers\Admin\AuditLogController::class, 'index']);
     Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);

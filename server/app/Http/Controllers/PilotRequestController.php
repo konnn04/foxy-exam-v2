@@ -21,6 +21,10 @@ class PilotRequestController extends Controller
             'terms_accepted' => ['accepted'],
             'terms_hash' => ['required', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/'],
             'website' => ['nullable', 'max:0'], // honeypot: humans leave it empty
+            'source' => ['nullable', 'in:form,chat'],
+            'plan' => ['nullable', 'string', 'max:60'],
+            'scale' => ['nullable', 'string', 'max:60'],
+            'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
         // the same person pressing twice (or a refresh) must not create a second row
@@ -33,6 +37,10 @@ class PilotRequestController extends Controller
                 'phone' => strip_tags($data['phone']),
                 'organization' => isset($data['organization']) ? strip_tags($data['organization']) : null,
                 'locale' => $data['locale'] ?? 'vi',
+                'source' => $data['source'] ?? 'form',
+                'plan' => isset($data['plan']) ? strip_tags($data['plan']) : null,
+                'scale' => isset($data['scale']) ? strip_tags($data['scale']) : null,
+                'message' => isset($data['message']) ? strip_tags($data['message']) : null,
                 'terms_accepted_at' => now(),
                 'terms_hash' => $data['terms_hash'],
                 'ip' => $request->ip(),
